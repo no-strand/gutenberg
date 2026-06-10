@@ -220,9 +220,3 @@ documentation/index.html
 Ela também é acessível pela tela **Configurações**. No desktop, abre no navegador padrão; no modo browser, é servida pela própria aplicação.
 
 ---
-
-## 👤 Autoria
-
-Projeto **Gutenberg** por **Nostrand**.
-
-Contato: **nostrand@outlook.com.br**
