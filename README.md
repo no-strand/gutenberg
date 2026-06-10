@@ -123,9 +123,7 @@ Ou, usando o executor padrão:
 python -m unittest discover -s tests -v
 ```
 
-A suíte cobre backend, rotas Flask, importação DOCX/PDF/TXT, criação/importação `.gut`, exportação XHTML/EPUB, validações, catálogo, créditos e fluxos de importação pendente.
-
-Mais detalhes em [`TESTES.md`](TESTES.md).
+A suíte cobre backend, rotas Flask, importação DOCX/PDF/TXT, criação/importação `.gut`, exportação XHTML/EPUB, validações, catálogo, créditos, biblioteca EPUB/PDF, progresso de leitura, coleções e fluxos de importação pendente.
 
 ---
 
