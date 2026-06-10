@@ -65,12 +65,8 @@ Gutenberg/
 ├── locales/                     # Traduções pt_BR e en_US
 ├── documentation/               # Documentação HTML integrada
 ├── tests/                       # Testes automatizados unittest
-├── Gutenberg.spec               # Build PyInstaller
-├── Gutenberg.iss                # Instalador Inno Setup
 ├── installer.ico                # Ícone do instalador
 ├── requirements.txt             # Dependências
-├── TESTES.md                    # Guia de testes
-├── version.txt                  # Metadados do executável Windows
 └── README.md
 ```
 
