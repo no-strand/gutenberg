@@ -127,38 +127,6 @@ A suíte cobre backend, rotas Flask, importação DOCX/PDF/TXT, criação/import
 
 ---
 
-## 📦 Build do executável
-
-O build desktop usa **PyInstaller** com `Gutenberg.spec`:
-
-```bash
-pyinstaller Gutenberg.spec
-```
-
-Saída esperada:
-
-```text
-dist/Gutenberg/
-```
-
-O pacote inclui templates, arquivos estáticos, traduções, documentação HTML e metadados de versão.
-
----
-
-## Instalador Windows
-
-Depois do build com PyInstaller, compile `Gutenberg.iss` no **Inno Setup**.
-
-Saída esperada:
-
-```text
-dist_installer/
-```
-
-O instalador usa `installer.ico`, inclui todos os arquivos do build e oferece suporte a sistemas x64 compatíveis.
-
----
-
 ## 🎨 Ícones e assets principais
 
 | Uso | Arquivo |
