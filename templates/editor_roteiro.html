@@ -1,0 +1,173 @@
+<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
+{% extends "base.html" %}
+{% block titulo %}{{ t('script.page_title_edit', title=roteiro.titulo) }}{% endblock %}
+{% block body_class %}pagina-editor-app{% if not config_global.efeito_editor %} editor-sem-efeito{% endif %}{% endblock %}
+{% block body_attrs %}data-editor-page="true" data-editor-effects-enabled="{{ 'true' if config_global.efeito_editor else 'false' }}"{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/editor_roteiro.css') }}">{% endblock %}
+{% block conteudo %}
+<section class="editor-topo">
+  <div class="cabecalho-editor-grid">
+    <a href="{{ url_for('pagina_roteiro', slug=projeto.slug) }}" id="botaoVoltarEditor" class="botao-secundario botao-voltar-estilizado botao-com-icone"><span class="icone-svg">{{ icon_svg('back')|safe }}</span><span>{{ t('nav.back') }}</span></a>
+    <input id="campoTituloCapitulo" class="titulo-editor" value="{{ roteiro.titulo }}" data-uppercase="true" maxlength="120">
+    <div class="cabecalho-editor-meta-direita">
+      <span class="status-chip status-chip-roteiro-tipo">{{ roteiro.tipo_roteiro_label }}</span>
+      <div class="status-salvamento"><span id="statusAutosave" class="status-chip">{{ t("common.ready") }}</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="barra-ferramentas barra-roteiro barra-roteiro-sticky">
+  <div class="barra-roteiro-esquerda">
+    <button type="button" class="botao-secundario botao-apenas-icone btn-toolbar" id="btnUndo" title="{{ t('editor.undo') }} (Ctrl+Z)" aria-label="{{ t('editor.undo') }} (Ctrl+Z)">↶</button>
+    <button type="button" class="botao-secundario botao-apenas-icone btn-toolbar" id="btnRedo" title="{{ t('editor.redo') }} (Ctrl+Shift+Z)" aria-label="{{ t('editor.redo') }} (Ctrl+Shift+Z)">↷</button>
+    <div class="separador-toolbar"></div>
+    {% set blocos = [("scene_heading",t("script.editor_block_scene_heading"),"CENA +","Alt+C"),("action",t("script.editor_block_action"),"A","Alt+A"),("character",t("script.editor_block_character"),"P","Alt+P"),("dialogue",t("script.editor_block_dialogue"),"D","Alt+D"),("parenthetical",t("script.editor_block_parenthetical"),"(","Alt+S"),("shot",t("script.editor_block_shot"),"PL","Alt+L"),("transition",t("script.editor_block_transition"),"TR","Alt+T"),("comment",t("script.editor_block_comment"),"#","Alt+N"),("music",t("script.editor_block_music"),"M","Alt+M"),("neutral",t("script.editor_block_neutral"),"N","Alt+E")] %}
+    {% for tipo,nome,sigla,atalho in blocos %}
+    <button type="button" class="botao-secundario btn-toolbar btn-tipo-bloco" data-block-type="{{ tipo }}" title="{{ nome }} ({{ atalho }})"><span>{{ sigla }}</span></button>
+    {% endfor %}
+    <button type="button" class="botao-secundario botao-apenas-icone btn-toolbar btn-toggle-visualizacao" id="btnToggleVisualizacaoRoteiro" title="{{ t('common.hide_comments') }} (Alt+O)">
+      <input type="checkbox" id="toggleVisualizacaoRoteiro" hidden>
+      <img id="iconeToggleVisualizacaoRoteiro" src="{{ url_for('static', filename='img/mostrar.png') }}" alt="{{ t('common.show_comments') }}">
+    </button>
+    <div class="theme-select-wrap" title="{{ t('script.editor_theme_pages') }}">
+      <label class="theme-select-label" for="selectTemaRoteiro">{{ t('script.editor_theme_mode') }}</label>
+      <select id="selectTemaRoteiro" class="theme-select" aria-label="{{ t('script.editor_theme_pages') }}">
+        <option value="light">{{ t('theme.light') }}</option>
+        <option value="dark">{{ t('theme.dark') }}</option>
+        <option value="serpia">{{ t('theme.serpia') }}</option>
+        <option value="dark-blue">{{ t('theme.dark_blue') }}</option>
+        <option value="terminal-calm">{{ t('theme.terminal_calm') }}</option>
+        <option value="warm-brown">{{ t('theme.warm_brown') }}</option>
+        <option value="sunset-mode">{{ t('theme.sunset_mode') }}</option>
+        <option value="frost">{{ t('theme.frost') }}</option>
+        <option value="pastel-pink">{{ t('theme.pastel_pink') }}</option>
+        <option value="code-like">{{ t('theme.code_like') }}</option>
+      </select>
+    </div>
+  </div>
+  <div class="barra-roteiro-direita">
+    <span class="tipo-atual-label">{{ t("common.type_current") }}</span>
+    <strong id="indicadorTipoBloco" class="indicador-tipo-bloco">{{ t("script.editor_block_action") }}</strong>
+  </div>
+</section>
+
+<section class="roteiro-layout">
+  <aside class="roteiro-sidebar">
+    <div class="sidebar-card sidebar-card-acoes">
+      <button type="button" class="botao-secundario botao-apenas-icone" id="btnCatalogoPersonagens" title="{{ t('common.characters') }} (Ctrl+Alt+P)"><span class="icone-svg">{{ icon_svg('users')|safe }}</span></button>
+      <button type="button" class="botao-secundario botao-apenas-icone" id="btnCatalogoLocais" title="{{ t('common.locations') }} (Ctrl+Alt+L)"><span class="icone-svg">{{ icon_svg('place')|safe }}</span></button>
+      <button type="button" class="botao-secundario botao-apenas-icone" id="btnEstatisticasRoteiro" title="{{ t('index.stats') }} (Ctrl+Alt+I)"><span class="icone-svg">{{ icon_svg('stats')|safe }}</span></button>
+      <button type="button" class="botao-secundario botao-apenas-icone" id="btnAbrirRevisaoOrtografica" title="{{ t('editor.review') }} (Ctrl+Alt+R)" aria-label="{{ t('editor.review') }} (Ctrl+Alt+R)"><img src="{{ url_for('static', filename='img/revisar.png') }}" alt="{{ t('editor.review') }}"></button>
+    </div>
+    <div class="sidebar-card sidebar-card-sumario oculto" id="sidebarCardSumarioRoteiro">
+      <nav id="sumarioRoteiro" class="sumario-roteiro"></nav>
+    </div>
+  </aside>
+
+  <section class="painel-editor painel-roteiro">
+    <div class="pagina-editor pagina-roteiro">
+      <div id="editorTexto" class="editor-texto editor-roteiro" contenteditable="true" spellcheck="false">{{ roteiro.get('html_editor', '<div class="roteiro-bloco" data-block-type="neutral" data-initial-neutral="true"><br></div>')|safe }}</div>
+      <div id="autocompleteRoteiro" class="autocomplete-roteiro oculto"></div>
+    </div>
+  </section>
+</section>
+
+<div class="modal oculto" id="modalRevisaoOrtografica">
+  <div class="modal-overlay" data-fechar-revisao="true"></div>
+  <div class="modal-conteudo modal-revisao-ortografica" data-modal-card="true">
+    <div class="modal-topo modal-topo-acoes">
+      <div>
+        <h2>{{ t("editor.spell_review") }}</h2>
+        <p class="revisao-subtitulo" id="revisaoSubtitulo">{{ t("editor.preparing_review") }}</p>
+      </div>
+      <div class="modal-topo-acoes">
+        <button type="button" class="botao-fechar" data-fechar-revisao="true">×</button>
+      </div>
+    </div>
+    <div class="revisao-grid">
+      <section class="revisao-coluna">
+        <h3>{{ t("editor.current_text") }}</h3>
+        <div id="revisaoTextoOriginal" class="revisao-texto"></div>
+      </section>
+      <section class="revisao-coluna">
+        <h3>{{ t("editor.corrected_suggestion") }}</h3>
+        <div id="revisaoTextoCorrigido" class="revisao-texto"></div>
+      </section>
+    </div>
+    <div class="revisao-rodape">
+      <span id="revisaoStatus" class="status-form">{{ t("editor.select_block_manual_review") }}</span>
+      <div class="revisao-acoes">
+        <button type="button" class="botao-secundario" id="btnIgnorarBlocoRevisao">{{ t("common.ignore") }}</button>
+        <button type="button" class="botao-secundario" id="btnRevisarBlocoRevisao">{{ t("editor.review") }}</button>
+        <button type="button" class="botao-primario" id="btnAceitarBlocoRevisao">{{ t("editor.accept_review") }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal oculto" id="modalCatalogo">
+  <div class="modal-overlay" data-fechar-modal="true"></div>
+  <div class="modal-conteudo modal-catalogo" data-modal-card="true">
+    <div class="modal-topo"><h2 id="tituloModalCatalogo">{{ t("script.catalog_title") }}</h2><div class="modal-topo-acoes"><button type="button" class="botao-secundario" id="btnNovoItemCatalogo">{{ t("common.new_item") }}</button><button class="botao-fechar" type="button" data-fechar-modal="true">×</button></div></div>
+    <section class="catalogo-lista-wrap">
+      <div id="catalogoLista" class="catalogo-lista"></div>
+    </section>
+  </div>
+</div>
+
+<div class="modal oculto" id="modalCatalogoEditor">
+  <div class="modal-overlay" data-fechar-modal="true"></div>
+  <div class="modal-conteudo pequeno modal-catalogo-editor" data-modal-card="true">
+    <div class="modal-topo"><h2 id="tituloModalCatalogoEditor">{{ t("common.edit_item") }}</h2><button class="botao-fechar" type="button" data-fechar-modal="true">×</button></div>
+    <form id="formCatalogoEditor" class="form-catalogo-editor">
+      <input type="hidden" id="catalogoTipo">
+      <input type="hidden" id="catalogoNomeOriginal">
+      <label>{{ t("common.name") }}<input type="text" id="catalogoNome" required data-uppercase="true" maxlength="60"></label>
+      <label>{{ t("common.description") }}<textarea id="catalogoDescricao" rows="5" placeholder="{{ t("script.describe_item") }}" maxlength="240"></textarea></label>
+            <div class="rodape-formulario"><span id="statusCatalogo" class="status-form"></span><button class="botao-primario" type="submit">{{ t("common.save") }}</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal oculto" id="modalEstatisticasRoteiro">
+  <div class="modal-overlay" data-fechar-modal="true"></div>
+  <div class="modal-conteudo modal-estatisticas-roteiro" data-modal-card="true">
+    <div class="modal-topo">
+      <h2>{{ t("script.stats_title") }}</h2>
+      <button class="botao-fechar" type="button" data-fechar-modal="true">×</button>
+    </div>
+    <div id="estatisticasRoteiroConteudo" class="estatisticas-roteiro-conteudo"></div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|default('', true)|tojson }}, numero: {{ numero|default(1, true)|tojson }}, catalogoPersonagens: {{ roteiro.get('catalogo_personagens', [])|tojson }}, catalogoLocais: {{ roteiro.get('catalogo_locais', [])|tojson }}, roteiroTitulo: {{ roteiro.get('titulo', t('script.no_title'))|tojson }}, prefixoCena: {{ roteiro.get('prefixo_cena', '0')|tojson }}, numeracaoInicial: {{ roteiro.get('numeracao_inicial', 1)|tojson }}, cabecalho: {{ roteiro.get('cabecalho', '')|tojson }}, rodape: {{ roteiro.get('rodape', '')|tojson }}, tipoRoteiro: {{ roteiro.get('tipo_roteiro', 'spec_script')|tojson }}, tipoRoteiroLabel: {{ roteiro.get('tipo_roteiro_label', t('script.spec_script'))|tojson }}, idioma: {{ projeto.idioma|tojson }}};</script>
+<script src="{{ url_for('static', filename='js/editor_roteiro.js') }}"></script>
+{% endblock %}
+
+
+{% block skeleton %}
+<section class="skeleton-topo">
+  <section class="sk-editor-topo">
+    <div class="sk-editor-header">
+      <div class="sk-botao sk-bloco"></div>
+      <div class="sk-titulo curto sk-bloco"></div>
+      <div class="sk-chip sk-bloco"></div>
+    </div>
+    <div class="sk-editor-barra sk-bloco"></div>
+  </section>
+  <section class="sk-linha-card sk-roteiro-layout">
+    <aside class="sk-roteiro-sidebar">
+      <div class="sk-card sk-roteiro-sidebar-card"></div>
+      <div class="sk-card sk-roteiro-sidebar-card alto"></div>
+    </aside>
+    <section class="sk-editor-folha sk-roteiro-folha">
+      <div class="sk-editor-folha-interno">
+        <div class="sk-linha titulo sk-bloco"></div>
+        {% for _ in range(16) %}<div class="sk-linha sk-bloco{% if loop.index % 5 == 0 %} curta{% elif loop.index % 3 == 0 %} media{% endif %}"></div>{% endfor %}
+      </div>
+    </section>
+  </section>
+</section>
+{% endblock %}

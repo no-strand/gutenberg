@@ -1,0 +1,99 @@
+<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
+{% extends 'base.html' %}
+{% block titulo %}{{ t('reader.page_title') }} - {{ capitulo.titulo }}{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/leitor.css') }}">{% endblock %}
+{% block conteudo %}
+<section class="topo-leitor topo-leitor-compacto">
+  <div class="cabecalho-editor-grid leitor-grid leitor-grid-compacto">
+    <a href="{{ url_for('pagina_projeto', slug=projeto.slug) }}" class="botao-secundario botao-voltar-estilizado botao-com-icone"><span class="icone-svg">{{ icon_svg('back')|safe }}</span><span>{{ t('nav.back') }}</span></a>
+    <div class="titulo-centro-wrap titulo-centro-wrap-compacto"><h1 class="titulo-centro-leitor">{{ capitulo.titulo }}</h1></div>
+    <div class="topo-leitor-acoes topo-leitor-acoes-compactas">
+      <a class="botao-secundario botao-com-icone" id="abrirSumario"><img class="icone-img" src="{{ url_for('static', filename='img/sumario.png') }}" alt=""><span>{{ t('reader.summary') }}</span></a>
+      <div class="indicador-progresso-leitura indicador-progresso-leitura-topo"><span id="indicadorProgressoTexto">0%</span></div>
+      <a class="botao-secundario botao-com-icone" href="{{ url_for('editar_capitulo', slug=projeto.slug, numero=numero) }}"><span class="icone-svg">{{ icon_svg('edit')|safe }}</span><span>{{ t('common.edit_label') }}</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="painel-preferencias painel-preferencias-compacto">
+  <div class="theme-select-wrap" title="{{ t('reader.visual_mode') }}">
+    <label class="theme-select-label" for="controleTema">{{ t('reader.mode') }}</label>
+    <select id="controleTema" class="theme-select" aria-label="{{ t('reader.visual_mode') }}">
+      <option value="light" {% if config_global.leitor_tema == 'light' %}selected{% endif %}>{{ t('theme.light') }}</option>
+      <option value="dark" {% if config_global.leitor_tema == 'dark' %}selected{% endif %}>{{ t('theme.dark') }}</option>
+      <option value="serpia" {% if config_global.leitor_tema == 'serpia' %}selected{% endif %}>{{ t('theme.serpia') }}</option>
+      <option value="dark-blue" {% if config_global.leitor_tema == 'dark-blue' %}selected{% endif %}>{{ t('theme.dark_blue') }}</option>
+      <option value="terminal-calm" {% if config_global.leitor_tema == 'terminal-calm' %}selected{% endif %}>{{ t('theme.terminal_calm') }}</option>
+      <option value="warm-brown" {% if config_global.leitor_tema == 'warm-brown' %}selected{% endif %}>{{ t('theme.warm_brown') }}</option>
+      <option value="sunset-mode" {% if config_global.leitor_tema == 'sunset-mode' %}selected{% endif %}>{{ t('theme.sunset_mode') }}</option>
+      <option value="frost" {% if config_global.leitor_tema == 'frost' %}selected{% endif %}>{{ t('theme.frost') }}</option>
+      <option value="pastel-pink" {% if config_global.leitor_tema == 'pastel-pink' %}selected{% endif %}>{{ t('theme.pastel_pink') }}</option>
+      <option value="code-like" {% if config_global.leitor_tema == 'code-like' %}selected{% endif %}>{{ t('theme.code_like') }}</option>
+    </select>
+  </div>
+  <label>{{ t('reader.font') }}<select id="controleFonte"><option value="fonte-serif" {% if config_global.leitor_fonte == 'fonte-serif' %}selected{% endif %}>{{ t('reader.font_serif') }}</option><option value="fonte-sans" {% if config_global.leitor_fonte == 'fonte-sans' %}selected{% endif %}>{{ t('reader.font_sans') }}</option><option value="fonte-mono" {% if config_global.leitor_fonte == 'fonte-mono' %}selected{% endif %}>{{ t('reader.font_mono') }}</option></select></label>
+  <label class="label-range-leitor">{{ t('reader.font_size') }}<input type="range" id="controleTamanho" min="16" max="32" value="{{ config_global.leitor_tamanho_fonte_px or config_global.tamanho_fonte_px }}"></label>
+  <div class="navegacao-capitulos navegacao-capitulos-painel">
+    {% if capitulo_anterior %}<a class="botao-secundario botao-navegacao" href="{{ url_for('ler_capitulo_view', slug=projeto.slug, numero=capitulo_anterior.id) }}">&lt;</a>{% else %}<span class="botao-secundario botao-navegacao desativado">&lt;</span>{% endif %}
+    {% if proximo_capitulo %}<a class="botao-secundario botao-navegacao" href="{{ url_for('ler_capitulo_view', slug=projeto.slug, numero=proximo_capitulo.id) }}">&gt;</a>{% else %}<span class="botao-secundario botao-navegacao desativado">&gt;</span>{% endif %}
+  </div>
+</section>
+
+<div class="modal-leitor oculto" id="modalSumario" aria-hidden="true">
+  <div class="modal-leitor-overlay" data-fechar-sumario="true"></div>
+  <div class="modal-leitor-conteudo" data-sumario-card="true">
+    <div class="modal-leitor-topo">
+      <h2>{{ t('reader.summary') }}</h2>
+      <button type="button" class="botao-fechar-sumario" data-fechar-sumario="true" aria-label="{{ t('reader.close_summary') }}">×</button>
+    </div>
+    <nav class="arvore-capitulos" aria-label="{{ t('reader.chapter_tree') }}">
+      {% if projeto.capitulos %}
+        {% for item in projeto.capitulos %}
+          <a href="{{ url_for('ler_capitulo_view', slug=projeto.slug, numero=item.id) }}" class="item-capitulo-sumario {% if item.id == numero %}ativo{% endif %}">
+            <span class="marcador-arvore"></span>
+            <span class="capitulo-numero">{{ t('project.chapter_number', number=item.id) }}</span>
+            <span class="capitulo-titulo">{{ item.titulo }}</span>
+          </a>
+        {% endfor %}
+      {% else %}
+        <p class="sumario-vazio">{{ t('reader.no_chapters') }}</p>
+      {% endif %}
+    </nav>
+  </div>
+</div>
+
+<article id="areaLeitura" data-posicao-inicial="{{ posicao_inicial or 0 }}" class="area-leitura area-leitura-estendida {{ config_global.leitor_tema or 'light' }} {{ config_global.leitor_fonte or 'fonte-serif' }} modo-ampliado" style="font-size: {{ config_global.leitor_tamanho_fonte_px or config_global.tamanho_fonte_px }}px;">
+  {{ capitulo.paragrafos[0]|safe }}
+</article>
+{% endblock %}
+{% block scripts %}
+<script>window.LEITOR_CONFIG = {base: "projetos", percentualUrl: null, progressoInicial: 0, anterior: {{ capitulo_anterior.id|tojson if capitulo_anterior else 'null' }}, proximo: {{ proximo_capitulo.id|tojson if proximo_capitulo else 'null' }}, slug: {{ projeto.slug|tojson }}, numero: {{ numero|tojson }}, salvarPosicaoUrl: {{ url_for('api_salvar_posicao_leitura', slug=projeto.slug, numero=numero)|tojson }}, posicaoInicial: {{ posicao_inicial|tojson }}, voltarUrl: {{ url_for('pagina_projeto', slug=projeto.slug)|tojson }}};</script>
+<script src="{{ url_for('static', filename='js/leitor.js') }}"></script>
+{% endblock %}
+
+{% block skeleton %}
+<section class="skeleton-topo">
+  <section class="sk-leitor-topo">
+    <div class="sk-leitor-header">
+      <div class="sk-botao sk-bloco"></div>
+      <div class="sk-titulo curto sk-bloco"></div>
+      <div class="sk-acoes">
+        <div class="sk-botao sk-bloco"></div>
+        <div class="sk-chip sk-bloco"></div>
+      </div>
+    </div>
+  </section>
+  <section class="sk-painel sk-painel-compacto">
+    <div class="sk-barra sk-barra-compacta">
+      <div class="sk-campo sk-bloco"></div>
+      <div class="sk-campo sk-bloco"></div>
+      <div class="sk-campo sk-bloco"></div>
+      <div class="sk-campo pequeno sk-bloco"></div>
+    </div>
+  </section>
+  <section class="sk-leitura sk-leitura-estendida">
+    <div class="sk-linha titulo sk-bloco"></div>
+    {% for _ in range(18) %}<div class="sk-linha sk-bloco{% if loop.index % 5 == 0 %} curta{% elif loop.index % 4 == 0 %} media{% endif %}"></div>{% endfor %}
+  </section>
+</section>
+{% endblock %}

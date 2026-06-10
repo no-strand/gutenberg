@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block titulo %}{{ t('creditos.page_title') }} - Gutenberg{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/creditos.css') }}">{% endblock %}
+{% block conteudo %}
+<section class="container-principal sem-topbar">
+  <section class="painel-creditos">
+    <header class="topo-creditos">
+      <a href="{{ url_for('pagina_configuracoes') }}" class="botao-secundario botao-voltar-estilizado botao-com-icone">
+        <span class="icone-svg">{{ icon_svg('back')|safe }}</span>
+        <span>{{ t('nav.back') }}</span>
+      </a>
+      <div class="creditos-badge">{{ t('creditos.section_badge') }}</div>
+    </header>
+
+    <article class="card-creditos">
+      <h1>{{ t('creditos.heading') }}</h1>
+      <p class="creditos-destaque">Rodrigo F. Machado</p>
+      <p class="creditos-apelido">Nostrand</p>
+      <a class="creditos-email" href="mailto:nostrand@outlook.com.br">nostrand@outlook.com.br</a>
+    </article>
+  </section>
+</section>
+{% endblock %}
+
+{% block skeleton %}
+<section class="skeleton-topo">
+  <section class="sk-painel">
+    <div class="sk-barra">
+      <div class="sk-botao sk-bloco"></div>
+      <div class="sk-chip sk-bloco"></div>
+    </div>
+    <div class="sk-leitura" style="min-height:420px;max-width:900px;">
+      <div class="sk-linha titulo sk-bloco"></div>
+      <div class="sk-linha media sk-bloco"></div>
+      <div class="sk-linha curta sk-bloco"></div>
+      <div class="sk-botao sk-bloco" style="max-width:320px;"></div>
+    </div>
+  </section>
+</section>
+{% endblock %}

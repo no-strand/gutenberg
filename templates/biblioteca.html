@@ -1,0 +1,146 @@
+<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
+
+{% extends 'base.html' %}
+{% block titulo %}{{ t('library.page_title') }} - Gutenberg{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/biblioteca.css') }}">{% endblock %}
+{% block conteudo %}
+<section class="hero hero-compacto">
+  <div class="hero-texto">
+    <div class="hero-linha-topo">
+      <span class="pill">{{ t('library.hero_pill') }}</span>
+      <div class="hero-acoes">
+        <a class="botao-secundario botao-com-icone" href="{{ url_for('pagina_configuracoes') }}"><img class="icone-img" src="{{ url_for('static', filename='img/configurar.png') }}" alt=""><span>{{ t('nav.settings') }}</span></a>
+        <a class="botao-secundario botao-destaque-navegacao" href="{{ url_for('pagina_inicial') }}">{{ t('nav.editor') }}</a>
+        <button class="botao-secundario botao-com-icone botao-colecoes-topo" type="button" id="abrirColecoes"><img class="icone-img" src="{{ url_for('static', filename='img/colecoes.png') }}" alt=""><span>{{ t('library.collections') }}</span></button>
+        <button class="botao-primario botao-com-icone" id="abrirSeletorEpub"><img class="icone-img" src="{{ url_for('static', filename='img/adicionar.png') }}" alt=""><span><strong>{{ t('library.add_book') }}</strong></span></button>
+      </div>
+    </div>
+    <h1>{{ t('library.hero_title') }}</h1>
+    <p>{{ t('library.hero_subtitle') }}</p>
+    <div class="status-upload" id="statusBiblioteca"></div>
+  </div>
+</section>
+
+<input type="file" id="inputEpubs" accept=".epub,.pdf,application/epub+zip,application/pdf" multiple class="oculto">
+
+<div class="overlay-processamento-biblioteca oculto" id="overlayProcessandoBiblioteca" aria-hidden="true">
+  <div class="overlay-processamento-fundo"></div>
+  <div class="overlay-processamento-card" role="status" aria-live="polite" aria-busy="true">
+    <div class="spinner-processamento" aria-hidden="true"></div>
+    <h2>{{ t('library.adding_book') }}</h2>
+    <p id="mensagemOverlayBiblioteca">{{ t('library.preparing_import') }}</p>
+  </div>
+</div>
+
+<section class="painel-biblioteca-controles">
+  <form class="form-busca-biblioteca" id="formBuscaBiblioteca" onsubmit="return false;">
+    <input type="search" id="campoBuscaBiblioteca" placeholder="{{ t('common.search') }}" autocomplete="off">
+  </form>
+  <div class="toggle-filtros toggle-filtros-centralizado" role="tablist" aria-label="{{ t('library.reading_filter') }}">
+    <button type="button" class="toggle-filtro ativo" data-filtro="lendo">{{ t('library.filter_reading') }}</button>
+    <button type="button" class="toggle-filtro" data-filtro="todos">{{ t('common.all') }}</button>
+    <button type="button" class="toggle-filtro" data-filtro="lidos">{{ t('library.filter_read') }}</button>
+  </div>
+</section>
+
+{% if livros %}
+<section class="grade-projetos grade-biblioteca" id="gradeBiblioteca">
+  {% for livro in livros %}
+  <article class="card-projeto card-livro compacto"
+    data-slug="{{ livro.slug }}"
+    data-estado="{{ livro.estado_leitura }}"
+    data-busca="{{ (livro.titulo ~ ' ' ~ (livro.autor or '') ~ ' ' ~ (livro.idioma or '') ~ ' ' ~ livro.arquivo_original)|lower }}"
+    data-colecao="{{ livro.chave_colecao }}"
+    data-colecao-nome="{{ livro.nome_colecao }}"
+    data-foi-lido="{{ 'true' if livro.foi_lido else 'false' }}"
+    data-foi-iniciado="{{ 'true' if livro.foi_iniciado else 'false' }}">
+    <button class="botao-lixeira-livro btn-excluir-livro" type="button" data-slug="{{ livro.slug }}" aria-label="{{ t('library.delete_book_aria', title=livro.titulo) }}">
+      <img src="{{ url_for('static', filename='img/deletar.png') }}" alt="">
+    </button>
+    <button class="botao-status-lido {% if livro.foi_lido %}ativo{% endif %}" type="button" data-slug="{{ livro.slug }}" data-lido="{{ 'true' if livro.foi_lido else 'false' }}" aria-label="{{ t('library.mark_read_aria', title=livro.titulo) }}">
+      <span>✓</span>
+    </button>
+    <a class="link-card-livro" href="{{ url_for('abrir_livro_biblioteca', slug=livro.slug) }}">
+      <div class="thumb-projeto thumb-livro {% if not livro.tem_capa %}thumb-vazia{% endif %}">
+        {% if livro.tem_capa %}
+        <img class="imagem-card-projeto" src="{{ url_for('capa_livro_biblioteca', slug=livro.slug) }}" alt="{{ t('library.cover_of', title=livro.titulo) }}">
+        {% else %}
+        <div class="thumb-placeholder">{{ t('library.no_cover') }}</div>
+        {% endif %}
+        <div class="overlay-progresso">
+          <span class="chip-progresso">{{ '%.0f'|format(livro.progresso_percentual or 0) }}%</span>
+        </div>
+      </div>
+    </a>
+  </article>
+  {% endfor %}
+</section>
+<div class="vazio-biblioteca oculto" id="estadoSemResultados">
+  <h2>{{ t('library.no_books_found') }}</h2>
+  <p>{{ t('library.no_books_found_desc') }}</p>
+</div>
+{% else %}
+<section class="vazio vazio-biblioteca">
+  <h2>{{ t('library.empty_title') }}</h2>
+  <p>{{ t('library.empty_desc') }}</p>
+</section>
+{% endif %}
+
+<div class="modal-leitor oculto" id="modalColecoes" aria-hidden="true">
+  <div class="modal-leitor-overlay" data-fechar-colecoes="true"></div>
+  <div class="modal-leitor-conteudo modal-colecoes">
+    <div class="modal-leitor-topo">
+      <h2>{{ t('library.collections_title') }}</h2>
+      <button type="button" class="botao-fechar-sumario" data-fechar-colecoes="true" aria-label="{{ t('library.close_collections') }}">×</button>
+    </div>
+    {% if colecoes %}
+    <div class="lista-colecoes">
+      <button type="button" class="botao-colecao ativo" data-colecao-filtro="">{{ t('library.all_collections') }}</button>
+      {% for colecao in colecoes %}
+      <button type="button" class="botao-colecao" data-colecao-filtro="{{ colecao.slug }}">{{ colecao.nome }} <span>({{ colecao.total }})</span></button>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="sumario-vazio">{{ t('library.no_collections') }}</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/biblioteca.js') }}"></script>{% endblock %}
+
+{% block skeleton %}
+<section class="skeleton-topo">
+  <section class="sk-hero">
+    <div class="sk-hero-topo">
+      <div class="sk-pill sk-bloco"></div>
+      <div class="sk-acoes">
+        <div class="sk-botao sk-bloco"></div>
+        <div class="sk-botao grande sk-bloco"></div>
+        <div class="sk-botao sk-bloco"></div>
+        <div class="sk-botao sk-bloco"></div>
+      </div>
+    </div>
+    <div class="sk-titulo sk-bloco"></div>
+    <div class="sk-texto sk-bloco"></div>
+  </section>
+  <section class="sk-painel">
+    <div class="sk-barra sk-barra-vertical">
+      <div class="sk-campo sk-bloco"></div>
+      <div class="sk-toggle sk-toggle-centralizado">
+        <div class="sk-chip sk-bloco"></div>
+        <div class="sk-chip sk-bloco"></div>
+        <div class="sk-chip sk-bloco"></div>
+      </div>
+    </div>
+  </section>
+  <section class="sk-grade-4">
+    {% for _ in range(8) %}
+    <article class="sk-card-livro sk-bloco">
+      <div class="sk-circulo esquerda"></div>
+      <div class="sk-circulo direita"></div>
+      <div class="sk-progresso"></div>
+    </article>
+    {% endfor %}
+  </section>
+</section>
+{% endblock %}

@@ -1,0 +1,153 @@
+<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
+{% extends 'base.html' %}
+{% block titulo %}Gutenberg{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">{% endblock %}
+{% block conteudo %}
+<section class="hero hero-compacto">
+  <div class="hero-texto">
+    <div class="hero-linha-topo">
+      <span class="pill">{{ t('index.hero_pill') }}</span>
+      <div class="hero-acoes">
+        <div class="alternador-visualizacao" aria-label="{{ t('index.toggle_projects_view') }}" role="group">
+          <button type="button" class="botao-visualizacao" data-modo-visualizacao="grid" aria-label="{{ t('index.view_grid') }}" title="{{ t('index.view_grid') }}"><img class="icone-visualizacao" src="{{ url_for('static', filename='img/grid.png') }}" alt=""></button>
+          <button type="button" class="botao-visualizacao ativo" data-modo-visualizacao="explorer" aria-label="{{ t('index.view_explorer') }}" title="{{ t('index.view_explorer') }}"><img class="icone-visualizacao" src="{{ url_for('static', filename='img/explorer.png') }}" alt=""></button>
+        </div>
+        <a class="botao-secundario botao-com-icone" href="{{ url_for('pagina_configuracoes') }}"><img class="icone-img" src="{{ url_for('static', filename='img/configurar.png') }}" alt=""><span>{{ t('nav.settings') }}</span></a>
+        <a class="botao-secundario botao-destaque-navegacao" href="{{ url_for('pagina_biblioteca') }}">{{ t('nav.library') }}</a>
+        <button class="botao-primario botao-com-icone" id="abrirModalProjeto"><img class="icone-img" src="{{ url_for('static', filename='img/adicionar.png') }}" alt=""><span><strong>{{ t('index.new_project') }}</strong></span></button>
+      </div>
+    </div>
+    <h1>{{ t('index.hero_title') }}</h1>
+    <p>{{ t('index.hero_subtitle') }}</p>
+  </div>
+</section>
+
+{% if projetos %}
+<section class="grade-projetos grade-projetos-alternavel" id="gradeProjetos" data-visualizacao="explorer">
+  {% for projeto in projetos %}
+  {% set is_roteiro = projeto.tipo == 'roteiro' %}
+  <article class="card-projeto compacto card-projeto-sem-capa">
+    <div class="card-topo card-topo-sem-capa">
+      <div class="min-zero bloco-principal-card">
+        <span class="badge badge-tipo">{{ t('index.project_type.script') if is_roteiro else t('index.book_format') }}</span>
+        <h2 class="limite-2linhas" title="{{ projeto.titulo }}">{{ projeto.titulo }}</h2>
+        <p class="descricao descricao-curta" title="{{ projeto.descricao or t('index.no_description') }}">{{ projeto.descricao or t('index.no_description') }}</p>
+      </div>
+    </div>
+    <div class="meta-grid compacto-meta">
+      <div><strong>{{ t('index.author') }}</strong><span class="limite-1linha" title="{{ projeto.autor or '-' }}">{{ projeto.autor or '-' }}</span></div>
+      <div><strong>{{ t('index.language') }}</strong><span class="limite-1linha" title="{{ idioma_projeto_rotulo(projeto.idioma) }}">{{ idioma_projeto_rotulo(projeto.idioma) }}</span></div>
+      <div><strong>{{ t('index.contacts') if is_roteiro else t('index.tags') }}</strong><span class="limite-1linha" title="{{ projeto.contatos if is_roteiro else (projeto.tags|join(', ') if projeto.tags else '-') }}">{{ projeto.contatos if is_roteiro else (projeto.tags|join(', ') if projeto.tags else '-') }}</span></div>
+      <div><strong>{{ t('index.created') }}</strong><span class="limite-1linha" title="{{ projeto.data_criacao|data_br }}">{{ projeto.data_criacao|data_br }}</span></div>
+      <div><strong>{{ t('index.updated') }}</strong><span class="limite-1linha" title="{{ projeto.data_atualizacao|data_br }}">{{ projeto.data_atualizacao|data_br }}</span></div>
+    </div>
+    <div class="acoes-card acoes-card-compactas">
+      <a class="botao-secundario botao-com-icone" href="{{ url_for('pagina_roteiro', slug=projeto.slug) if is_roteiro else url_for('pagina_projeto', slug=projeto.slug) }}"><img class="icone-img" src="{{ url_for('static', filename='img/abrir.png') }}" alt=""><span>{{ t('index.open') }}</span></a>
+      <button class="botao-perigo botao-com-icone btn-excluir-projeto" data-slug="{{ projeto.slug }}"><img class="icone-img" src="{{ url_for('static', filename='img/deletar.png') }}" alt=""><span>{{ t('index.delete') }}</span></button>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+
+<div class="modal oculto" id="modalProjeto">
+  <div class="modal-overlay" data-fechar-modal="true"></div>
+  <div class="modal-conteudo" data-modal-card="true">
+    <div class="modal-topo"><h2>{{ t('index.modal_new_project') }}</h2><button class="botao-fechar" type="button" data-fechar-modal="true">×</button></div>
+    <form id="formProjeto" enctype="multipart/form-data">
+      <div class="formulario-grade">
+        <label>{{ t('index.project_kind') }}
+          <select name="tipo" id="campoTipoProjeto">
+            <option value="livro">{{ t('index.project_kind.book') }}</option>
+            <option value="roteiro">{{ t('index.project_kind.script') }}</option>
+          </select>
+        </label>
+        <label>{{ t('index.language') }}<select name="idioma"><option value="pt-BR">{{ t('language.pt_BR') }}</option><option value="en_US">{{ t('language.en_US') }}</option></select></label>
+        <label class="coluna-inteira">{{ t('index.title_required') }}<input type="text" name="titulo" required maxlength="70"></label>
+        <label class="coluna-inteira">{{ t('index.description') }}<textarea name="descricao" rows="4" maxlength="1000"></textarea></label>
+        <label>{{ t('index.author_label') }}<input type="text" name="autor" maxlength="80"></label>
+        <label id="grupoTagsProjeto">{{ t('index.tags_csv') }}<input type="text" name="tags" maxlength="180"></label>
+        <label class="coluna-inteira" id="grupoCapaProjeto">{{ t('index.cover') }}<input type="file" name="cover" accept="image/*"></label>
+        <label class="coluna-inteira" id="grupoContatosProjeto">{{ t('index.contact') }}<input type="text" name="contatos" maxlength="70" data-validate-contact="true" placeholder="{{ t('index.contact_placeholder') }}"></label>
+        <label class="coluna-inteira oculto" id="grupoInformacoesProjeto">{{ t('index.additional_info') }}<textarea name="informacoes_adicionais" rows="3" maxlength="50"></textarea></label>
+      </div>
+      <div class="rodape-formulario"><span id="statusProjeto" class="status-form"></span><button class="botao-primario botao-com-icone" type="submit"><img class="icone-img" src="{{ url_for('static', filename='img/adicionar.png') }}" alt=""><span>{{ t('index.create_project') }}</span></button></div>
+    </form>
+  </div>
+</div>
+
+{% if gut_pendente and gut_pendente.ativo %}
+<div class="modal oculto" id="modalGutPendente">
+  <div class="modal-overlay"></div>
+  <div class="modal-conteudo" data-modal-card="true">
+    <div class="modal-topo"><h2>{{ t('index.pending_gut_title') }}</h2><button class="botao-fechar" type="button" data-fechar-modal="true">×</button></div>
+    {% if gut_pendente.erro %}
+      <p>{{ gut_pendente.erro }}</p>
+    {% else %}
+      <p>{{ t('index.pending_gut_desc', file=gut_pendente.nome_arquivo, kind=(t('index.project_kind.script') if gut_pendente.tipo_projeto == 'roteiro' else t('index.project_kind.book'))) }}</p>
+      {% if gut_pendente.projetos %}
+      <div class="gut-pendente-formulario gut-pendente-formulario-horizontal">
+        <label class="gut-pendente-seletor gut-pendente-seletor-moderno">{{ t('index.choose_project_for_import') }}
+          <select id="selectProjetoGutPendente">
+            {% for projeto in gut_pendente.projetos %}<option value="{{ projeto.slug }}">{{ projeto.titulo }}</option>{% endfor %}
+          </select>
+        </label>
+        <div class="gut-pendente-acoes">
+          <button type="button" class="botao-secundario" id="botaoCriarProjetoGutPendente">{{ t('index.create_new_project') }}</button>
+          <button type="button" class="botao-primario" id="botaoImportarGutPendente">{{ t('index.import_into_selected_project') }}</button>
+        </div>
+      </div>
+      <div class="gut-pendente-mensagens">
+        <span id="statusGutPendente" class="status-form"></span>
+      </div>
+      {% else %}
+      <p>{{ t('index.no_projects_for_pending_gut') }}</p>
+      <div class="gut-pendente-acoes gut-pendente-acoes-sem-seletor">
+        <button type="button" class="botao-secundario" data-fechar-modal="true">{{ t('common.cancel') }}</button>
+        <button type="button" class="botao-primario" id="botaoCriarProjetoGutPendente">{{ t('index.create_new_project') }}</button>
+      </div>
+      <div class="gut-pendente-mensagens">
+        <span id="statusGutPendente" class="status-form"></span>
+      </div>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script>window.GUT_PENDENTE = {{ (gut_pendente or {})|tojson }};</script><script src="{{ url_for('static', filename='js/index.js') }}"></script>{% endblock %}
+
+{% block skeleton %}
+<section class="skeleton-topo">
+  <section class="sk-hero">
+    <div class="sk-hero-topo">
+      <div class="sk-pill sk-bloco"></div>
+      <div class="sk-acoes">
+        <div class="sk-botao sk-bloco"></div>
+        <div class="sk-botao sk-bloco"></div>
+        <div class="sk-botao grande sk-bloco"></div>
+        <div class="sk-botao sk-bloco"></div>
+      </div>
+    </div>
+    <div class="sk-titulo sk-bloco"></div>
+    <div class="sk-texto sk-bloco"></div>
+    <div class="sk-texto curto sk-bloco"></div>
+  </section>
+  <section class="sk-grade-3">
+    {% for _ in range(6) %}
+    <article class="sk-card sk-card-lista">
+      <div class="sk-badge-inline sk-bloco"></div>
+      <div class="sk-linha titulo sk-bloco"></div>
+      <div class="sk-linha media sk-bloco"></div>
+      <div class="sk-linhas-meta">
+        {% for __ in range(5) %}<div class="sk-linha sk-bloco"></div>{% endfor %}
+      </div>
+      <div class="sk-acoes-card">
+        <div class="sk-botao sk-bloco"></div>
+        <div class="sk-botao sk-bloco"></div>
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+</section>
+{% endblock %}

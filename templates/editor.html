@@ -1,0 +1,141 @@
+<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
+{% extends 'base.html' %}
+{% block titulo %}{{ t('common.edit_label') }} {{ capitulo.titulo }}{% endblock %}
+{% block body_class %}pagina-editor-app{% if not config_global.efeito_editor %} editor-sem-efeito{% endif %}{% endblock %}
+{% block body_attrs %}data-editor-page="true" data-editor-effects-enabled="{{ 'true' if config_global.efeito_editor else 'false' }}"{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">{% endblock %}
+{% block conteudo %}
+<section class="editor-topo">
+  <div class="cabecalho-editor-grid">
+    <a href="{{ url_for('pagina_roteiro', slug=projeto.slug) if projeto.tipo == 'roteiro' else url_for('pagina_projeto', slug=projeto.slug) }}" id="botaoVoltarEditor" class="botao-secundario botao-voltar-estilizado botao-com-icone"><span class="icone-svg">{{ icon_svg('back')|safe }}</span><span>{{ t('nav.back') }}</span></a>
+    <input id="campoTituloCapitulo" class="titulo-editor" value="{{ capitulo.titulo }}" maxlength="120" />
+    <div class="status-salvamento"><span id="statusAutosave" class="status-chip">{{ t('common.ready') }}</span><a class="botao-leitura botao-com-icone" href="{{ url_for('ler_capitulo_view', slug=projeto.slug, numero=numero) }}"><img class="icone-img" src="{{ url_for('static', filename='img/ler.png') }}" alt=""><span>{{ t('reader.reading_mode') }}</span></a></div>
+  </div>
+</section>
+
+<section class="barra-ferramentas barra-word barra-word-sticky">
+  <div class="grupo-ferramenta grupo-icones-uploaded">
+    <button type="button" class="botao-branco" data-bloco-classe="alinhar-a-esquerda" title="{{ t('editor.align_left') }} (Alt+E)" aria-label="{{ t('editor.align_left') }} (Alt+E)"><img src="{{ url_for('static', filename='img/editor_icons/alinhar-a-esquerda.png') }}" alt=""></button>
+    <button type="button" class="botao-branco" data-bloco-classe="alinhar-centro" title="{{ t('editor.align_center') }} (Alt+C)" aria-label="{{ t('editor.align_center') }} (Alt+C)"><img src="{{ url_for('static', filename='img/editor_icons/alinhar-centro.png') }}" alt=""></button>
+    <button type="button" class="botao-branco" data-bloco-classe="alinhar-a-direita" title="{{ t('editor.align_right') }} (Alt+D)" aria-label="{{ t('editor.align_right') }} (Alt+D)"><img src="{{ url_for('static', filename='img/editor_icons/alinhar-a-direita.png') }}" alt=""></button>
+    <button type="button" class="botao-branco" data-bloco-classe="justificar" title="{{ t('editor.justify') }} (Alt+J)" aria-label="{{ t('editor.justify') }} (Alt+J)"><img src="{{ url_for('static', filename='img/editor_icons/justificar.png') }}" alt=""></button>
+    <button type="button" class="botao-branco" data-bloco-classe="recuo-a-esquerda" title="{{ t('editor.indent_left') }} (Ctrl+Alt+E)" aria-label="{{ t('editor.indent_left') }} (Ctrl+Alt+E)"><img src="{{ url_for('static', filename='img/editor_icons/recuo-a-direita.png') }}" alt=""></button>
+    <button type="button" class="botao-branco" data-bloco-classe="recuo-a-direita" title="{{ t('editor.indent_right') }} (Ctrl+Alt+D)" aria-label="{{ t('editor.indent_right') }} (Ctrl+Alt+D)"><img src="{{ url_for('static', filename='img/editor_icons/recuo-a-esquerda.png') }}" alt=""></button>
+  </div>
+  <div class="grupo-ferramenta">
+    <button type="button" class="botao-branco texto-preto" id="btnUndoEditor" title="Desfazer (Ctrl+Z)" aria-label="Desfazer (Ctrl+Z)">↶</button>
+    <button type="button" class="botao-branco texto-preto" id="btnRedoEditor" title="Refazer (Ctrl+Y / Ctrl+Shift+Z)" aria-label="Refazer (Ctrl+Y / Ctrl+Shift+Z)">↷</button>
+    <button type="button" class="botao-branco texto-preto" data-comando="bold" title="{{ t('editor.bold') }} (Alt+B)" aria-label="{{ t('editor.bold') }} (Alt+B)"><strong>N</strong></button>
+    <button type="button" class="botao-branco texto-preto" data-comando="italic" title="{{ t('editor.italic') }} (Alt+I)" aria-label="{{ t('editor.italic') }} (Alt+I)"><em>I</em></button>
+    <button type="button" class="botao-branco texto-preto" data-comando="underline" title="{{ t('editor.underline') }} (Alt+U)" aria-label="{{ t('editor.underline') }} (Alt+U)"><u>S</u></button>
+    <button type="button" class="botao-branco texto-preto" data-comando="formatBlock" data-valor="p" title="{{ t('editor.paragraph') }} (Alt+P)" aria-label="{{ t('editor.paragraph') }} (Alt+P)">P</button>
+    <button type="button" class="botao-branco texto-preto" data-comando="formatBlock" data-valor="h1" title="{{ t('editor.h1') }} (Alt+1)" aria-label="{{ t('editor.h1') }} (Alt+1)">H1</button>
+    <button type="button" class="botao-branco texto-preto" data-comando="formatBlock" data-valor="h2" title="{{ t('editor.h2') }} (Alt+2)" aria-label="{{ t('editor.h2') }} (Alt+2)">H2</button>
+    <button type="button" class="botao-branco texto-preto" data-comando="formatBlock" data-valor="h3" title="{{ t('editor.h3') }} (Alt+3)" aria-label="{{ t('editor.h3') }} (Alt+3)">H3</button>
+    <button type="button" class="botao-branco texto-preto" data-comando="insertUnorderedList" title="{{ t('editor.list') }} (Alt+L)" aria-label="{{ t('editor.list') }} (Alt+L)">•</button>
+    <button type="button" class="botao-branco texto-preto botao-hr" id="btnInserirLinhaHorizontal" title="{{ t('editor.horizontal_rule') }} (Alt+R)" aria-label="{{ t('editor.horizontal_rule') }} (Alt+R)"><img src="{{ url_for('static', filename='img/editor_icons/hr.png') }}" alt="{{ t('editor.horizontal_rule') }}"></button>
+    <div class="controle-menu-insercao" id="controleSeparadorDecorativo">
+      <button type="button" class="botao-branco texto-preto controle-menu-insercao-botao" id="btnInserirSeparadorDecorativo" title="{{ t('editor.decorative_separator') }} (Ctrl+Alt+Q)" aria-label="{{ t('editor.decorative_separator') }} (Ctrl+Alt+Q)">
+        <span class="controle-menu-valor" id="valorSeparadorDecorativo">◆◆◆</span>
+        <span class="controle-menu-seta" data-toggle-menu="menuSeparadorDecorativo" aria-hidden="true">▾</span>
+      </button>
+      <div class="menu-insercao oculto" id="menuSeparadorDecorativo" role="menu" aria-label="{{ t('editor.decorative_separator') }}">
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="separador" data-valor="◆◆◆">◆◆◆</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="separador" data-valor="◇◇◇">◇◇◇</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="separador" data-valor="✦✦✦">✦✦✦</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="separador" data-valor="★★★">★★★</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="separador" data-valor="☆☆☆">☆☆☆</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="separador" data-valor="❖❖❖">❖❖❖</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="separador" data-valor="✥✥✥">✥✥✥</button>
+      </div>
+    </div>
+    <div class="controle-menu-insercao" id="controleDelimitadorDecorativo">
+      <button type="button" class="botao-branco texto-preto controle-menu-insercao-botao" id="btnInserirDelimitadorDecorativo" title="{{ t('editor.decorative_wrapper') }} (Alt+Q)" aria-label="{{ t('editor.decorative_wrapper') }} (Alt+Q)">
+        <span class="controle-menu-valor" id="valorDelimitadorDecorativo">『』</span>
+        <span class="controle-menu-seta" data-toggle-menu="menuDelimitadorDecorativo" aria-hidden="true">▾</span>
+      </button>
+      <div class="menu-insercao oculto" id="menuDelimitadorDecorativo" role="menu" aria-label="{{ t('editor.decorative_wrapper') }}">
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="delimitador" data-abertura="『" data-fechamento="』">『』</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="delimitador" data-abertura="《" data-fechamento="》">《》</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="delimitador" data-abertura="【" data-fechamento="】">【】</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="delimitador" data-abertura="｢" data-fechamento="｣">｢｣</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="delimitador" data-abertura="〈" data-fechamento="〉">〈〉</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="delimitador" data-abertura="〔" data-fechamento="〕">〔〕</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="delimitador" data-abertura="〖" data-fechamento="〗">〖〗</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="delimitador" data-abertura="〘" data-fechamento="〙">〘〙</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="delimitador" data-abertura="〚" data-fechamento="〛">〚〛</button>
+        <button type="button" class="menu-insercao-opcao" data-tipo-menu="delimitador" data-abertura="«" data-fechamento="»">« »</button>
+      </div>
+    </div>
+  </div>
+  <div class="grupo-ferramenta">
+    <button type="button" class="botao-branco texto-preto" data-span-classe="fonte-sans" title="{{ t('editor.font_sans_short') }} (Ctrl+Alt+X)" aria-label="{{ t('editor.font_sans_short') }} (Ctrl+Alt+X)">{{ t('editor.font_sans_short') }}</button>
+    <button type="button" class="botao-branco texto-preto" data-span-classe="fonte-serif" title="{{ t('editor.font_serif_short') }} (Ctrl+Alt+S)" aria-label="{{ t('editor.font_serif_short') }} (Ctrl+Alt+S)">{{ t('editor.font_serif_short') }}</button>
+    <button type="button" class="botao-branco texto-preto" data-span-classe="fonte-mono" title="{{ t('editor.font_mono_short') }} (Ctrl+Alt+M)" aria-label="{{ t('editor.font_mono_short') }} (Ctrl+Alt+M)">{{ t('editor.font_mono_short') }}</button>
+    <button type="button" class="botao-branco" id="btnInserirImagem" title="{{ t('editor.insert_image') }} (Ctrl+Alt+I)" aria-label="{{ t('editor.insert_image') }} (Ctrl+Alt+I)"><img src="{{ url_for('static', filename='img/editor_icons/inserir_imagem.png') }}" alt="{{ t('editor.insert_image') }}"></button>
+    <button type="button" class="botao-branco" id="btnLimparEdicao" title="{{ t('editor.clear_formatting') }} (Ctrl+Alt+L)" aria-label="{{ t('editor.clear_formatting') }} (Ctrl+Alt+L)"><img src="{{ url_for('static', filename='img/editor_icons/limpar-edicao.png') }}" alt="{{ t('editor.clear_formatting') }}"></button>
+    <button type="button" class="botao-branco botao-apenas-icone" id="btnAbrirRevisaoOrtografica" title="{{ t('editor.review') }} (Ctrl+Alt+R)" aria-label="{{ t('editor.review') }} (Ctrl+Alt+R)"><img src="{{ url_for('static', filename='img/revisar_epub.png') }}" alt="{{ t('editor.review') }}"></button>
+    <input type="file" id="inputImagemEditor" accept="image/*" hidden>
+  </div>
+</section>
+
+<section class="painel-editor painel-word">
+  <div class="pagina-editor"><div id="editorTexto" class="editor-texto" contenteditable="true">{{ capitulo.paragrafos[0]|safe }}</div></div>
+</section>
+<div class="modal oculto" id="modalRevisaoOrtografica">
+  <div class="modal-overlay" data-fechar-revisao="true"></div>
+  <div class="modal-conteudo modal-revisao-ortografica" data-modal-card="true">
+    <div class="modal-topo modal-topo-acoes">
+      <div>
+        <h2>{{ t('editor.spell_review') }}</h2>
+        <p class="revisao-subtitulo" id="revisaoSubtitulo">{{ t('editor.preparing_review') }}</p>
+      </div>
+      <div class="modal-topo-acoes">
+        <button type="button" class="botao-fechar" data-fechar-revisao="true">×</button>
+      </div>
+    </div>
+    <div class="revisao-grid">
+      <section class="revisao-coluna">
+        <h3>{{ t('editor.current_text') }}</h3>
+        <div id="revisaoTextoOriginal" class="revisao-texto"></div>
+      </section>
+      <section class="revisao-coluna">
+        <h3>{{ t('editor.corrected_suggestion') }}</h3>
+        <div id="revisaoTextoCorrigido" class="revisao-texto"></div>
+      </section>
+    </div>
+    <div class="revisao-rodape">
+      <span id="revisaoStatus" class="status-form">{{ t('editor.select_block_manual_review') }}</span>
+      <div class="revisao-acoes">
+        <button type="button" class="botao-secundario" id="btnIgnorarBlocoRevisao">{{ t('common.ignore') }}</button>
+        <button type="button" class="botao-secundario" id="btnRevisarBlocoRevisao">{{ t('editor.review') }}</button>
+        <button type="button" class="botao-primario" id="btnAceitarBlocoRevisao">{{ t('editor.accept_review') }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|tojson }}, numero: {{ numero|tojson }}, idioma: {{ projeto.idioma|tojson }}};</script>
+<script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+{% endblock %}
+
+{% block skeleton %}
+<section class="skeleton-topo">
+  <section class="sk-editor-topo">
+    <div class="sk-editor-header">
+      <div class="sk-botao sk-bloco"></div>
+      <div class="sk-titulo curto sk-bloco"></div>
+      <div class="sk-chip sk-bloco"></div>
+    </div>
+    <div class="sk-editor-barra sk-bloco"></div>
+  </section>
+  <section class="sk-editor-folha">
+    <div class="sk-editor-folha-interno">
+      <div class="sk-linha titulo sk-bloco"></div>
+      {% for _ in range(14) %}<div class="sk-linha sk-bloco{% if loop.index % 4 == 0 %} curta{% elif loop.index % 3 == 0 %} media{% endif %}"></div>{% endfor %}
+    </div>
+  </section>
+</section>
+{% endblock %}

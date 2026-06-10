@@ -1,0 +1,112 @@
+<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
+{% extends 'base.html' %}
+{% block titulo %}{{ t("nav.settings") }}{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/configuracoes.css') }}">{% endblock %}
+{% block conteudo %}
+<section class="painel-configuracoes">
+  <div class="topo-configuracoes">
+    <a href="{{ url_for('pagina_inicial') }}" class="botao-secundario botao-voltar-estilizado botao-com-icone"><span class="icone-svg">{{ icon_svg('back')|safe }}</span><span>{{ t('nav.back') }}</span></a>
+    <h1>{{ t('settings.title') }}</h1>
+  </div>
+  <form method="post" action="{{ url_for('rota_salvar_configuracoes') }}" class="form-config-grid">
+    <label>{{ t('settings.default_paragraph_indent') }} <input type="range" min="0" max="4" step="0.1" id="cfgIndent" name="identacao_paragrafo_em" value="{{ config.identacao_paragrafo_em }}"><span data-valor="cfgIndent">{{ config.identacao_paragrafo_em }}em</span></label>
+    <label>{{ t('settings.increased_indent') }} <input type="range" min="0" max="6" step="0.1" id="cfgIndentMaior" name="identacao_paragrafo_maior_em" value="{{ config.identacao_paragrafo_maior_em }}"><span data-valor="cfgIndentMaior">{{ config.identacao_paragrafo_maior_em }}em</span></label>
+    <label>{{ t('settings.paragraph_spacing') }} <input type="range" min="0.6" max="3" step="0.05" id="cfgEspacoParagrafos" name="espaco_paragrafos_em" value="{{ config.espaco_paragrafos_em }}"><span data-valor="cfgEspacoParagrafos">{{ config.espaco_paragrafos_em }}em</span></label>
+    <label>{{ t('settings.line_spacing') }} <input type="range" min="1.2" max="3" step="0.05" id="cfgEspacoLinhas" name="espaco_linhas" value="{{ config.espaco_linhas }}"><span data-valor="cfgEspacoLinhas">{{ config.espaco_linhas }}</span></label>
+    <label>{{ t('settings.base_font_size') }} <input type="range" min="14" max="34" step="1" id="cfgTamanhoFonte" name="tamanho_fonte_px" value="{{ config.tamanho_fonte_px }}"><span data-valor="cfgTamanhoFonte">{{ config.tamanho_fonte_px }}px</span></label>
+    <label>{{ t('settings.h1_size') }} <input type="range" min="20" max="48" step="1" id="cfgH1" name="h1_px" value="{{ config.h1_px }}"><span data-valor="cfgH1">{{ config.h1_px }}px</span></label>
+    <label>{{ t('settings.h2_size') }} <input type="range" min="18" max="40" step="1" id="cfgH2" name="h2_px" value="{{ config.h2_px }}"><span data-valor="cfgH2">{{ config.h2_px }}px</span></label>
+    <label>{{ t('settings.h3_size') }} <input type="range" min="16" max="34" step="1" id="cfgH3" name="h3_px" value="{{ config.h3_px }}"><span data-valor="cfgH3">{{ config.h3_px }}px</span></label>
+    <label>{{ t('settings.reading_width') }} <input type="range" min="620" max="1100" step="10" id="cfgLargura" name="largura_leitura_px" value="{{ config.largura_leitura_px }}"><span data-valor="cfgLargura">{{ config.largura_leitura_px }}px</span></label>
+    <label>{{ t('settings.app_language') }}
+      <div class="config-language-actions">
+        <select name="idioma_app" id="cfgIdiomaApp">
+          <option value="pt_BR" {% if config.idioma_app == 'pt_BR' %}selected{% endif %}>{{ t('language.pt_BR') }}</option>
+          <option value="en_US" {% if config.idioma_app == 'en_US' %}selected{% endif %}>{{ t('language.en_US') }}</option>
+        </select>
+        <a class="botao-secundario botao-com-icone botao-documentacao" href="{{ url_for('pagina_documentacao_arquivos', arquivo='index.html') }}" target="_blank" rel="noopener noreferrer" onclick="return openDocumentation(event, this.href);">
+          <span class="icone-svg">{{ icon_svg('open')|safe }}</span>
+          <span>{{ t('settings.documentation') }}</span>
+        </a>
+        <button class="botao-secundario botao-com-icone botao-documentacao" type="button" data-open-creditos-modal>
+          <span class="icone-svg">{{ icon_svg('users')|safe }}</span>
+          <span>{{ t('settings.creditos') }}</span>
+        </button>
+      </div>
+    </label>
+    <label class="coluna-inteira">{{ t('settings.export_folder') }}<input type="text" name="caminho_exportacao" value="{{ config.caminho_exportacao }}"></label>
+    <label class="coluna-inteira">{{ t('settings.library_folder') }}<input type="text" name="caminho_biblioteca" value="{{ config.caminho_biblioteca }}"></label>
+    <label class="coluna-inteira">{{ t('settings.gemini_key') }}<input type="password" name="gemini_api_key" value="{{ config.gemini_api_key or '' }}" autocomplete="off" spellcheck="false"></label>
+    <div class="coluna-inteira config-switch-grid">
+      <div class="config-switch-card">
+        <span class="config-switch-topo">{{ t('settings.browser_mode') }}</span>
+        <span class="config-switch-descricao">{{ t('settings.browser_mode_desc') }}</span>
+        <span class="config-switch-linha">
+          <span>{{ t('settings.off') }}</span>
+          <label class="switch">
+            <input type="checkbox" name="modo_browser" {% if config.modo_browser %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+          <span>{{ t('settings.on') }}</span>
+        </span>
+      </div>
+      <div class="config-switch-card">
+        <span class="config-switch-topo">{{ t('settings.editor_effect') }}</span>
+        <span class="config-switch-descricao">{{ t('settings.editor_effect_desc') }}</span>
+        <span class="config-switch-linha">
+          <span>{{ t('settings.off') }}</span>
+          <label class="switch">
+            <input type="checkbox" name="efeito_editor" {% if config.efeito_editor %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+          <span>{{ t('settings.on') }}</span>
+        </span>
+      </div>
+    </div>
+    <div class="coluna-inteira rodape-formulario"><button class="botao-primario botao-com-icone botao-config-modal" type="submit"><span class="icone-svg">{{ icon_svg('save')|safe }}</span><span>{{ t('settings.save') }}</span></button></div>
+  </form>
+
+  <section class="preview-configuracoes" id="previewConfiguracoes">
+    <div class="preview-folha" id="previewFolha">
+      <h1>{{ t('settings.preview_h1') }}</h1>
+      <h2>{{ t('settings.preview_h2') }}</h2>
+      <h3>{{ t('settings.preview_h3') }}</h3>
+      <p>{{ t('settings.preview_p1') }}</p>
+      <p class="preview-sem-recuo">{{ t('settings.preview_p2') }}</p>
+      <p class="preview-recuo-maior">{{ t('settings.preview_p3') }}</p>
+      <p>{{ t('settings.preview_p4') }}</p>
+      <p class="preview-sem-recuo">{{ t('settings.preview_p5') }}</p>
+    </div>
+  </section>
+
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/configuracoes.js') }}"></script>{% endblock %}
+
+{% block skeleton %}
+<section class="skeleton-topo">
+  <section class="sk-painel">
+    <div class="sk-barra">
+      <div class="sk-botao sk-bloco"></div>
+      <div class="sk-titulo sk-bloco"></div>
+    </div>
+    <div class="sk-config-grid" style="margin-top:20px;">
+      {% for _ in range(8) %}
+      <div class="sk-config-item">
+        <div class="sk-linha media sk-bloco"></div>
+        <div class="sk-campo sk-bloco"></div>
+        <div class="sk-linha curta sk-bloco"></div>
+      </div>
+      {% endfor %}
+      <div class="sk-config-item" style="grid-column:1 / -1;">
+        <div class="sk-linha media sk-bloco"></div>
+        <div class="sk-campo sk-bloco"></div>
+      </div>
+    </div>
+  </section>
+  <section class="sk-leitura">
+    <div class="sk-linha titulo sk-bloco"></div>
+    {% for _ in range(10) %}<div class="sk-linha sk-bloco{% if loop.index % 4 == 0 %} media{% endif %}"></div>{% endfor %}
+  </section>
+</section>
+{% endblock %}

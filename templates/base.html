@@ -1,0 +1,198 @@
+<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
+<!doctype html>
+<html lang="{{ idioma_app|replace("_", "-") }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Gutenberg{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <style>
+    :root {
+      --cfg-indent: {{ config_global.identacao_paragrafo_em }}em;
+      --cfg-indent-maior: {{ config_global.identacao_paragrafo_maior_em }}em;
+      --cfg-espaco-paragrafo: {{ config_global.espaco_paragrafos_em }}em;
+      --cfg-line-height: {{ config_global.espaco_linhas }};
+      --cfg-font-size: {{ config_global.tamanho_fonte_px }}px;
+      --cfg-h1: {{ config_global.h1_px }}px;
+      --cfg-h2: {{ config_global.h2_px }}px;
+      --cfg-h3: {{ config_global.h3_px }}px;
+      --cfg-largura-leitura: {{ config_global.largura_leitura_px }}px;
+    }
+  </style>
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="loading {% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+  <div class="bg-camada-roxa" aria-hidden="true"></div>
+  <main class="pagina-shell {% block classe_pagina %}{% endblock %}">
+    <div class="conteudo-real">{% block conteudo %}{% endblock %}</div>
+    <div class="skeleton-shell" aria-hidden="true">{% block skeleton %}{% endblock %}</div>
+  </main>
+  <footer class="app-footer">
+    <span>{{ t("app.footer_version", version=app_version) }}</span>
+    <span class="footer-separador">•</span>
+    <button class="footer-link footer-button" type="button" data-open-creditos-modal>{{ t('app.footer_creditos') }}</button>
+    <span class="footer-separador">•</span>
+    <a class="footer-link" href="mailto:nostrand@outlook.com.br">{{ t('app.footer_by') }}</a>
+  </footer>
+
+  <div class="modal oculto" id="creditosModal" aria-hidden="true">
+    <div class="modal-overlay" data-close-creditos-modal></div>
+    <div class="modal-conteudo pequeno creditos-modal-card" role="dialog" aria-modal="true" aria-labelledby="creditosModalTitle">
+      <div class="modal-topo">
+        <h2 id="creditosModalTitle">{{ t('creditos.heading') }}</h2>
+        <button class="botao-fechar" type="button" aria-label="{{ t('modal.close') }}" data-close-creditos-modal>&times;</button>
+      </div>
+      <div class="creditos-modal-body">
+        <div class="creditos-badge">{{ t('creditos.section_badge') }} </div>
+        <h3>Nostrand.</h3>
+        <p class="creditos-modal-nick">Rodrigo F. Machado.</p>
+        <a class="creditos-email-link" href="mailto:nostrand@outlook.com.br">nostrand@outlook.com.br</a>
+		<div class="creditos-badge">{{ t('creditos.section_badge_colab') }} </div>
+        <p class="creditos-modal-nick">Bruno Laprovita.</p>
+       
+      </div>
+    </div>
+  </div>
+  <script>
+    window.APP_CONFIG = Object.assign({}, window.APP_CONFIG || {}, {
+      efeitoEditor: {{ config_global.efeito_editor|default(true)|tojson }},
+      editorFallbackBackground: 'radial-gradient(circle at top left, rgba(47,93,140,.22), transparent 24%), radial-gradient(circle at top right, rgba(90,79,207,.18), transparent 22%), linear-gradient(180deg, #121417 0%, #1E2228 48%, #121417 100%)'
+    });
+  </script>
+
+  <script>
+    window.APP_CONFIG = Object.assign({}, window.APP_CONFIG || {}, {
+      idiomaApp: {{ idioma_app|tojson }},
+      i18n: {{ i18n_catalog|tojson }}
+    });
+    window.t = function(key, vars = {}) {
+      let value = (window.APP_CONFIG?.i18n || {})[key] ?? key;
+      Object.entries(vars || {}).forEach(([k, v]) => {
+        value = String(value).replaceAll(`{${k}}`, v);
+      });
+      return value;
+    };
+  </script>
+  <script src="{{ url_for('static', filename='js/particulas.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/skeleton-loading.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/validacao_campos.js') }}"></script>
+  {% block scripts %}{% endblock %}
+  
+  <script>
+  async function toggleFullscreen() {
+    if (window.pywebview?.api) {
+      await window.pywebview.api.toggle_fullscreen();
+    }
+  }
+
+  async function goBackDesktop() {
+    if (window.pywebview?.api) {
+      await window.pywebview.api.goBack();
+    }
+  }
+
+  document.addEventListener("keydown", async function (e) {
+    if (e.key === "F11") {
+      e.preventDefault();
+      await toggleFullscreen();
+    }
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      await toggleFullscreen();
+    }
+  });
+
+  async function openDocumentation(event, fallbackUrl) {
+    if (window.pywebview?.api?.openDocumentation) {
+      event.preventDefault();
+      try {
+        const opened = await window.pywebview.api.openDocumentation();
+        if (!opened && fallbackUrl) {
+          window.open(fallbackUrl, '_blank', 'noopener');
+        }
+      } catch (err) {
+        if (fallbackUrl) {
+          window.open(fallbackUrl, '_blank', 'noopener');
+        }
+      }
+      return false;
+    }
+    return true;
+  }
+
+  (function () {
+    let verificandoGutPendente = false;
+
+    async function verificarGutPendenteGlobal() {
+      if (verificandoGutPendente) return;
+      verificandoGutPendente = true;
+      try {
+        const resposta = await fetch('/api/gut/pendente/contexto', { cache: 'no-store' });
+        const dados = await resposta.json().catch(() => ({}));
+        const contexto = dados?.contexto || {};
+        if (!contexto?.ativo) return;
+        const estaNaTelaInicial = window.location.pathname === '/';
+        if (!estaNaTelaInicial) {
+          window.location.href = '/';
+          return;
+        }
+        if (window.GUT_PENDENTE?.caminho === contexto.caminho && window.GUT_PENDENTE?.ativo) return;
+        window.location.reload();
+      } catch (_) {
+      } finally {
+        verificandoGutPendente = false;
+      }
+    }
+
+    if (window.pywebview?.api) {
+      setInterval(verificarGutPendenteGlobal, 2000);
+      setTimeout(verificarGutPendenteGlobal, 900);
+    }
+
+    const modal = document.getElementById('creditosModal');
+    if (!modal) return;
+
+    const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    let ultimoFoco = null;
+
+    function openCreditsModal() {
+      ultimoFoco = document.activeElement;
+      modal.classList.remove('oculto');
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      const firstFocusable = modal.querySelector(focusableSelector);
+      firstFocusable?.focus();
+    }
+
+    function closeCreditsModal() {
+      modal.classList.add('oculto');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      ultimoFoco?.focus?.();
+    }
+
+    document.querySelectorAll('[data-open-creditos-modal]').forEach((elemento) => {
+      elemento.addEventListener('click', (event) => {
+        event.preventDefault();
+        openCreditsModal();
+      });
+    });
+
+    modal.querySelectorAll('[data-close-creditos-modal]').forEach((elemento) => {
+      elemento.addEventListener('click', closeCreditsModal);
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (modal.classList.contains('oculto')) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeCreditsModal();
+      }
+    });
+  })();
+</script>
+</body>
+</html>
