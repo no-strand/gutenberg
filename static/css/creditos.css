@@ -1,0 +1,14 @@
+/* Página de créditos do Gutenberg. Créditos do projeto: Nostrand. */
+.painel-creditos{border-radius:28px;background:rgba(230,234,240,.06);padding:24px;border:1px solid rgba(255,255,255,.08);box-shadow:var(--sombra)}
+.topo-creditos{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.creditos-badge{display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:999px;background:rgba(90,79,207,.18);border:1px solid rgba(90,79,207,.28);color:#eef2ff;font-weight:700;letter-spacing:.02em}
+.card-creditos{position:relative;overflow:hidden;max-width:840px;margin:0 auto;padding:42px 32px;border-radius:28px;text-align:center;background:linear-gradient(180deg,rgba(24,29,37,.92),rgba(42,47,54,.78));border:1px solid rgba(230,234,240,.12);box-shadow:0 24px 54px rgba(6,10,18,.36), inset 0 1px 0 rgba(255,255,255,.08)}
+.card-creditos::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at top left, rgba(17,197,234,.14), transparent 28%),radial-gradient(circle at top right, rgba(187,27,155,.16), transparent 24%)}
+.card-creditos > *{position:relative;z-index:1}
+.card-creditos h1{margin:0 0 18px;color:#fff;font-size:clamp(2rem, 4vw, 3rem)}
+.creditos-destaque{margin:0;font-size:clamp(1.25rem, 2.6vw, 1.8rem);font-weight:800;color:#eef2ff}
+.creditos-apelido{margin:10px 0 20px;font-size:clamp(1rem,2vw,1.2rem);font-weight:700;color:#a5b4fc;letter-spacing:.08em;text-transform:uppercase}
+.creditos-email{display:inline-flex;align-items:center;justify-content:center;padding:14px 22px;border-radius:16px;border:1px solid rgba(230,234,240,.16);background:rgba(255,255,255,.05);color:#e2e8f0;text-decoration:none;font-weight:700;box-shadow:0 14px 32px rgba(15,23,42,.18);transition:transform .2s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}
+.creditos-email:hover{transform:translateY(-1px);background:rgba(255,255,255,.09);border-color:rgba(230,234,240,.24);box-shadow:0 18px 38px rgba(15,23,42,.24)}
+@media (max-width:768px){.painel-creditos{padding:18px}.card-creditos{padding:34px 20px;border-radius:22px}.topo-creditos{align-items:flex-start}}
+@media (max-width:480px){.creditos-email{width:100%;word-break:break-word}.creditos-badge{width:100%;justify-content:center}}

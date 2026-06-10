@@ -1,0 +1,50 @@
+/**
+ * Atualiza a visualização instantânea das preferências alteradas na tela de configurações.
+ * Créditos do projeto: Nostrand.
+ */
+
+const mapaSufixos = {
+  cfgIndent: 'em',
+  cfgIndentMaior: 'em',
+  cfgEspacoParagrafos: 'em',
+  cfgEspacoLinhas: '',
+  cfgTamanhoFonte: 'px',
+  cfgH1: 'px',
+  cfgH2: 'px',
+  cfgH3: 'px',
+  cfgLargura: 'px',
+};
+
+const ids = Object.keys(mapaSufixos);
+/** Atualizarpreview. Usada pelo fluxo principal da aplicação. */
+function atualizarPreview(){
+  const root = document.documentElement;
+  const valores = {
+    cfgIndent: document.getElementById('cfgIndent')?.value || 2,
+    cfgIndentMaior: document.getElementById('cfgIndentMaior')?.value || 3.2,
+    cfgEspacoParagrafos: document.getElementById('cfgEspacoParagrafos')?.value || 1.15,
+    cfgEspacoLinhas: document.getElementById('cfgEspacoLinhas')?.value || 1.85,
+    cfgTamanhoFonte: document.getElementById('cfgTamanhoFonte')?.value || 20,
+    cfgH1: document.getElementById('cfgH1')?.value || 28,
+    cfgH2: document.getElementById('cfgH2')?.value || 22,
+    cfgH3: document.getElementById('cfgH3')?.value || 18,
+    cfgLargura: document.getElementById('cfgLargura')?.value || 860,
+  };
+  root.style.setProperty('--cfg-indent', `${valores.cfgIndent}em`);
+  root.style.setProperty('--cfg-indent-maior', `${valores.cfgIndentMaior}em`);
+  root.style.setProperty('--cfg-espaco-paragrafo', `${valores.cfgEspacoParagrafos}em`);
+  root.style.setProperty('--cfg-line-height', `${valores.cfgEspacoLinhas}`);
+  root.style.setProperty('--cfg-font-size', `${valores.cfgTamanhoFonte}px`);
+  root.style.setProperty('--cfg-h1', `${valores.cfgH1}px`);
+  root.style.setProperty('--cfg-h2', `${valores.cfgH2}px`);
+  root.style.setProperty('--cfg-h3', `${valores.cfgH3}px`);
+  root.style.setProperty('--cfg-largura-leitura', `${valores.cfgLargura}px`);
+
+  ids.forEach((id) => {
+    const span = document.querySelector(`[data-valor="${id}"]`);
+    const input = document.getElementById(id);
+    if (span && input) span.textContent = `${input.value}${mapaSufixos[id]}`;
+  });
+}
+ids.forEach((id) => document.getElementById(id)?.addEventListener('input', atualizarPreview));
+document.addEventListener('DOMContentLoaded', atualizarPreview);

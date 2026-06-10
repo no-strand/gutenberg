@@ -1,0 +1,64 @@
+<!-- Página da documentação do projeto. Créditos do projeto: Nostrand. -->
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gutenberg Documentation</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="../static/img/favicon.ico">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <div class="brand">
+          <div class="brand-badge">G</div>
+          <div>
+            <strong>Gutenberg</strong>
+            <p id="brandSubtitle">Official project documentation</p>
+          </div>
+        </div>
+
+        <div class="lang-switch" aria-label="Language switcher">
+          <span class="lang-indicator" aria-hidden="true"></span>
+          <button class="lang-btn" id="langPt" type="button" title="Português (Brasil)" aria-label="Português (Brasil)">
+            <img class="flag-img" src="assets/flag-pt.png" alt="Bandeira do Brasil">
+          </button>
+          <button class="lang-btn active" id="langEn" type="button" title="English (US)" aria-label="English (US)">
+            <img class="flag-img" src="assets/flag-en.png" alt="United States flag">
+          </button>
+        </div>
+
+        <div class="sidebar-search">
+          <input type="search" id="searchInput" placeholder="Search the documentation...">
+        </div>
+      </div>
+
+      <nav class="menu" id="menuNav"></nav>
+    </aside>
+
+    <main class="content">
+      <header class="hero">
+        <button class="menu-toggle" id="menuToggle" aria-label="Open menu">☰</button>
+        <div class="hero-copy">
+          <span class="eyebrow" id="heroEyebrow">Documentation</span>
+          <h1 id="heroTitle">How to use Gutenberg to create books, screenplays, and read EPUBs and PDFs</h1>
+          <p id="heroDescription">
+            This documentation explains how the <strong>Gutenberg</strong> application works, covering project creation,
+            chapter editing, screenplay writing, revision, export, and the integrated library for reading.
+          </p>
+        </div>
+      </header>
+
+      <div id="sectionsContainer"></div>
+
+      <footer class="footer">
+        <p id="footerText">Gutenberg project documentation.</p>
+      </footer>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
