@@ -22,7 +22,7 @@
 | **Biblioteca** | Leitura de **EPUB** e **PDF**, progresso, sumário, coleções e configurações de leitura. |
 | **Internacionalização** | Interface em **Português (Brasil)** e **English (US)**. |
 | **Desktop/browser** | Modo desktop com pywebview e modo browser com tray icon no Windows. |
-| **Documentação integrada** | Documentação HTML moderna disponível em `documentation/index.html` e pela tela de Configurações. |
+| **Documentação integrada** | Documentação HTML disponível em `documentation/index.html` e pela tela de Configurações. |
 
 ---
 
@@ -151,7 +151,7 @@ O pacote inclui templates, arquivos estáticos, traduções, documentação HTML
 
 ---
 
-## 🪟 Instalador Windows
+## Instalador Windows
 
 Depois do build com PyInstaller, compile `Gutenberg.iss` no **Inno Setup**.
 
@@ -190,7 +190,7 @@ Esses caminhos podem variar conforme as opções salvas em Configurações.
 
 ---
 
-## 🪵 Logging
+## Logging
 
 O logging centralizado fica em `modules/logging_config.py`.
 
