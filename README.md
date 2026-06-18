@@ -17,7 +17,6 @@ Ele pode ser usado como aplicativo desktop no Windows ou como servidor local ace
 - Importar e exportar conteúdos em formatos como `.gut`, `.gutr`, `.docx`, `.pdf`, `.txt`, `.epub` e `.xhtml`.
 - Exportar livros e roteiros em formatos de leitura ou compartilhamento.
 - Manter uma biblioteca local para leitura de arquivos **EPUB** e **PDF**.
-- Alternar a interface entre **Português (Brasil)** e **English (US)**.
 
 A documentação integrada do projeto explica o uso detalhado de cada recurso.
 
