@@ -8,8 +8,6 @@ Ele pode ser usado como aplicativo desktop no Windows ou como servidor local ace
 
 ## O que o Gutenberg oferece
 
-Com o Gutenberg, é possível:
-
 - Criar e organizar **projetos de livro** com capítulos, capa, metadados e tags.
 - Criar **projetos de roteiro** com múltiplos roteiros, cenas, diálogos, personagens e blocos especializados.
 - Escrever em editores com **formatação rica**, salvamento automático, atalhos e modo de leitura.
