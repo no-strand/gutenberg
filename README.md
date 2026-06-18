@@ -1,6 +1,6 @@
 # Gutenberg ✍️📚
 
-**Gutenberg** é um editor local para criação de livros, roteiros e materiais de apoio à escrita. O projeto combina **Python**, **Flask**, **HTML**, **CSS** e **JavaScript** para oferecer uma interface de escrita organizada, com foco em planejamento, produção, revisão, exportação e leitura.
+**Gutenberg** é um editor local para criação de livros e roteiros. O projeto combina **Python**, **Flask**, **HTML**, **CSS** e **JavaScript** para oferecer uma interface de escrita organizada, com foco em planejamento, produção, revisão, exportação e leitura.
 
 Ele pode ser usado como aplicativo desktop no Windows ou como servidor local acessado pelo navegador em outros ambientes compatíveis.
 
@@ -21,7 +21,7 @@ Com o Gutenberg, é possível:
 - Manter uma biblioteca local para leitura de arquivos **EPUB** e **PDF**.
 - Alternar a interface entre **Português (Brasil)** e **English (US)**.
 
-A documentação integrada do projeto explica o uso detalhado de cada tela e recurso.
+A documentação integrada do projeto explica o uso detalhado de cada recurso.
 
 ---
 
