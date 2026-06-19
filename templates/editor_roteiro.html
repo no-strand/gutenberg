@@ -1,9 +1,8 @@
-<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
 {% extends "base.html" %}
 {% block titulo %}{{ t('script.page_title_edit', title=roteiro.titulo) }}{% endblock %}
 {% block body_class %}pagina-editor-app{% if not config_global.efeito_editor %} editor-sem-efeito{% endif %}{% endblock %}
 {% block body_attrs %}data-editor-page="true" data-editor-effects-enabled="{{ 'true' if config_global.efeito_editor else 'false' }}"{% endblock %}
-{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/editor_roteiro.css') }}">{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/editor_roteiro.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}">{% endblock %}
 {% block conteudo %}
 <section class="editor-topo">
   <div class="cabecalho-editor-grid">
@@ -56,6 +55,7 @@
     <div class="sidebar-card sidebar-card-acoes">
       <button type="button" class="botao-secundario botao-apenas-icone" id="btnCatalogoPersonagens" title="{{ t('common.characters') }} (Ctrl+Alt+P)"><span class="icone-svg">{{ icon_svg('users')|safe }}</span></button>
       <button type="button" class="botao-secundario botao-apenas-icone" id="btnCatalogoLocais" title="{{ t('common.locations') }} (Ctrl+Alt+L)"><span class="icone-svg">{{ icon_svg('place')|safe }}</span></button>
+      <button type="button" class="botao-secundario botao-apenas-icone" id="btnAbrirRecursosProjetoRoteiro" title="{{ t('resources.project_resources_shortcut') }}" aria-label="{{ t('resources.project_resources_shortcut') }}"><span class="icone-svg">{{ icon_svg('info')|safe }}</span></button>
       <button type="button" class="botao-secundario botao-apenas-icone" id="btnEstatisticasRoteiro" title="{{ t('index.stats') }} (Ctrl+Alt+I)"><span class="icone-svg">{{ icon_svg('stats')|safe }}</span></button>
       <button type="button" class="botao-secundario botao-apenas-icone" id="btnAbrirRevisaoOrtografica" title="{{ t('editor.review') }} (Ctrl+Alt+R)" aria-label="{{ t('editor.review') }} (Ctrl+Alt+R)"><img src="{{ url_for('static', filename='img/revisar.png') }}" alt="{{ t('editor.review') }}"></button>
     </div>
@@ -123,7 +123,7 @@
       <input type="hidden" id="catalogoTipo">
       <input type="hidden" id="catalogoNomeOriginal">
       <label>{{ t("common.name") }}<input type="text" id="catalogoNome" required data-uppercase="true" maxlength="60"></label>
-      <label>{{ t("common.description") }}<textarea id="catalogoDescricao" rows="5" placeholder="{{ t("script.describe_item") }}" maxlength="240"></textarea></label>
+      <label>{{ t("common.description") }}<textarea id="catalogoDescricao" rows="5" placeholder="{{ t("script.describe_item") }}" maxlength="4000"></textarea></label>
             <div class="rodape-formulario"><span id="statusCatalogo" class="status-form"></span><button class="botao-primario" type="submit">{{ t("common.save") }}</button></div>
     </form>
   </div>
@@ -140,10 +140,12 @@
   </div>
 </div>
 
+{% include '_recursos_visualizacao_modal.html' %}
 {% endblock %}
 {% block scripts %}
-<script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|default('', true)|tojson }}, numero: {{ numero|default(1, true)|tojson }}, catalogoPersonagens: {{ roteiro.get('catalogo_personagens', [])|tojson }}, catalogoLocais: {{ roteiro.get('catalogo_locais', [])|tojson }}, roteiroTitulo: {{ roteiro.get('titulo', t('script.no_title'))|tojson }}, prefixoCena: {{ roteiro.get('prefixo_cena', '0')|tojson }}, numeracaoInicial: {{ roteiro.get('numeracao_inicial', 1)|tojson }}, cabecalho: {{ roteiro.get('cabecalho', '')|tojson }}, rodape: {{ roteiro.get('rodape', '')|tojson }}, tipoRoteiro: {{ roteiro.get('tipo_roteiro', 'spec_script')|tojson }}, tipoRoteiroLabel: {{ roteiro.get('tipo_roteiro_label', t('script.spec_script'))|tojson }}, idioma: {{ projeto.idioma|tojson }}};</script>
+<script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|default('', true)|tojson }}, numero: {{ numero|default(1, true)|tojson }}, catalogoPersonagens: {{ roteiro.get('catalogo_personagens', [])|tojson }}, catalogoLocais: {{ roteiro.get('catalogo_locais', [])|tojson }}, catalogoAnotacoes: {{ roteiro.get('catalogo_anotacoes', [])|tojson }}, roteiroTitulo: {{ roteiro.get('titulo', t('script.no_title'))|tojson }}, prefixoCena: {{ roteiro.get('prefixo_cena', '0')|tojson }}, numeracaoInicial: {{ roteiro.get('numeracao_inicial', 1)|tojson }}, cabecalho: {{ roteiro.get('cabecalho', '')|tojson }}, rodape: {{ roteiro.get('rodape', '')|tojson }}, tipoRoteiro: {{ roteiro.get('tipo_roteiro', 'spec_script')|tojson }}, tipoRoteiroLabel: {{ roteiro.get('tipo_roteiro_label', t('script.spec_script'))|tojson }}, idioma: {{ projeto.idioma|tojson }}};</script>
 <script src="{{ url_for('static', filename='js/editor_roteiro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/recursos_visualizacao.js') }}"></script>
 {% endblock %}
 
 

@@ -1,6 +1,5 @@
 /**
  * Gerencia o leitor padrão de capítulos com preferências, progresso e navegação.
- * Créditos do projeto: Nostrand.
  */
 
 const areaLeitura = document.getElementById('areaLeitura');

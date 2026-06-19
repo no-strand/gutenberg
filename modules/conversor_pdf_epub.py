@@ -1,7 +1,6 @@
 """
 Conversão de PDF para EPUB com preservação de estrutura, estilos básicos, capa e navegação entre capítulos.
 
-Créditos do projeto: Nostrand.
 """
 
 from __future__ import annotations

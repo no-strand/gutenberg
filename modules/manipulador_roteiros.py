@@ -1,7 +1,6 @@
 """
 Gerencia roteiros e suas informações auxiliares, como tipo, conteúdo HTML e preferências padrão.
 
-Créditos do projeto: Nostrand.
 """
 
 from __future__ import annotations

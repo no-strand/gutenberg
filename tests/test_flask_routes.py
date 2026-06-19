@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import unittest
 from pathlib import Path
 
 from modules import manipulador_capitulos, manipulador_projetos, servidor_flask
@@ -341,32 +342,22 @@ class FlaskRoutesTests(IsolatedProjectTestCase):
         self.assertFalse(resposta.get_json()["ok"])
 
 
-    def test_pagina_creditos_usa_template_e_assets_renomeados(self):
-        """Créditos: a rota /creditos renderiza o template creditos.html e o CSS renomeado."""
-        resposta = self.client.get("/creditos")
+class AtualizadorMultiplataformaTest(unittest.TestCase):
+    def test_seleciona_asset_por_plataforma(self):
+        from modules import atualizador
+        assets = [
+            {"name": "Gutenberg-1.2.0-windows-x64-setup.exe", "browser_download_url": "https://example/win.exe"},
+            {"name": "Gutenberg-1.2.0-linux-x64.AppImage", "browser_download_url": "https://example/linux.AppImage"},
+            {"name": "Gutenberg-1.2.0-macos-universal.dmg", "browser_download_url": "https://example/mac.dmg"},
+        ]
+        linux = {"sistema": "linux", "arquitetura": "x64", "suportado": True}
+        selecionado = atualizador._selecionar_asset_instalador(assets, linux)
+        self.assertEqual(selecionado["name"], "Gutenberg-1.2.0-linux-x64.AppImage")
 
-        self.assertEqual(resposta.status_code, 200)
-        html = resposta.get_data(as_text=True)
-        self.assertIn("creditos.css", html)
-        self.assertIn("nostrand@outlook.com.br", html)
-        self.assertNotIn("credits.css", html)
-
-    def test_templates_nao_mantem_credits_html_antigo(self):
-        """Créditos: garante que o template antigo não volte a existir no projeto."""
-        raiz = Path(__file__).resolve().parents[1]
-
-        self.assertTrue((raiz / "templates" / "creditos.html").exists())
-        self.assertFalse((raiz / "templates" / "credits.html").exists())
-        self.assertTrue((raiz / "static" / "css" / "creditos.css").exists())
-        self.assertFalse((raiz / "static" / "css" / "credits.css").exists())
-
-    def test_configuracoes_abre_modal_com_identificadores_creditos(self):
-        """Configurações: botão e modal usam os novos identificadores em português."""
-        resposta = self.client.get("/configuracoes")
-
-        self.assertEqual(resposta.status_code, 200)
-        html = resposta.get_data(as_text=True)
-        self.assertIn("data-open-creditos-modal", html)
-        self.assertIn("creditosModal", html)
-        self.assertNotIn("data-open-credits-modal", html)
-        self.assertNotIn("creditsModal", html)
+    def test_ignora_asset_de_outro_sistema(self):
+        from modules import atualizador
+        assets = [
+            {"name": "Gutenberg-1.2.0-windows-x64-setup.exe", "browser_download_url": "https://example/win.exe"},
+        ]
+        mac = {"sistema": "macos", "arquitetura": "arm64", "suportado": True}
+        self.assertIsNone(atualizador._selecionar_asset_instalador(assets, mac))

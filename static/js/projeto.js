@@ -1,6 +1,5 @@
 /**
  * Lógica da página do projeto, incluindo exportação, validações e estatísticas.
- * Créditos do projeto: Nostrand.
  */
 
 /** I18n. Usada pelo fluxo principal da aplicação. */

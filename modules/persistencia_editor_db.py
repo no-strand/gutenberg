@@ -1,7 +1,6 @@
 """
 Persistência local em SQLite para projetos, capítulos, roteiros e dados auxiliares do editor.
 
-Créditos do projeto: Nostrand.
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ _DB_LOCKS_GUARD = threading.Lock()
 _DB_INIT_DONE: set[Path] = set()
 _DB_INIT_GUARD = threading.Lock()
 NOME_BANCO = "editor_local.db"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 _HTML_CAPITULO_PADRAO = "<p><br></p>"
 _HTML_ROTEIRO_PADRAO = '<div class="roteiro-bloco" data-block-type="neutral" data-initial-neutral="true"><br></div>'
 
@@ -89,10 +88,11 @@ def limpar_estado_banco_editor(pasta_projeto: Path | str) -> None:
         _DB_LOCKS.pop(caminho_banco, None)
 
     try:
-        from . import manipulador_capitulos, manipulador_roteiros
+        from . import manipulador_capitulos, manipulador_roteiros, manipulador_recursos_projeto
 
         manipulador_capitulos._DB_CACHE.pop(pasta_projeto, None)
         manipulador_roteiros._DB_CACHE.pop(pasta_projeto, None)
+        manipulador_recursos_projeto._DB_CACHE.pop(pasta_projeto, None)
     except Exception:
         pass
 
@@ -237,10 +237,10 @@ class BancoEditorLocal:
                 tabelas = {
                     str(row[0])
                     for row in con.execute(
-                        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('chapters', 'scripts')"
+                        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('chapters', 'scripts', 'project_info_pages', 'project_flow_nodes', 'project_resource_catalog')"
                     ).fetchall()
                 }
-                return {'chapters', 'scripts'}.issubset(tabelas)
+                return {'chapters', 'scripts', 'project_info_pages', 'project_flow_nodes', 'project_resource_catalog'}.issubset(tabelas)
             finally:
                 con.close()
         except Exception:
@@ -405,6 +405,84 @@ class BancoEditorLocal:
         con.execute("CREATE INDEX IF NOT EXISTS idx_script_locations_script_id ON script_locations(script_id, position)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_script_character_catalog_script_id ON script_character_catalog(script_id, position)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_script_location_catalog_script_id ON script_location_catalog(script_id, position)")
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS project_resource_meta (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL DEFAULT ''
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS project_info_pages (
+                id TEXT PRIMARY KEY,
+                position INTEGER NOT NULL DEFAULT 0,
+                title TEXT NOT NULL,
+                html TEXT NOT NULL,
+                created_at TEXT,
+                updated_at TEXT
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS project_flow_nodes (
+                id TEXT PRIMARY KEY,
+                x REAL NOT NULL DEFAULT 120,
+                y REAL NOT NULL DEFAULT 120,
+                width REAL NOT NULL DEFAULT 240,
+                height REAL NOT NULL DEFAULT 150,
+                title TEXT NOT NULL DEFAULT '',
+                text TEXT NOT NULL DEFAULT '',
+                position INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS project_flow_edges (
+                id TEXT PRIMARY KEY,
+                from_node_id TEXT NOT NULL,
+                to_node_id TEXT NOT NULL,
+                from_side TEXT NOT NULL DEFAULT 'right',
+                to_side TEXT NOT NULL DEFAULT 'left',
+                position INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (from_node_id) REFERENCES project_flow_nodes(id) ON DELETE CASCADE,
+                FOREIGN KEY (to_node_id) REFERENCES project_flow_nodes(id) ON DELETE CASCADE
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS project_resource_catalog (
+                type TEXT NOT NULL,
+                id TEXT NOT NULL,
+                position INTEGER NOT NULL DEFAULT 0,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                image TEXT NOT NULL DEFAULT '',
+                created_at TEXT,
+                updated_at TEXT,
+                PRIMARY KEY (type, id)
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS project_resource_hidden (
+                type TEXT NOT NULL,
+                name TEXT NOT NULL,
+                PRIMARY KEY (type, name)
+            )
+            """
+        )
+        con.execute("CREATE INDEX IF NOT EXISTS idx_project_info_pages_position ON project_info_pages(position)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_project_flow_nodes_position ON project_flow_nodes(position)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_project_flow_edges_position ON project_flow_edges(position)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_project_resource_catalog_type_position ON project_resource_catalog(type, position)")
+        con.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_project_resource_catalog_type_name ON project_resource_catalog(type, lower(name))")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_project_resource_hidden_type ON project_resource_hidden(type)")
 
     @registrar_etapa
     def _migrar_schema_v2(self, con: sqlite3.Connection) -> None:
@@ -834,6 +912,204 @@ class BancoEditorLocal:
             f"INSERT INTO {tabela}(script_id, position, name, description) VALUES(?, ?, ?, ?)",
             [(script_id, indice, item["nome"], item.get("descricao", "")) for indice, item in enumerate(itens)],
         )
+
+
+    @registrar_etapa
+    def recursos_existem(self) -> bool:
+        """Indica se já há recursos do projeto persistidos no banco local."""
+        with self.conexao() as con:
+            row = con.execute(
+                """
+                SELECT
+                    EXISTS(SELECT 1 FROM project_info_pages LIMIT 1)
+                    OR EXISTS(SELECT 1 FROM project_flow_nodes LIMIT 1)
+                    OR EXISTS(SELECT 1 FROM project_resource_catalog LIMIT 1)
+                    OR EXISTS(SELECT 1 FROM project_resource_hidden LIMIT 1)
+                    AS has_data
+                """
+            ).fetchone()
+            return bool(row["has_data"] if row else False)
+
+    @registrar_etapa
+    def ler_recursos_projeto(self) -> dict[str, Any] | None:
+        """Lê os recursos criativos persistidos nas tabelas SQLite do projeto."""
+        if not self.recursos_existem():
+            return None
+        with self.conexao() as con:
+            meta = {
+                row["key"]: row["value"]
+                for row in con.execute("SELECT key, value FROM project_resource_meta").fetchall()
+            }
+            paginas = [
+                {
+                    "id": row["id"],
+                    "titulo": row["title"],
+                    "html": row["html"],
+                    "data_criacao": row["created_at"],
+                    "data_atualizacao": row["updated_at"],
+                }
+                for row in con.execute(
+                    "SELECT id, title, html, created_at, updated_at FROM project_info_pages ORDER BY position ASC, rowid ASC"
+                ).fetchall()
+            ]
+            nodes = [
+                {
+                    "id": row["id"],
+                    "x": row["x"],
+                    "y": row["y"],
+                    "width": row["width"],
+                    "height": row["height"],
+                    "titulo": row["title"],
+                    "texto": row["text"],
+                }
+                for row in con.execute(
+                    "SELECT id, x, y, width, height, title, text FROM project_flow_nodes ORDER BY position ASC, rowid ASC"
+                ).fetchall()
+            ]
+            edges = [
+                {
+                    "id": row["id"],
+                    "from": row["from_node_id"],
+                    "to": row["to_node_id"],
+                    "fromSide": row["from_side"],
+                    "toSide": row["to_side"],
+                }
+                for row in con.execute(
+                    "SELECT id, from_node_id, to_node_id, from_side, to_side FROM project_flow_edges ORDER BY position ASC, rowid ASC"
+                ).fetchall()
+            ]
+            catalogo = {"personagens": [], "lugares": [], "anotacoes": []}
+            for row in con.execute(
+                """
+                SELECT type, id, name, description, image, created_at, updated_at
+                FROM project_resource_catalog
+                ORDER BY type ASC, position ASC, rowid ASC
+                """
+            ).fetchall():
+                tipo = row["type"] if row["type"] in catalogo else "lugares"
+                catalogo[tipo].append({
+                    "id": row["id"],
+                    "nome": row["name"],
+                    "descricao": row["description"] or "",
+                    "imagem": row["image"] or "",
+                    "origem": "projeto",
+                    "data_criacao": row["created_at"],
+                    "data_atualizacao": row["updated_at"],
+                })
+            ocultos = {"personagens": [], "lugares": [], "anotacoes": []}
+            for row in con.execute("SELECT type, name FROM project_resource_hidden ORDER BY type ASC, name ASC").fetchall():
+                tipo = row["type"] if row["type"] in ocultos else "lugares"
+                ocultos[tipo].append(row["name"])
+            return {
+                "versao": 1,
+                "informacoes": paginas,
+                "fluxo": {"nodes": nodes, "edges": edges},
+                "personagens": catalogo["personagens"],
+                "lugares": catalogo["lugares"],
+                "anotacoes": catalogo["anotacoes"],
+                "ocultos": ocultos,
+                "data_atualizacao": meta.get("data_atualizacao", ""),
+            }
+
+    @registrar_etapa
+    def salvar_recursos_projeto(self, dados: dict[str, Any]) -> dict[str, Any]:
+        """Substitui o conjunto de recursos do projeto usando tabelas relacionais SQLite."""
+        with self.conexao() as con:
+            con.execute("BEGIN IMMEDIATE")
+            con.execute("DELETE FROM project_resource_meta")
+            con.execute("DELETE FROM project_flow_edges")
+            con.execute("DELETE FROM project_flow_nodes")
+            con.execute("DELETE FROM project_info_pages")
+            con.execute("DELETE FROM project_resource_catalog")
+            con.execute("DELETE FROM project_resource_hidden")
+            con.execute(
+                "INSERT INTO project_resource_meta(key, value) VALUES('data_atualizacao', ?)",
+                (str(dados.get("data_atualizacao") or ""),),
+            )
+            con.executemany(
+                """
+                INSERT INTO project_info_pages(id, position, title, html, created_at, updated_at)
+                VALUES(?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        str(item.get("id") or ""),
+                        indice,
+                        str(item.get("titulo") or ""),
+                        str(item.get("html") or ""),
+                        str(item.get("data_criacao") or ""),
+                        str(item.get("data_atualizacao") or ""),
+                    )
+                    for indice, item in enumerate(dados.get("informacoes") or [])
+                ],
+            )
+            con.executemany(
+                """
+                INSERT INTO project_flow_nodes(id, position, x, y, width, height, title, text)
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        str(item.get("id") or ""),
+                        indice,
+                        float(item.get("x") or 0),
+                        float(item.get("y") or 0),
+                        float(item.get("width") or 240),
+                        float(item.get("height") or 150),
+                        str(item.get("titulo") or ""),
+                        str(item.get("texto") or ""),
+                    )
+                    for indice, item in enumerate((dados.get("fluxo") or {}).get("nodes") or [])
+                ],
+            )
+            con.executemany(
+                """
+                INSERT INTO project_flow_edges(id, position, from_node_id, to_node_id, from_side, to_side)
+                VALUES(?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        str(item.get("id") or ""),
+                        indice,
+                        str(item.get("from") or ""),
+                        str(item.get("to") or ""),
+                        str(item.get("fromSide") or "right"),
+                        str(item.get("toSide") or "left"),
+                    )
+                    for indice, item in enumerate((dados.get("fluxo") or {}).get("edges") or [])
+                ],
+            )
+            catalog_rows = []
+            for tipo in ("personagens", "lugares", "anotacoes"):
+                for indice, item in enumerate(dados.get(tipo) or []):
+                    catalog_rows.append((
+                        tipo,
+                        str(item.get("id") or ""),
+                        indice,
+                        str(item.get("nome") or ""),
+                        str(item.get("descricao") or ""),
+                        str(item.get("imagem") or ""),
+                        str(item.get("data_criacao") or ""),
+                        str(item.get("data_atualizacao") or ""),
+                    ))
+            con.executemany(
+                """
+                INSERT OR REPLACE INTO project_resource_catalog(type, id, position, name, description, image, created_at, updated_at)
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                catalog_rows,
+            )
+            hidden_rows = []
+            ocultos = dados.get("ocultos") or {}
+            for tipo in ("personagens", "lugares", "anotacoes"):
+                for nome in ocultos.get(tipo) or []:
+                    hidden_rows.append((tipo, str(nome or "")))
+            con.executemany(
+                "INSERT OR IGNORE INTO project_resource_hidden(type, name) VALUES(?, ?)",
+                hidden_rows,
+            )
+            con.commit()
+        return self.ler_recursos_projeto() or dados
 
     @registrar_etapa
     def listar_capitulos(self) -> list[dict[str, Any]]:

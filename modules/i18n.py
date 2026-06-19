@@ -1,7 +1,6 @@
 """
 Camada de internacionalização. Centraliza carregamento de traduções e utilitários de idioma da aplicação.
 
-Créditos do projeto: Nostrand.
 """
 
 from __future__ import annotations

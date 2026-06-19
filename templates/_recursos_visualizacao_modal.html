@@ -1,0 +1,78 @@
+<div class="modal oculto modal-recursos-visualizacao" id="modalRecursosProjeto">
+  <div class="modal-overlay" data-fechar-recursos-projeto="true"></div>
+  <div class="modal-conteudo modal-recursos-projeto-card" data-modal-card="true">
+    <div class="modal-topo modal-topo-acoes">
+      <div>
+        <h2>{{ t('resources.project_resources') }}</h2>
+        <p class="recursos-modal-subtitulo" id="recursosProjetoSubtitulo">{{ t('resources.hero_desc') }}</p>
+      </div>
+      <div class="modal-topo-acoes">
+        <a class="botao-secundario botao-com-icone" id="recursosProjetoAbrirPagina" href="{{ url_for('pagina_recursos_projeto', slug=projeto.slug) }}" target="_self"><span class="icone-svg">{{ icon_svg('open')|safe }}</span><span>{{ t('resources.open_panel') }}</span></a>
+        <button class="botao-fechar" type="button" data-fechar-recursos-projeto="true" aria-label="{{ t('common.close') }}">×</button>
+      </div>
+    </div>
+    <div class="recursos-tabs recursos-tabs-modal" role="tablist" aria-label="{{ t('resources.project_resources') }}">
+      <button type="button" class="recursos-tab ativo" data-recursos-view-tab="informacoes">{{ t('resources.info') }}</button>
+      <button type="button" class="recursos-tab" data-recursos-view-tab="fluxo">{{ t('resources.flow') }}</button>
+      <button type="button" class="recursos-tab" data-recursos-view-tab="personagens">{{ t('resources.characters') }}</button>
+      <button type="button" class="recursos-tab" data-recursos-view-tab="lugares">{{ t('resources.places') }}</button>
+      <button type="button" class="recursos-tab" data-recursos-view-tab="anotacoes">{{ t('resources.notes') }}</button>
+    </div>
+    <div class="recursos-view-status" id="recursosViewStatus">{{ t('common.loading') }}</div>
+    <section class="recursos-view-panel ativo" data-recursos-view-panel="informacoes">
+      <div class="recursos-view-info recursos-view-card-grid" id="recursosViewInformacoes"></div>
+    </section>
+    <section class="recursos-view-panel" data-recursos-view-panel="fluxo">
+      <div class="recursos-flow-view" id="recursosViewFluxo"></div>
+    </section>
+    <section class="recursos-view-panel" data-recursos-view-panel="personagens">
+      <div class="recursos-cards-grid recursos-cards-grid-modal recursos-view-card-grid" id="recursosViewPersonagens"></div>
+    </section>
+    <section class="recursos-view-panel" data-recursos-view-panel="lugares">
+      <div class="recursos-cards-grid recursos-cards-grid-modal recursos-view-card-grid" id="recursosViewLugares"></div>
+    </section>
+    <section class="recursos-view-panel" data-recursos-view-panel="anotacoes">
+      <div class="recursos-cards-grid recursos-cards-grid-modal recursos-view-card-grid" id="recursosViewAnotacoes"></div>
+    </section>
+  </div>
+</div>
+
+<div class="modal oculto modal-recursos-visualizacao-detalhe" id="modalRecursosInfoDetalhe">
+  <div class="modal-overlay" data-fechar-recursos-info-detalhe="true"></div>
+  <div class="modal-conteudo modal-recursos-view-detail-card" data-modal-card="true">
+    <div class="modal-topo modal-topo-acoes">
+      <div>
+        <h2 id="recursosInfoDetalheTitulo">{{ t('resources.pages') }}</h2>
+        <p class="recursos-modal-subtitulo">{{ t('resources.info_saved_in_project') }}</p>
+      </div>
+      <button class="botao-fechar" type="button" data-fechar-recursos-info-detalhe="true" aria-label="{{ t('common.close') }}">×</button>
+    </div>
+    <article class="recursos-view-info-detail-content" id="recursosInfoDetalheConteudo"></article>
+  </div>
+</div>
+
+<div class="modal oculto modal-recursos-visualizacao-detalhe" id="modalRecursosCatalogoDetalhe">
+  <div class="modal-overlay" data-fechar-recursos-catalogo-detalhe="true"></div>
+  <div class="modal-conteudo modal-recursos-view-detail-card modal-recursos-catalogo-detail-card" data-modal-card="true">
+    <div class="modal-topo modal-topo-acoes">
+      <div>
+        <h2 id="recursosCatalogoDetalheNome">{{ t('resources.item') }}</h2>
+        <p class="recursos-modal-subtitulo" id="recursosCatalogoDetalheTipo">{{ t('resources.catalog_project') }}</p>
+      </div>
+      <button class="botao-fechar" type="button" data-fechar-recursos-catalogo-detalhe="true" aria-label="{{ t('common.close') }}">×</button>
+    </div>
+    <div class="recursos-catalogo-detail-body">
+      <div class="recursos-catalogo-detail-image-wrap">
+        <img id="recursosCatalogoDetalheImagem" class="oculto" src="" alt="{{ t('resources.reference_image') }}">
+        <div id="recursosCatalogoDetalheSemImagem" class="recursos-catalogo-detail-no-image">{{ t('resources.no_reference_image') }}</div>
+      </div>
+      <div class="recursos-catalogo-detail-text">
+        <h3 id="recursosCatalogoDetalheDescricaoTitulo">{{ t('resources.description') }}</h3>
+        <div class="recursos-catalogo-detail-description-box">
+          <p id="recursosCatalogoDetalheDescricao">{{ t('resources.no_description') }}</p>
+        </div>
+        <div id="recursosCatalogoDetalheFontes" class="recurso-card-fontes oculto"></div>
+      </div>
+    </div>
+  </div>
+</div>

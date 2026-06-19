@@ -1,4 +1,3 @@
-/* Folha de estilos da interface do Gutenberg. Créditos do projeto: Nostrand. */
 
 .roteiro-topo{margin-bottom:14px}
 .barra-roteiro{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-radius:22px;background:#101a36;margin-bottom:16px;border:1px solid rgba(230,234,240,.08);flex-wrap:nowrap;overflow:hidden}
@@ -121,8 +120,10 @@
 .roteiro-bloco.oculto-visualizacao{display:none}
 .editor-roteiro.apenas-roteiro .roteiro-bloco[data-block-type="dialogue"][data-dialogue-time-label]:after{display:none}
 .autocomplete-roteiro{position:absolute;z-index:60;min-width:220px;max-width:340px;background:var(--roteiro-autocomplete-bg);color:var(--roteiro-autocomplete-text);border:1px solid var(--roteiro-autocomplete-border);border-radius:10px;box-shadow:var(--roteiro-autocomplete-shadow,0 12px 28px rgba(15,23,42,.18));padding:4px;display:flex;flex-direction:column;gap:1px}
-.autocomplete-item{display:flex;align-items:center;width:100%;padding:7px 10px;border:0;border-radius:7px;background:transparent;color:var(--roteiro-autocomplete-text);cursor:pointer;font:inherit;text-align:left;font-size:.9rem;line-height:1.25;transition:background .15s ease,color .15s ease}
+.autocomplete-item{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:7px 10px;border:0;border-radius:7px;background:transparent;color:var(--roteiro-autocomplete-text);cursor:pointer;font:inherit;text-align:left;font-size:.9rem;line-height:1.25;transition:background .15s ease,color .15s ease}
 .autocomplete-item:hover,.autocomplete-item.ativo{background:var(--roteiro-autocomplete-active);color:var(--roteiro-autocomplete-active-text,var(--roteiro-autocomplete-text));font-weight:700}
+.autocomplete-item-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.autocomplete-item-meta{flex:0 0 auto;font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--roteiro-page-muted)}.autocomplete-item:hover .autocomplete-item-meta,.autocomplete-item.ativo .autocomplete-item-meta{color:var(--roteiro-autocomplete-active-text,var(--roteiro-autocomplete-text))}
+.editor-roteiro .editor-recurso-link{color:var(--roteiro-page-ink);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px;text-decoration-color:var(--roteiro-link-underline);cursor:pointer;border-radius:4px}.editor-roteiro .editor-recurso-link:hover{background:rgba(14,165,233,.10)}.editor-roteiro.alt-link-mode .editor-recurso-link{text-decoration-color:rgba(187,27,155,.72);background:rgba(187,27,155,.08)}.editor-roteiro.alt-link-mode .editor-recurso-link:hover{background:rgba(187,27,155,.16)}
 .catalogo-lista{display:flex;flex-direction:column;gap:10px;max-height:58vh;overflow:auto}
 .catalogo-item{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:12px;border-radius:16px;background:rgba(230,234,240,.05);border:1px solid rgba(230,234,240,.08)}
 .catalogo-item-simples .catalogo-conteudo{min-width:0}

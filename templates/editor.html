@@ -1,15 +1,14 @@
-<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
 {% extends 'base.html' %}
 {% block titulo %}{{ t('common.edit_label') }} {{ capitulo.titulo }}{% endblock %}
 {% block body_class %}pagina-editor-app{% if not config_global.efeito_editor %} editor-sem-efeito{% endif %}{% endblock %}
 {% block body_attrs %}data-editor-page="true" data-editor-effects-enabled="{{ 'true' if config_global.efeito_editor else 'false' }}"{% endblock %}
-{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}">{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}">{% endblock %}
 {% block conteudo %}
 <section class="editor-topo">
   <div class="cabecalho-editor-grid">
     <a href="{{ url_for('pagina_roteiro', slug=projeto.slug) if projeto.tipo == 'roteiro' else url_for('pagina_projeto', slug=projeto.slug) }}" id="botaoVoltarEditor" class="botao-secundario botao-voltar-estilizado botao-com-icone"><span class="icone-svg">{{ icon_svg('back')|safe }}</span><span>{{ t('nav.back') }}</span></a>
     <input id="campoTituloCapitulo" class="titulo-editor" value="{{ capitulo.titulo }}" maxlength="120" />
-    <div class="status-salvamento"><span id="statusAutosave" class="status-chip">{{ t('common.ready') }}</span><a class="botao-leitura botao-com-icone" href="{{ url_for('ler_capitulo_view', slug=projeto.slug, numero=numero) }}"><img class="icone-img" src="{{ url_for('static', filename='img/ler.png') }}" alt=""><span>{{ t('reader.reading_mode') }}</span></a></div>
+    <div class="status-salvamento"><span id="statusAutosave" class="status-chip">{{ t('common.ready') }}</span><button type="button" class="botao-secundario botao-com-icone" id="btnAbrirRecursosProjeto" title="{{ t('resources.project_resources_shortcut') }}" aria-label="{{ t('resources.project_resources_shortcut') }}"><span class="icone-svg">{{ icon_svg('info')|safe }}</span></button><a class="botao-leitura botao-com-icone" href="{{ url_for('ler_capitulo_view', slug=projeto.slug, numero=numero) }}"><img class="icone-img" src="{{ url_for('static', filename='img/ler.png') }}" alt=""><span>{{ t('reader.reading_mode') }}</span></a></div>
   </div>
 </section>
 
@@ -80,7 +79,7 @@
 </section>
 
 <section class="painel-editor painel-word">
-  <div class="pagina-editor"><div id="editorTexto" class="editor-texto" contenteditable="true">{{ capitulo.paragrafos[0]|safe }}</div></div>
+  <div class="pagina-editor"><div id="editorTexto" class="editor-texto" contenteditable="true">{{ capitulo.paragrafos[0]|safe }}</div><div id="autocompleteEditorLivro" class="autocomplete-editor-livro oculto"></div></div>
 </section>
 <div class="modal oculto" id="modalRevisaoOrtografica">
   <div class="modal-overlay" data-fechar-revisao="true"></div>
@@ -115,10 +114,27 @@
   </div>
 </div>
 
+<div class="modal oculto" id="modalCatalogoLivro">
+  <div class="modal-overlay" data-fechar-catalogo-livro="true"></div>
+  <div class="modal-conteudo pequeno modal-catalogo-editor" data-modal-card="true">
+    <div class="modal-topo"><h2 id="tituloModalCatalogoLivro">{{ t("common.edit_item") }}</h2><button class="botao-fechar" type="button" data-fechar-catalogo-livro="true">×</button></div>
+    <form id="formCatalogoLivro" class="formulario-grade formulario-grade-uma-coluna">
+      <input type="hidden" id="catalogoLivroTipo">
+      <input type="hidden" id="catalogoLivroId">
+      <input type="hidden" id="catalogoLivroNomeOriginal">
+      <label id="catalogoLivroNomeLabel">{{ t("common.name") }}<input id="catalogoLivroNome" maxlength="80" required></label>
+      <label id="catalogoLivroDescricaoLabel">{{ t("common.description") }}<textarea id="catalogoLivroDescricao" rows="8" maxlength="4000"></textarea></label>
+      <div class="rodape-formulario"><span id="statusCatalogoLivro" class="status-form"></span><button type="submit" class="botao-primario">{{ t("common.save") }}</button></div>
+    </form>
+  </div>
+</div>
+
+{% include '_recursos_visualizacao_modal.html' %}
 {% endblock %}
 {% block scripts %}
-<script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|tojson }}, numero: {{ numero|tojson }}, idioma: {{ projeto.idioma|tojson }}};</script>
+<script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|tojson }}, numero: {{ numero|tojson }}, idioma: {{ projeto.idioma|tojson }}, catalogoPersonagens: {{ (recursos_editor.personagens if recursos_editor is defined else [])|tojson }}, catalogoLocais: {{ (recursos_editor.locais if recursos_editor is defined else [])|tojson }}, catalogoAnotacoes: {{ (recursos_editor.anotacoes if recursos_editor is defined else [])|tojson }}};</script>
 <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/recursos_visualizacao.js') }}"></script>
 {% endblock %}
 
 {% block skeleton %}

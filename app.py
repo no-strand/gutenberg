@@ -1,7 +1,6 @@
 """
 Ponto de entrada do aplicativo desktop. Inicializa o servidor Flask, integra a janela do app e controla o modo navegador ou embutido.
 
-Créditos do projeto: Nostrand.
 """
 
 import sys
@@ -10,10 +9,15 @@ import threading
 import ctypes
 import webbrowser
 import shutil
+import socket
 from pathlib import Path
 
 import requests
-import webview
+
+try:
+    import webview
+except Exception:
+    webview = None
 
 from server_only import app
 from modules.i18n import t
@@ -40,6 +44,63 @@ LR_LOADFROMFILE = 0x00000010
 
 
 ULTIMO_DIRETORIO_GUT_CHAVE = "ultimo_diretorio_gut"
+
+
+@registrar_etapa
+def sistema_windows() -> bool:
+    """Retorna True quando a execução atual está em Windows."""
+    return sys.platform == "win32"
+
+
+@registrar_etapa
+def pywebview_disponivel() -> bool:
+    """Retorna True quando o pywebview pode ser usado para iniciar o modo desktop."""
+    return webview is not None
+
+
+@registrar_etapa
+def windows_10_ou_superior() -> bool:
+    """Retorna True quando o sistema atual é Windows 10 ou superior."""
+    if not sistema_windows():
+        return False
+    try:
+        versao = sys.getwindowsversion()
+        return int(getattr(versao, "major", 0)) >= 10
+    except Exception:
+        logger.exception("Não foi possível detectar a versão do Windows")
+        return False
+
+
+@registrar_etapa
+def obter_ip_local() -> str:
+    """Obtém o IP local preferencial para exibir a URL de rede do modo servidor."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
+    except Exception:
+        return "127.0.0.1"
+    finally:
+        s.close()
+
+
+@registrar_etapa
+def _executar_modo_servidor(host: str = "0.0.0.0", port: int = PORTA_PADRAO) -> int:
+    """Executa o Gutenberg somente como servidor Flask, sem janela desktop nem tray."""
+    ip = obter_ip_local()
+    logger.info(
+        "Modo servidor ativado | sistema=%s | local=http://127.0.0.1:%s | rede=http://%s:%s",
+        sys.platform,
+        port,
+        ip,
+        port,
+    )
+    try:
+        app.run(host=host, port=port, debug=False, use_reloader=False)
+        return 0
+    except Exception:
+        logger.exception("Erro fatal no modo servidor")
+        return 1
 
 
 @registrar_etapa
@@ -451,6 +512,37 @@ class Bridge:
             logger.exception("Bridge.openGutFileDialog falhou")
             return {"ok": False, "erro": str(e)}
 
+
+    @registrar_etapa
+    def openGutrFileDialog(self, initial_dir: str | None = None):
+        """Abre um diálogo desktop limitado a pacotes de recursos .gutr."""
+        try:
+            window = self._window_getter()
+            if not window:
+                return {"ok": False, "erro": "Janela principal indisponível."}
+            pasta_preferida = _obter_ultimo_diretorio_dialogo() or initial_dir
+            pasta_inicial = _normalizar_pasta_dialogo(pasta_preferida, obter_pasta_exportacao())
+            selecionados = window.create_file_dialog(
+                webview.FileDialog.OPEN,
+                directory=str(pasta_inicial),
+                allow_multiple=False,
+                file_types=(
+                    'Recursos Gutenberg (*.gutr)',
+                    'Todos os arquivos (*.*)',
+                ),
+            )
+            if not selecionados:
+                return {"ok": False, "cancelado": True}
+            caminho = selecionados[0] if isinstance(selecionados, (list, tuple)) else selecionados
+            if not caminho:
+                return {"ok": False, "cancelado": True}
+            caminho_path = Path(str(caminho)).expanduser()
+            _salvar_ultimo_diretorio_dialogo(caminho_path.parent)
+            return {"ok": True, "caminho": str(caminho_path)}
+        except Exception as e:
+            logger.exception("Bridge.openGutrFileDialog falhou")
+            return {"ok": False, "erro": str(e)}
+
     @registrar_etapa
     def saveExportedFile(self, source_path: str, suggested_name: str | None = None, initial_dir: str | None = None):
         """
@@ -572,9 +664,9 @@ class AppController:
                 timeout=5,
             )
             if resposta.status_code >= 400:
-                logger.error("Falha ao registrar .gut pendente | status=%s | resposta=%s", resposta.status_code, resposta.text)
+                logger.error("Falha ao registrar arquivo Gutenberg pendente | status=%s | resposta=%s", resposta.status_code, resposta.text)
         except Exception as e:
-            logger.exception("Falha ao registrar .gut pendente")
+            logger.exception("Falha ao registrar arquivo Gutenberg pendente")
 
     @registrar_etapa
     def setup_server(self) -> None:
@@ -625,6 +717,9 @@ class AppController:
             Mantém a lógica centralizada e evita que detalhes de implementação vazem
             para quem apenas precisa acionar este comportamento.
         """
+        if webview is None:
+            raise RuntimeError("pywebview não está disponível para iniciar o modo desktop.")
+
         self.setup_server()
 
         bridge = Bridge(lambda: self.window, self.server_url)
@@ -685,32 +780,65 @@ def _obter_documentacao_index() -> Path:
 
 
 @registrar_etapa
+def _manter_servidor_sem_tray(servidor: threading.Thread, url_local: str = BROWSER_URL) -> int:
+    """Mantém o servidor Flask já iniciado ativo quando o tray falha durante o modo browser."""
+    ip = obter_ip_local()
+    logger.warning(
+        "Fallback para modo servidor sem tray ativado | sistema=%s | local=%s | rede=http://%s:%s",
+        sys.platform,
+        url_local,
+        ip,
+        PORTA_PADRAO,
+    )
+    logger.info("Acesse o Gutenberg pelo navegador e pressione Ctrl+C no terminal para encerrar.")
+    try:
+        while servidor.is_alive():
+            time.sleep(1)
+        return 0
+    except KeyboardInterrupt:
+        logger.info("Encerramento solicitado pelo usuário no modo servidor sem tray.")
+        return 0
+
+
+@registrar_etapa
 def _executar_modo_browser() -> int:
     """
-    Executa uma etapa específica do fluxo do módulo, encapsulando detalhes para manter o restante do código mais claro.
-
-    A função isola esta responsabilidade para deixar o fluxo principal mais fácil
-    de acompanhar. Ela recebe os dados no formato usado pelo projeto, realiza as
-    normalizações ou verificações necessárias e entrega um resultado previsível
-    para a próxima camada do sistema.
-
-    Retorno:
-        O resultado produzido pela etapa, ou None quando a função atua apenas por efeito colateral.
-
-    Observações:
-        Mantém a lógica centralizada e evita que detalhes de implementação vazem
-        para quem apenas precisa acionar este comportamento.
+    Inicia o modo browser com ícone de bandeja. Se o pystray não puder ser usado,
+    cai automaticamente para o modo servidor puro, equivalente ao server_only.py.
     """
+
+    @registrar_etapa
+    def abrir_no_navegador(icon=None, item=None):
+        """Abre o Gutenberg no navegador padrão."""
+        webbrowser.open(BROWSER_URL)
+
+    @registrar_etapa
+    def fechar(icon, item):
+        """Encerra o ícone de bandeja do modo browser."""
+        icon.stop()
+
     try:
         import pystray
         from PIL import Image
-    except Exception as e:
-        logger.exception("Erro fatal: dependências do modo browser ausentes ou inválidas")
-        return 1
+
+        tooltip = t("app.browser_mode_tooltip", url=BROWSER_URL)
+        icon_path = _obter_icone_tray()
+        imagem = Image.open(icon_path)
+        menu = pystray.Menu(
+            pystray.MenuItem(t("app.open_in_browser"), abrir_no_navegador),
+            pystray.MenuItem(t("common.close"), fechar),
+        )
+        icone = pystray.Icon("epub_browser_mode", imagem, tooltip, menu)
+    except Exception:
+        logger.warning(
+            "pystray/Pillow indisponível ou não inicializável. O Gutenberg será iniciado em modo servidor sem tray.",
+            exc_info=True,
+        )
+        return _executar_modo_servidor(host="0.0.0.0", port=PORTA_PADRAO)
 
     servidor = threading.Thread(
         target=iniciar_flask,
-        args=("127.0.0.1", PORTA_PADRAO),
+        args=("0.0.0.0", PORTA_PADRAO),
         daemon=True,
     )
     servidor.start()
@@ -720,68 +848,18 @@ def _executar_modo_browser() -> int:
         logger.error("Erro fatal: o servidor Flask não respondeu no modo browser")
         return 1
 
-    tooltip = t("app.browser_mode_tooltip", url=BROWSER_URL)
-    icon_path = _obter_icone_tray()
-    imagem = Image.open(icon_path)
-
-    @registrar_etapa
-    def abrir_no_navegador(icon=None, item=None):
-        """
-        Abre um recurso solicitado pelo usuário ou pela aplicação usando o mecanismo apropriado para o contexto.
-    
-        A função isola esta responsabilidade para deixar o fluxo principal mais fácil
-        de acompanhar. Ela recebe os dados no formato usado pelo projeto, realiza as
-        normalizações ou verificações necessárias e entrega um resultado previsível
-        para a próxima camada do sistema.
-    
-        Parâmetros:
-            icon: Valor usado pela rotina para compor a operação de abrir no navegador.
-            item: Valor usado pela rotina para compor a operação de abrir no navegador.
-    
-        Retorno:
-            O resultado produzido pela etapa, ou None quando a função atua apenas por efeito colateral.
-    
-        Observações:
-            Mantém a lógica centralizada e evita que detalhes de implementação vazem
-            para quem apenas precisa acionar este comportamento.
-        """
-        webbrowser.open(BROWSER_URL)
-
-    @registrar_etapa
-    def fechar(icon, item):
-        """
-        Encerra um fluxo ou recurso de maneira controlada.
-    
-        A função isola esta responsabilidade para deixar o fluxo principal mais fácil
-        de acompanhar. Ela recebe os dados no formato usado pelo projeto, realiza as
-        normalizações ou verificações necessárias e entrega um resultado previsível
-        para a próxima camada do sistema.
-    
-        Parâmetros:
-            icon: Valor usado pela rotina para compor a operação de fechar.
-            item: Valor usado pela rotina para compor a operação de fechar.
-    
-        Retorno:
-            O resultado produzido pela etapa, ou None quando a função atua apenas por efeito colateral.
-    
-        Observações:
-            Mantém a lógica centralizada e evita que detalhes de implementação vazem
-            para quem apenas precisa acionar este comportamento.
-        """
-        icon.stop()
-
-    menu = pystray.Menu(
-        pystray.MenuItem(t("app.open_in_browser"), abrir_no_navegador),
-        pystray.MenuItem(t("common.close"), fechar),
-    )
-
-    icone = pystray.Icon("epub_browser_mode", imagem, tooltip, menu)
-    icone.run()
-    return 0
+    try:
+        icone.run()
+        return 0
+    except Exception:
+        logger.exception(
+            "Falha ao executar o pystray. Mantendo o Gutenberg em modo servidor sem tray."
+        )
+        return _manter_servidor_sem_tray(servidor, server_url)
 
 
 @registrar_etapa
-def _obter_arquivo_gut_argumento(argv: list[str]) -> str | None:
+def _obter_arquivo_gutenberg_argumento(argv: list[str]) -> str | None:
     """
     Localiza e devolve um dado ou recurso específico, aplicando as validações necessárias antes do retorno.
 
@@ -805,7 +883,7 @@ def _obter_arquivo_gut_argumento(argv: list[str]) -> str | None:
             caminho = Path(item).expanduser()
         except Exception:
             continue
-        if caminho.suffix.lower() == ".gut" and caminho.exists():
+        if caminho.suffix.lower() in {".gut", ".gutr"} and caminho.exists():
             return str(caminho.resolve())
     return None
 
@@ -828,11 +906,30 @@ def main() -> int:
         para quem apenas precisa acionar este comportamento.
     """
     try:
-        config = obter_configuracoes()
-        arquivo_gut = _obter_arquivo_gut_argumento(sys.argv)
-        if bool(config.get("modo_browser", False)) and not arquivo_gut:
+        if not sistema_windows():
+            logger.warning(
+                "Sistema não Windows detectado (%s). O Gutenberg tentará iniciar no modo browser; se o tray falhar, usará modo servidor sem tray.",
+                sys.platform,
+            )
             return _executar_modo_browser()
-        controller = AppController(initial_path=arquivo_gut)
+
+        if not windows_10_ou_superior():
+            logger.warning(
+                "Windows anterior ao 10 detectado. O modo desktop com pywebview exige Windows 10 ou superior; tentando modo browser com fallback para servidor sem tray."
+            )
+            return _executar_modo_browser()
+
+        if not pywebview_disponivel():
+            logger.warning(
+                "pywebview não está disponível no Windows. O Gutenberg tentará modo browser com fallback para servidor sem tray."
+            )
+            return _executar_modo_browser()
+
+        config = obter_configuracoes()
+        arquivo_gutenberg = _obter_arquivo_gutenberg_argumento(sys.argv)
+        if bool(config.get("modo_browser", False)) and not arquivo_gutenberg:
+            return _executar_modo_browser()
+        controller = AppController(initial_path=arquivo_gutenberg)
         controller.run()
         return 0
     except Exception as e:

@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ t('resources.page_title', project=projeto.titulo) }}{% endblock %}
+{% block classe_pagina %}pagina-recursos-projeto-shell{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}">{% endblock %}
+{% block conteudo %}
+<section class="recursos-topo topo-projeto">
+  <div class="recursos-topo-info">
+    <div class="topo-info-projeto">
+      <a href="{{ url_for('pagina_roteiro', slug=projeto.slug) if projeto.tipo == 'roteiro' else url_for('pagina_projeto', slug=projeto.slug) }}" class="botao-secundario botao-voltar-estilizado botao-com-icone"><span class="icone-svg">{{ icon_svg('back')|safe }}</span><span>{{ t('nav.back') }}</span></a>
+      <span class="badge">{{ t('resources.planning_badge') }}</span>
+      <button type="button" id="btnImportarRecursosGutr" class="botao-secundario botao-com-icone" title="{{ t('resources.import_resources') }}" aria-label="{{ t('resources.import_resources') }}"><span class="icone-svg">{{ icon_svg('open')|safe }}</span><span>{{ t('resources.import_resources') }}</span></button>
+      <input type="file" id="inputGutrImportacao" accept=".gutr" hidden>
+      <button type="button" id="btnSalvarRecursosGutr" class="botao-secundario botao-com-icone" title="{{ t('resources.save_resources') }}" aria-label="{{ t('resources.save_resources') }}"><span class="icone-svg">{{ icon_svg('save')|safe }}</span><span>{{ t('resources.save_resources') }}</span></button>
+      <span class="status-chip" id="recursosStatus">{{ t('resources.ready') }}</span>
+    </div>
+    <h1 class="limite-2linhas-projeto" title="{{ projeto.titulo }}">{{ projeto.titulo }}</h1>
+    <p class="resumo-projeto limite-3linhas">{{ t('resources.hero_desc') }}</p>
+  </div>
+</section>
+
+<section class="recursos-workspace">
+  <nav class="recursos-tabs" role="tablist" aria-label="{{ t('resources.project_resources') }}">
+    <button type="button" class="recursos-tab ativo" data-recursos-tab="informacoes">{{ t('resources.info') }}</button>
+    <button type="button" class="recursos-tab" data-recursos-tab="fluxo">{{ t('resources.flow') }}</button>
+    <button type="button" class="recursos-tab" data-recursos-tab="personagens">{{ t('resources.characters') }}</button>
+    <button type="button" class="recursos-tab" data-recursos-tab="lugares">{{ t('resources.places') }}</button>
+    <button type="button" class="recursos-tab" data-recursos-tab="anotacoes">{{ t('resources.notes') }}</button>
+  </nav>
+
+  <section class="recursos-painel ativo" data-recursos-panel="informacoes">
+    <div class="info-layout">
+      <aside class="info-sidebar">
+        <div class="info-sidebar-topo">
+          <h2>{{ t('resources.pages') }}</h2>
+          <button type="button" class="botao-secundario botao-apenas-icone" id="btnNovaPaginaInfo" title="{{ t('resources.new_page') }}" aria-label="{{ t('resources.new_page') }}">+</button>
+        </div>
+        <div class="info-page-list" id="listaPaginasInfo"></div>
+      </aside>
+      <article class="info-editor-card">
+        <div class="info-editor-fixed-top">
+          <div class="info-format-toolbar" aria-label="{{ t('resources.info_formatting') }}">
+            <button type="button" class="botao-secundario info-format-btn" data-info-bloco="p" title="{{ t('resources.paragraph') }}">P</button>
+            <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h1" title="{{ t('resources.heading1') }}">H1</button>
+            <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h2" title="{{ t('resources.heading2') }}">H2</button>
+            <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h3" title="{{ t('resources.heading3') }}">H3</button>
+            <button type="button" class="botao-secundario info-format-btn" data-info-comando="bold" title="{{ t('editor.bold') }}"><strong>{{ t('editor.bold')[:1] }}</strong></button>
+            <button type="button" class="botao-secundario info-format-btn" data-info-comando="italic" title="{{ t('editor.italic') }}"><em>{{ t('editor.italic')[:1] }}</em></button>
+            <button type="button" class="botao-secundario info-format-btn" data-info-comando="underline" title="{{ t('editor.underline') }}"><u>{{ t('editor.underline')[:1] }}</u></button>
+            <button type="button" class="botao-secundario info-format-btn" data-info-comando="insertUnorderedList" title="{{ t('resources.list') }}">•</button>
+          </div>
+          <div class="info-editor-toolbar">
+            <input id="tituloPaginaInfo" class="info-title-input" maxlength="90" placeholder="{{ t('resources.page_title_placeholder') }}">
+            <div class="info-editor-acoes">
+              <button type="button" class="botao-secundario botao-com-icone" id="btnInserirImagemInfo"><span>{{ t('resources.image') }}</span></button>
+              <button type="button" class="botao-perigo botao-com-icone" id="btnExcluirPaginaInfo"><span>{{ t('resources.delete_page') }}</span></button>
+              <input type="file" id="inputImagemInfo" accept="image/*" hidden>
+            </div>
+          </div>
+        </div>
+        <div id="editorInfoPagina" class="info-rich-editor" contenteditable="true" spellcheck="true"></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="recursos-painel" data-recursos-panel="fluxo">
+    <div class="fluxo-toolbar">
+      <div>
+        <h2>{{ t('resources.flowchart') }}</h2>
+        <p>{{ t('resources.flow_desc') }}</p>
+      </div>
+      <div class="fluxo-toolbar-acoes">
+        <button type="button" class="botao-primario botao-com-icone" id="btnNovoNodeFluxo"><span>{{ t('resources.add_balloon') }}</span></button>
+        <button type="button" class="botao-secundario botao-com-icone" id="btnLimparConexaoFluxo"><span>{{ t('resources.cancel_connection') }}</span></button>
+      </div>
+    </div>
+    <div class="fluxo-canvas-wrap" id="fluxoCanvasWrap">
+      <div class="fluxo-canvas" id="fluxoCanvas">
+        <svg class="fluxo-svg" id="fluxoSvg"></svg>
+        <div class="fluxo-nodes" id="fluxoNodes"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="recursos-painel" data-recursos-panel="personagens">
+    <div class="catalogo-topbar">
+      <div><h2>{{ t('resources.characters') }}</h2><p>{{ t('resources.characters_desc') }}</p></div>
+      <button type="button" class="botao-primario botao-com-icone" data-novo-catalogo="personagens"><span class="icone-svg">{{ icon_svg('users')|safe }}</span><span>{{ t('resources.new_character') }}</span></button>
+    </div>
+    <div id="listaPersonagensProjeto" class="recursos-cards-grid"></div>
+  </section>
+
+  <section class="recursos-painel" data-recursos-panel="lugares">
+    <div class="catalogo-topbar">
+      <div><h2>{{ t('resources.places') }}</h2><p>{{ t('resources.places_desc') }}</p></div>
+      <button type="button" class="botao-primario botao-com-icone" data-novo-catalogo="lugares"><span class="icone-svg">{{ icon_svg('place')|safe }}</span><span>{{ t('resources.new_place') }}</span></button>
+    </div>
+    <div id="listaLugaresProjeto" class="recursos-cards-grid"></div>
+  </section>
+
+  <section class="recursos-painel" data-recursos-panel="anotacoes">
+    <div class="catalogo-topbar">
+      <div><h2>{{ t('resources.notes') }}</h2><p>{{ t('resources.notes_desc') }}</p></div>
+      <button type="button" class="botao-primario botao-com-icone" data-novo-catalogo="anotacoes"><span class="icone-svg">{{ icon_svg('info')|safe }}</span><span>{{ t('resources.new_note') }}</span></button>
+    </div>
+    <div id="listaAnotacoesProjeto" class="recursos-cards-grid"></div>
+  </section>
+</section>
+
+<div class="modal oculto" id="modalCatalogoRecursos">
+  <div class="modal-overlay" data-fechar-modal="true"></div>
+  <div class="modal-conteudo modal-catalogo-recursos" data-modal-card="true">
+    <div class="modal-topo"><h2 id="tituloModalCatalogoRecursos">{{ t('resources.new_item') }}</h2><button class="botao-fechar" type="button" data-fechar-modal="true" aria-label="{{ t('common.close') }}">×</button></div>
+    <form id="formCatalogoRecursos" class="form-catalogo-recursos">
+      <input type="hidden" id="catalogoRecursosTipo">
+      <input type="hidden" id="catalogoRecursosId">
+      <label id="catalogoRecursosNomeLabel">{{ t('resources.name') }}<input type="text" id="catalogoRecursosNome" required maxlength="80"></label>
+      <label id="catalogoRecursosDescricaoLabel">{{ t('resources.description') }}<textarea id="catalogoRecursosDescricao" rows="8" maxlength="4000" placeholder="{{ t('resources.description_placeholder') }}"></textarea></label>
+      <label class="campo-imagem-ref" id="catalogoRecursosImagemLabel">{{ t('resources.reference_image') }}<input type="file" id="catalogoRecursosImagemInput" accept="image/*"></label>
+      <div class="imagem-preview-wrap"><img id="catalogoRecursosImagemPreview" alt="{{ t('resources.image_preview_alt') }}" class="oculto"><button type="button" class="botao-secundario" id="btnRemoverImagemCatalogo">{{ t('resources.remove_image') }}</button></div>
+      <div class="rodape-formulario"><span id="statusCatalogoRecursos" class="status-form"></span><button class="botao-primario" type="submit">{{ t('common.save') }}</button></div>
+    </form>
+  </div>
+</div>
+
+
+<div class="modal oculto" id="modalDetalheCatalogoRecursos">
+  <div class="modal-overlay" data-fechar-modal="true"></div>
+  <div class="modal-conteudo modal-detalhe-catalogo-recursos" data-modal-card="true">
+    <div class="modal-topo">
+      <div>
+        <h2 id="detalheCatalogoNome">{{ t('resources.item') }}</h2>
+        <p class="detalhe-catalogo-subtitulo" id="detalheCatalogoTipo">{{ t('resources.catalog_project') }}</p>
+      </div>
+      <button class="botao-fechar" type="button" data-fechar-modal="true">×</button>
+    </div>
+    <div class="detalhe-catalogo-corpo">
+      <div class="detalhe-catalogo-imagem-wrap">
+        <img id="detalheCatalogoImagem" alt="{{ t('resources.reference_image') }}" class="oculto">
+        <div id="detalheCatalogoSemImagem" class="detalhe-catalogo-sem-imagem">{{ t('resources.no_reference_image') }}</div>
+      </div>
+      <div class="detalhe-catalogo-texto">
+        <h3 id="detalheCatalogoDescricaoTitulo">{{ t('resources.description') }}</h3>
+        <div class="detalhe-catalogo-descricao-box"><p id="detalheCatalogoDescricao">{{ t('resources.no_description') }}</p></div>
+        <div id="detalheCatalogoFontes" class="recurso-card-fontes"></div>
+      </div>
+    </div>
+    <div class="detalhe-catalogo-acoes">
+      <button type="button" class="botao-secundario" id="btnEditarDetalheCatalogo">{{ t('common.edit') }}</button>
+      <button type="button" class="botao-perigo" id="btnExcluirDetalheCatalogo">{{ t('common.delete') }}</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>window.PROJETO_SLUG = {{ projeto.slug|tojson }}; window.PROJETO_RECURSOS_INITIAL = {{ recursos|tojson }};</script>
+<script src="{{ url_for('static', filename='js/recursos_projeto.js') }}"></script>
+{% endblock %}
+
+{% block skeleton %}
+<section class="skeleton-topo">
+  <section class="sk-linha-card">
+    <div class="sk-lista" style="grid-column: span 2;">
+      <div class="sk-pill sk-bloco"></div>
+      <div class="sk-titulo curto sk-bloco"></div>
+      <div class="sk-texto sk-bloco"></div>
+    </div>
+    <div class="sk-coluna-acoes">
+      <div class="sk-botao sk-bloco"></div><div class="sk-botao sk-bloco"></div><div class="sk-botao sk-bloco"></div>
+    </div>
+  </section>
+  <section class="sk-recursos-layout">
+    <aside class="sk-recursos-sidebar sk-card">
+      <div class="sk-linha titulo sk-bloco"></div>
+      {% for _ in range(6) %}<div class="sk-linha sk-bloco{% if loop.index % 2 == 0 %} media{% endif %}"></div>{% endfor %}
+    </aside>
+    <article class="sk-recursos-editor sk-card">
+      <div class="sk-linha titulo sk-bloco"></div>
+      {% for _ in range(12) %}<div class="sk-linha sk-bloco{% if loop.index % 4 == 0 %} curta{% elif loop.index % 3 == 0 %} media{% endif %}"></div>{% endfor %}
+    </article>
+  </section>
+</section>
+{% endblock %}

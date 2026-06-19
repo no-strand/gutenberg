@@ -1,7 +1,6 @@
 """
 Configuração centralizada de logging do Gutenberg.
 
-Créditos do projeto: Nostrand.
 """
 
 from __future__ import annotations

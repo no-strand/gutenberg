@@ -1,4 +1,3 @@
-<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
 {% extends 'base.html' %}
 {% block titulo %}Gutenberg{% endblock %}
 {% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">{% endblock %}
@@ -77,14 +76,15 @@
 </div>
 
 {% if gut_pendente and gut_pendente.ativo %}
+{% set pendente_recursos = gut_pendente.tipo_arquivo == 'recursos' %}
 <div class="modal oculto" id="modalGutPendente">
   <div class="modal-overlay"></div>
   <div class="modal-conteudo" data-modal-card="true">
-    <div class="modal-topo"><h2>{{ t('index.pending_gut_title') }}</h2><button class="botao-fechar" type="button" data-fechar-modal="true">×</button></div>
+    <div class="modal-topo"><h2>{{ t('index.pending_gutr_title') if pendente_recursos else t('index.pending_gut_title') }}</h2><button class="botao-fechar" type="button" data-fechar-modal="true">×</button></div>
     {% if gut_pendente.erro %}
       <p>{{ gut_pendente.erro }}</p>
     {% else %}
-      <p>{{ t('index.pending_gut_desc', file=gut_pendente.nome_arquivo, kind=(t('index.project_kind.script') if gut_pendente.tipo_projeto == 'roteiro' else t('index.project_kind.book'))) }}</p>
+      <p>{{ t('index.pending_gutr_desc', file=gut_pendente.nome_arquivo) if pendente_recursos else t('index.pending_gut_desc', file=gut_pendente.nome_arquivo, kind=(t('index.project_kind.script') if gut_pendente.tipo_projeto == 'roteiro' else t('index.project_kind.book'))) }}</p>
       {% if gut_pendente.projetos %}
       <div class="gut-pendente-formulario gut-pendente-formulario-horizontal">
         <label class="gut-pendente-seletor gut-pendente-seletor-moderno">{{ t('index.choose_project_for_import') }}
@@ -101,7 +101,7 @@
         <span id="statusGutPendente" class="status-form"></span>
       </div>
       {% else %}
-      <p>{{ t('index.no_projects_for_pending_gut') }}</p>
+      <p>{{ t('index.no_projects_for_pending_gutr') if pendente_recursos else t('index.no_projects_for_pending_gut') }}</p>
       <div class="gut-pendente-acoes gut-pendente-acoes-sem-seletor">
         <button type="button" class="botao-secundario" data-fechar-modal="true">{{ t('common.cancel') }}</button>
         <button type="button" class="botao-primario" id="botaoCriarProjetoGutPendente">{{ t('index.create_new_project') }}</button>

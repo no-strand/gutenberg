@@ -1,6 +1,5 @@
 /**
  * Controla formulários, catálogo e vínculos do fluxo de roteiros.
- * Créditos do projeto: Nostrand.
  */
 
 /** I18n. Usada pelo fluxo principal da aplicação. */

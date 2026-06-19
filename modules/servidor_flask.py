@@ -27,8 +27,11 @@ from .exportador_html import exportar_projeto_epub, exportar_projeto_xhtml
 from .exportador_gut import (
     exportar_gut_capitulos,
     exportar_gut_roteiro,
+    exportar_gutr_recursos,
     importar_gut_em_projeto,
+    importar_gutr_em_projeto,
     ler_payload_gut,
+    ler_payload_gutr,
     metadados_importaveis_projeto,
 )
 from .importador_documentos import (
@@ -74,7 +77,16 @@ from .manipulador_roteiros import (
     ler_roteiro,
     salvar_roteiro,
 )
+from .manipulador_recursos_projeto import (
+    excluir_item_catalogo_projeto,
+    ler_recursos_projeto,
+    mesclar_catalogo_com_roteiros,
+    salvar_fluxo_projeto,
+    salvar_informacoes_projeto,
+    salvar_item_catalogo_projeto,
+)
 from .i18n import carregar_locale, idioma_projeto_rotulo, normalizar_idioma_app, t
+from .atualizador import verificar_atualizacao, iniciar_atualizacao
 from .utilidades import (
     EXPORTS_PADRAO,
     formatar_data_br,
@@ -105,7 +117,7 @@ LIMITE_LOGLINE = 280
 LIMITE_SINOPSE = 1000
 LIMITE_GENERO = 60
 LIMITE_CATALOGO_NOME = 60
-LIMITE_CATALOGO_DESCRICAO = 240
+LIMITE_CATALOGO_DESCRICAO = 4000
 MAX_NUMERACAO_CENA = 9999
 GEMINI_REVISAO_MODELO = "gemini-2.5-flash-lite"
 GEMINI_REVISAO_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_REVISAO_MODELO}:generateContent"
@@ -241,6 +253,27 @@ def _resolver_tipo_projeto_esperado(tipo_arquivo: str) -> str:
 
 
 @registrar_etapa
+def _metadados_importaveis_gutr(payload: dict[str, object]) -> dict[str, object]:
+    """Extrai metadados úteis de um pacote .gutr para preencher a criação de projeto."""
+    projeto = payload.get("projeto") if isinstance(payload, dict) else {}
+    if not isinstance(projeto, dict):
+        projeto = {}
+    tipo_origem = str(projeto.get("tipo") or "livro").strip().lower()
+    if tipo_origem not in {"livro", "roteiro"}:
+        tipo_origem = "livro"
+    return {
+        "titulo": str(projeto.get("titulo") or "").strip(),
+        "descricao": str(projeto.get("descricao") or "").strip(),
+        "autor": str(projeto.get("autor") or "").strip(),
+        "idioma": str(projeto.get("idioma") or "pt-BR").strip() or "pt-BR",
+        "tipo": tipo_origem,
+        "tags": [str(tag).strip() for tag in list(projeto.get("tags") or []) if str(tag).strip()],
+        "contatos": str(projeto.get("contatos") or "").strip(),
+        "informacoes_adicionais": str(projeto.get("informacoes_adicionais") or "").strip(),
+    }
+
+
+@registrar_etapa
 def _obter_contexto_gut_pendente(app: Flask) -> dict[str, object] | None:
     """
     Localiza e devolve um dado ou recurso específico, aplicando as validações necessárias antes do retorno.
@@ -264,6 +297,28 @@ def _obter_contexto_gut_pendente(app: Flask) -> dict[str, object] | None:
     if not caminho:
         return None
     try:
+        sufixo = Path(caminho).suffix.lower()
+        if sufixo == ".gutr":
+            payload = ler_payload_gutr(caminho)
+            metadados = _metadados_importaveis_gutr(payload)
+            projetos = [
+                {"slug": projeto.get("slug"), "titulo": projeto.get("titulo"), "tipo": projeto.get("tipo")}
+                for projeto in listar_projetos()
+                if projeto.get("tipo") in {"livro", "roteiro"}
+            ]
+            return {
+                "ativo": True,
+                "caminho": caminho,
+                "token": int(app.config.get("PENDING_GUT_TOKEN") or 0),
+                "nome_arquivo": Path(caminho).name,
+                "extensao": ".gutr",
+                "tipo_arquivo": "recursos",
+                "tipo_projeto": "livro_ou_roteiro",
+                "permite_tipo_livre": True,
+                "metadados": metadados,
+                "projetos": projetos,
+            }
+
         payload = ler_payload_gut(caminho)
         tipo_arquivo = str(payload.get("tipo_arquivo") or "")
         tipo_projeto = _resolver_tipo_projeto_esperado(tipo_arquivo)
@@ -278,8 +333,10 @@ def _obter_contexto_gut_pendente(app: Flask) -> dict[str, object] | None:
             "caminho": caminho,
             "token": int(app.config.get("PENDING_GUT_TOKEN") or 0),
             "nome_arquivo": Path(caminho).name,
+            "extensao": ".gut",
             "tipo_arquivo": tipo_arquivo,
             "tipo_projeto": tipo_projeto,
+            "permite_tipo_livre": False,
             "metadados": metadados,
             "projetos": projetos,
         }
@@ -335,8 +392,8 @@ def _registrar_gut_pendente(app: Flask, caminho_gut: str | Path) -> dict[str, ob
     caminho = Path(str(caminho_gut or "")).expanduser()
     if not str(caminho):
         raise ValueError(t("backend.no_gut_file_sent"))
-    if caminho.suffix.lower() != ".gut":
-        raise ValueError(t("backend.invalid_gut_extension"))
+    if caminho.suffix.lower() not in {".gut", ".gutr"}:
+        raise ValueError("Formato inválido. Use um arquivo .gut ou .gutr.")
     if not caminho.exists() or not caminho.is_file():
         raise FileNotFoundError(t("backend.no_gut_file_sent"))
     app.config["PENDING_GUT_FILE"] = str(caminho.resolve())
@@ -401,6 +458,27 @@ def _importar_gut_por_caminho(slug: str, caminho_gut: str | Path):
     resultado = importar_gut_em_projeto(slug, caminho_gut)
     atualizar_data_projeto(slug)
     return {"ok": True, "redirect": _editor_redirect_importado(resultado), "resultado": resultado}
+
+
+@registrar_etapa
+def _importar_gutr_por_caminho(slug: str, caminho_gutr: str | Path):
+    """Importa recursos de um .gutr e redireciona para o painel de recursos do projeto."""
+    resultado = importar_gutr_em_projeto(slug, caminho_gutr)
+    atualizar_data_projeto(slug)
+    return {
+        "ok": True,
+        "redirect": url_for("pagina_recursos_projeto", slug=slug),
+        "resultado": resultado,
+    }
+
+
+@registrar_etapa
+def _importar_gutenberg_pendente_por_caminho(slug: str, caminho: str | Path):
+    """Importa o arquivo pendente aberto por associação do sistema (.gut ou .gutr)."""
+    caminho = Path(caminho)
+    if caminho.suffix.lower() == ".gutr":
+        return _importar_gutr_por_caminho(slug, caminho)
+    return _importar_gut_por_caminho(slug, caminho)
 
 
 @registrar_etapa
@@ -904,6 +982,7 @@ def icon_svg(nome: str) -> str:
         "place": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6-5.33-6-11a6 6 0 1 1 12 0c0 5.67-6 11-6 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
         "info": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
         "stats": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-5"/><path d="M12 16V8"/><path d="M17 16V4"/></svg>',
+        "refresh": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2"/><path d="M3 12A9 9 0 0 1 18.5 5.8"/><path d="M18 3v4h-4"/><path d="M6 21v-4h4"/></svg>',
     }
     return icones.get(nome, "")
 
@@ -1144,6 +1223,44 @@ def _calcular_estatisticas_epub(slug: str) -> dict:
 
 
 @registrar_etapa
+def _recursos_projeto_combinados(slug: str) -> dict[str, object]:
+    """Carrega os recursos criativos do projeto e agrega personagens/lugares vindos dos roteiros existentes."""
+    pasta = obter_pasta_projeto(slug)
+    projeto = obter_projeto(slug)
+    recursos = ler_recursos_projeto(pasta)
+    combinados = mesclar_catalogo_com_roteiros(recursos, projeto.get("roteiros") or [])
+    return {
+        "ok": True,
+        "projeto": {
+            "slug": slug,
+            "titulo": projeto.get("titulo") or slug,
+            "tipo": projeto.get("tipo") or "livro",
+        },
+        "informacoes": combinados.get("informacoes", []),
+        "fluxo": combinados.get("fluxo", {"nodes": [], "edges": []}),
+        "personagens": combinados.get("personagens_combinados", []),
+        "lugares": combinados.get("lugares_combinados", []),
+        "anotacoes": combinados.get("anotacoes_combinadas", []),
+        "personagens_projeto": combinados.get("personagens", []),
+        "lugares_projeto": combinados.get("lugares", []),
+        "anotacoes_projeto": combinados.get("anotacoes", []),
+        "ocultos": combinados.get("ocultos", {"personagens": [], "lugares": [], "anotacoes": []}),
+        "data_atualizacao": combinados.get("data_atualizacao"),
+    }
+
+
+
+@registrar_etapa
+def _catalogos_compartilhados_editor(slug: str) -> tuple[list[dict[str, object]], list[dict[str, object]], list[dict[str, object]]]:
+    """Retorna personagens, locais e anotações já mesclados com os recursos do projeto para os editores."""
+    recursos = _recursos_projeto_combinados(slug)
+    personagens = list(recursos.get("personagens") or [])
+    locais = list(recursos.get("lugares") or [])
+    anotacoes = list(recursos.get("anotacoes") or [])
+    return personagens, locais, anotacoes
+
+
+@registrar_etapa
 def _destino_projeto(projeto: dict, slug: str) -> str:
     """
     Executa uma etapa específica do fluxo do módulo, encapsulando detalhes para manter o restante do código mais claro.
@@ -1357,6 +1474,22 @@ def criar_app() -> Flask:
         salvar_configuracoes(dados)
         return redirect(url_for("pagina_configuracoes"))
 
+
+    @app.get("/api/atualizacao/verificar")
+    @registrar_etapa
+    def api_verificar_atualizacao():
+        """Verifica no GitHub Releases se existe uma versão mais recente do Gutenberg."""
+        automatico = str(request.args.get("automatico") or "").lower() in {"1", "true", "sim", "semanal"}
+        return jsonify(verificar_atualizacao(automatico=automatico))
+
+    @app.post("/api/atualizacao/iniciar")
+    @registrar_etapa
+    def api_iniciar_atualizacao():
+        """Baixa o instalador da versão mais recente e inicia o fluxo de atualização."""
+        dados = iniciar_atualizacao()
+        status = 200 if dados.get("ok") else 400
+        return jsonify(dados), status
+
     @app.get("/documentation/<path:arquivo>")
     @registrar_etapa
     def pagina_documentacao_arquivos(arquivo: str):
@@ -1380,12 +1513,6 @@ def criar_app() -> Flask:
         """
         pasta_documentacao = (RAIZ_RECURSOS / "documentation").resolve()
         return send_from_directory(pasta_documentacao, arquivo)
-
-    @app.get("/creditos")
-    @registrar_etapa
-    def pagina_creditos():
-        """Exibe a página de créditos do aplicativo."""
-        return render_template("creditos.html")
 
     @app.post("/api/revisao/gemini")
     @registrar_etapa
@@ -1591,6 +1718,147 @@ def criar_app() -> Flask:
             return redirect(url_for("pagina_projeto", slug=slug))
         projeto = _aplicar_labels_roteiro_localizadas(projeto)
         return render_template("roteiro.html", projeto=projeto, tipos_roteiro=_tipos_roteiro_localizados())
+
+    @app.get("/projetos/<slug>/recursos")
+    @registrar_etapa
+    def pagina_recursos_projeto(slug: str):
+        projeto = obter_projeto(slug)
+        recursos = _recursos_projeto_combinados(slug)
+        return render_template("recursos_projeto.html", projeto=projeto, recursos=recursos)
+
+    @app.get("/api/projetos/<slug>/recursos")
+    @registrar_etapa
+    def api_obter_recursos_projeto(slug: str):
+        try:
+            return jsonify(_recursos_projeto_combinados(slug))
+        except FileNotFoundError as exc:
+            return _resposta_erro_json(str(exc), 404)
+
+    @app.post("/api/projetos/<slug>/recursos/informacoes")
+    @registrar_etapa
+    def api_salvar_informacoes_recursos_projeto(slug: str):
+        dados = request.get_json(silent=True) or {}
+        try:
+            salvar_informacoes_projeto(obter_pasta_projeto(slug), dados.get("informacoes") or [])
+            atualizar_data_projeto(slug)
+            return jsonify(_recursos_projeto_combinados(slug))
+        except Exception as exc:
+            return _resposta_erro_json(str(exc), 400)
+
+    @app.post("/api/projetos/<slug>/recursos/fluxo")
+    @registrar_etapa
+    def api_salvar_fluxo_recursos_projeto(slug: str):
+        dados = request.get_json(silent=True) or {}
+        try:
+            salvar_fluxo_projeto(obter_pasta_projeto(slug), dados.get("fluxo") or {})
+            atualizar_data_projeto(slug)
+            return jsonify(_recursos_projeto_combinados(slug))
+        except Exception as exc:
+            return _resposta_erro_json(str(exc), 400)
+
+    @app.post("/api/projetos/<slug>/recursos/catalogo/<tipo>")
+    @registrar_etapa
+    def api_salvar_catalogo_recursos_projeto(slug: str, tipo: str):
+        dados = request.get_json(silent=True) or {}
+        try:
+            salvar_item_catalogo_projeto(obter_pasta_projeto(slug), tipo, dados)
+            atualizar_data_projeto(slug)
+            return jsonify(_recursos_projeto_combinados(slug))
+        except ValueError as exc:
+            return _resposta_erro_json(str(exc), 400)
+        except Exception as exc:
+            return _resposta_erro_json(str(exc), 400)
+
+    @app.post("/api/projetos/<slug>/recursos/catalogo/<tipo>/excluir")
+    @registrar_etapa
+    def api_excluir_catalogo_recursos_projeto(slug: str, tipo: str):
+        dados = request.get_json(silent=True) or {}
+        try:
+            excluir_item_catalogo_projeto(
+                obter_pasta_projeto(slug),
+                tipo,
+                identificador=dados.get("id"),
+                nome=dados.get("nome"),
+            )
+            atualizar_data_projeto(slug)
+            return jsonify(_recursos_projeto_combinados(slug))
+        except ValueError as exc:
+            return _resposta_erro_json(str(exc), 400)
+        except Exception as exc:
+            return _resposta_erro_json(str(exc), 400)
+
+
+    @app.get("/projetos/<slug>/salvar-recursos")
+    @registrar_etapa
+    def rota_salvar_recursos_gutr(slug: str):
+        """Salva todos os recursos do projeto atual em um arquivo .gutr."""
+        try:
+            arquivo = exportar_gutr_recursos(slug)
+            return _resposta_arquivo_exportado(arquivo)
+        except FileNotFoundError as exc:
+            return _resposta_erro_json(str(exc), 404)
+        except ValueError as exc:
+            return _resposta_erro_json(str(exc), 400)
+        except Exception as exc:
+            return _resposta_erro_json(str(exc), 500)
+
+    @app.post("/projetos/<slug>/importar-recursos")
+    @registrar_etapa
+    def rota_importar_recursos_gutr(slug: str):
+        """Importa um arquivo .gutr e adiciona os recursos ao projeto atual."""
+        arquivo = request.files.get("arquivo")
+        if not arquivo or not arquivo.filename:
+            return _resposta_erro_json(t("backend.no_gutr_file_sent"), 400)
+        if Path(str(arquivo.filename)).suffix.lower() != ".gutr":
+            return _resposta_erro_json(t("backend.invalid_gutr_extension"), 400)
+        caminho_tmp = _salvar_upload_temporario_gut(arquivo)
+        try:
+            ler_payload_gutr(caminho_tmp)
+            resultado = importar_gutr_em_projeto(slug, caminho_tmp)
+            atualizar_data_projeto(slug)
+            resposta = _recursos_projeto_combinados(slug)
+            resposta["importados"] = resultado.get("importados", {})
+            resposta["mensagem"] = t("resources.import_success")
+            return jsonify(resposta)
+        except FileNotFoundError as exc:
+            return _resposta_erro_json(str(exc), 404)
+        except ValueError as exc:
+            return _resposta_erro_json(str(exc), 400)
+        except Exception as exc:
+            return _resposta_erro_json(str(exc), 500)
+        finally:
+            try:
+                pasta_tmp = caminho_tmp.parent
+                caminho_tmp.unlink(missing_ok=True)
+                if pasta_tmp.name.startswith("gutenberg_import_"):
+                    pasta_tmp.rmdir()
+            except Exception:
+                pass
+
+    @app.post("/projetos/<slug>/importar-recursos-desktop")
+    @registrar_etapa
+    def rota_importar_recursos_gutr_desktop(slug: str):
+        """Importa um arquivo .gutr indicado pelo aplicativo desktop."""
+        dados = request.get_json(silent=True) or {}
+        caminho = Path(str(dados.get("caminho") or "").strip()).expanduser()
+        if not str(caminho):
+            return _resposta_erro_json(t("backend.no_gutr_file_sent"), 400)
+        if caminho.suffix.lower() != ".gutr":
+            return _resposta_erro_json(t("backend.invalid_gutr_extension"), 400)
+        try:
+            ler_payload_gutr(caminho)
+            resultado = importar_gutr_em_projeto(slug, caminho)
+            atualizar_data_projeto(slug)
+            resposta = _recursos_projeto_combinados(slug)
+            resposta["importados"] = resultado.get("importados", {})
+            resposta["mensagem"] = t("resources.import_success")
+            return jsonify(resposta)
+        except FileNotFoundError as exc:
+            return _resposta_erro_json(str(exc), 404)
+        except ValueError as exc:
+            return _resposta_erro_json(str(exc), 400)
+        except Exception as exc:
+            return _resposta_erro_json(str(exc), 500)
 
     @app.get("/biblioteca")
     @registrar_etapa
@@ -2108,7 +2376,9 @@ def criar_app() -> Flask:
         if projeto.get("tipo") == "roteiro":
             return redirect(url_for("editar_roteiro_view", slug=slug, numero=numero))
         capitulo = ler_capitulo(obter_pasta_projeto(slug), numero)
-        return render_template("editor.html", projeto=projeto, capitulo=capitulo, numero=numero)
+        personagens, locais, anotacoes = _catalogos_compartilhados_editor(slug)
+        recursos_editor = {"personagens": personagens, "locais": locais, "anotacoes": anotacoes}
+        return render_template("editor.html", projeto=projeto, capitulo=capitulo, numero=numero, recursos_editor=recursos_editor)
 
     @app.get("/projetos/<slug>/capitulos/<int:numero>/ler")
     @registrar_etapa
@@ -2319,6 +2589,10 @@ def criar_app() -> Flask:
         """
         projeto = obter_projeto(slug)
         roteiro = ler_roteiro(obter_pasta_projeto(slug), numero)
+        personagens, locais, anotacoes = _catalogos_compartilhados_editor(slug)
+        roteiro["catalogo_personagens"] = personagens
+        roteiro["catalogo_locais"] = locais
+        roteiro["catalogo_anotacoes"] = anotacoes
         roteiro["tipo_roteiro_label"] = t(f"script_type.{roteiro.get('tipo_roteiro') or 'spec_script'}", default=str(roteiro.get("tipo_roteiro_label") or t("script.spec_script")))
         return render_template("editor_roteiro.html", projeto=projeto, roteiro=roteiro, numero=numero, tipos_roteiro=_tipos_roteiro_localizados())
 
@@ -2445,11 +2719,12 @@ def criar_app() -> Flask:
             Mantém a lógica centralizada e evita que detalhes de implementação vazem
             para quem apenas precisa acionar este comportamento.
         """
-        roteiro = ler_roteiro(obter_pasta_projeto(slug), numero)
+        personagens, locais, anotacoes = _catalogos_compartilhados_editor(slug)
         return jsonify({
             "ok": True,
-            "personagens": roteiro.get("catalogo_personagens", []),
-            "locais": roteiro.get("catalogo_locais", []),
+            "personagens": personagens,
+            "locais": locais,
+            "anotacoes": anotacoes,
         })
 
     @app.post("/api/projetos/<slug>/roteiros/<int:numero>/catalogo/<tipo>")
@@ -2497,8 +2772,10 @@ def criar_app() -> Flask:
         if not atualizado:
             itens.append({"nome": nome, "descricao": descricao})
         atualizar_roteiro_info(pasta, numero, {chave: itens})
+        salvar_item_catalogo_projeto(pasta, tipo, {"nome": nome, "descricao": descricao})
         atualizar_data_projeto(slug)
-        return jsonify({"ok": True, "itens": itens})
+        personagens, locais, anotacoes = _catalogos_compartilhados_editor(slug)
+        return jsonify({"ok": True, "itens": personagens if tipo == "personagens" else locais, "personagens": personagens, "locais": locais, "anotacoes": anotacoes})
 
     @app.post("/api/projetos/<slug>/roteiros/<int:numero>/catalogo/<tipo>/excluir")
     @registrar_etapa
@@ -2532,8 +2809,10 @@ def criar_app() -> Flask:
         chave = "catalogo_personagens" if tipo == "personagens" else "catalogo_locais"
         itens = [item for item in list(roteiro.get(chave) or []) if str(item.get("nome", "")).strip().lower() != nome.lower()]
         atualizar_roteiro_info(pasta, numero, {chave: itens})
+        excluir_item_catalogo_projeto(pasta, tipo, nome=nome)
         atualizar_data_projeto(slug)
-        return jsonify({"ok": True, "itens": itens})
+        personagens, locais, anotacoes = _catalogos_compartilhados_editor(slug)
+        return jsonify({"ok": True, "itens": personagens if tipo == "personagens" else locais, "personagens": personagens, "locais": locais, "anotacoes": anotacoes})
 
     @app.get("/api/projetos/<slug>/catalogo")
     @registrar_etapa
@@ -2556,11 +2835,12 @@ def criar_app() -> Flask:
             Mantém a lógica centralizada e evita que detalhes de implementação vazem
             para quem apenas precisa acionar este comportamento.
         """
-        projeto = obter_projeto(slug)
+        personagens, locais, anotacoes = _catalogos_compartilhados_editor(slug)
         return jsonify({
             "ok": True,
-            "personagens": projeto.get("catalogo_personagens", []),
-            "locais": projeto.get("catalogo_locais", []),
+            "personagens": personagens,
+            "locais": locais,
+            "anotacoes": anotacoes,
         })
 
     @app.post("/api/projetos/<slug>/catalogo/<tipo>")
@@ -2585,28 +2865,18 @@ def criar_app() -> Flask:
             Mantém a lógica centralizada e evita que detalhes de implementação vazem
             para quem apenas precisa acionar este comportamento.
         """
-        if tipo not in {"personagens", "locais"}:
+        if tipo not in {"personagens", "locais", "anotacoes"}:
             return jsonify({"ok": False, "erro": t('backend.invalid_catalog_type')}), 400
         dados = request.get_json(silent=True) or {}
         try:
             nome, descricao = _validar_item_catalogo(dados.get("nome"), dados.get("descricao"))
         except ValueError as erro:
             return jsonify({"ok": False, "erro": str(erro)}), 400
-        projeto = obter_projeto(slug)
-        chave = "catalogo_personagens" if tipo == "personagens" else "catalogo_locais"
-        itens = list(projeto.get(chave) or [])
-        atualizado = False
-        for item in itens:
-            if str(item.get("nome", "")).strip().lower() == nome.lower():
-                item["nome"] = nome
-                item["descricao"] = descricao
-                item.pop("imagem", None)
-                atualizado = True
-                break
-        if not atualizado:
-            itens.append({"nome": nome, "descricao": descricao})
-        atualizar_metadados_projeto(slug, {chave: itens})
-        return jsonify({"ok": True, "itens": itens})
+        pasta = obter_pasta_projeto(slug)
+        salvar_item_catalogo_projeto(pasta, tipo, {"nome": nome, "descricao": descricao})
+        atualizar_data_projeto(slug)
+        personagens, locais, anotacoes = _catalogos_compartilhados_editor(slug)
+        return jsonify({"ok": True, "itens": personagens if tipo == "personagens" else (anotacoes if tipo == "anotacoes" else locais), "personagens": personagens, "locais": locais, "anotacoes": anotacoes})
 
     @app.post("/api/projetos/<slug>/catalogo/<tipo>/excluir")
     @registrar_etapa
@@ -2630,15 +2900,15 @@ def criar_app() -> Flask:
             Mantém a lógica centralizada e evita que detalhes de implementação vazem
             para quem apenas precisa acionar este comportamento.
         """
-        if tipo not in {"personagens", "locais"}:
+        if tipo not in {"personagens", "locais", "anotacoes"}:
             return jsonify({"ok": False, "erro": t('backend.invalid_catalog_type')}), 400
         dados = request.get_json(silent=True) or {}
         nome = (dados.get("nome") or "").strip()
-        projeto = obter_projeto(slug)
-        chave = "catalogo_personagens" if tipo == "personagens" else "catalogo_locais"
-        itens = [item for item in list(projeto.get(chave) or []) if str(item.get("nome", "")).strip().lower() != nome.lower()]
-        atualizar_metadados_projeto(slug, {chave: itens})
-        return jsonify({"ok": True, "itens": itens})
+        pasta = obter_pasta_projeto(slug)
+        excluir_item_catalogo_projeto(pasta, tipo, nome=nome)
+        atualizar_data_projeto(slug)
+        personagens, locais, anotacoes = _catalogos_compartilhados_editor(slug)
+        return jsonify({"ok": True, "itens": personagens if tipo == "personagens" else (anotacoes if tipo == "anotacoes" else locais), "personagens": personagens, "locais": locais, "anotacoes": anotacoes})
 
     @app.get("/projetos/<slug>/salvar-capitulos")
     @registrar_etapa
@@ -2870,9 +3140,9 @@ def criar_app() -> Flask:
             return _resposta_erro_json(t("backend.project_not_found"), 400)
         try:
             projeto = obter_projeto(slug)
-            if projeto.get("tipo") != contexto.get("tipo_projeto"):
+            if contexto.get("tipo_arquivo") != "recursos" and projeto.get("tipo") != contexto.get("tipo_projeto"):
                 return _resposta_erro_json(t("backend.gut_type_incompatible"), 400)
-            resposta = _importar_gut_por_caminho(slug, contexto["caminho"])
+            resposta = _importar_gutenberg_pendente_por_caminho(slug, contexto["caminho"])
             _limpar_gut_pendente(app)
             return jsonify(resposta)
         except Exception as exc:
@@ -2899,7 +3169,12 @@ def criar_app() -> Flask:
         contexto = _obter_contexto_gut_pendente(app)
         if not contexto or contexto.get("erro"):
             return _resposta_erro_json(t("backend.no_pending_gut"), 400)
-        tipo = str(contexto.get("tipo_projeto") or "livro")
+        if contexto.get("tipo_arquivo") == "recursos":
+            tipo = str(request.form.get("tipo") or "livro").strip().lower()
+            if tipo not in {"livro", "roteiro"}:
+                tipo = "livro"
+        else:
+            tipo = str(contexto.get("tipo_projeto") or "livro")
         idioma = normalizar_idioma_projeto(request.form.get("idioma", "pt-BR").strip() or "pt-BR")
         try:
             campos = _validar_campos_projeto(
@@ -2912,7 +3187,7 @@ def criar_app() -> Flask:
                 informacoes_adicionais=request.form.get("informacoes_adicionais", ""),
             )
             projeto = criar_projeto(campos["titulo"], campos["descricao"], campos["autor"], campos["tags"], idioma, tipo=tipo, contatos=campos["contatos"], informacoes_adicionais=campos["informacoes_adicionais"])
-            resposta = _importar_gut_por_caminho(projeto["slug"], contexto["caminho"])
+            resposta = _importar_gutenberg_pendente_por_caminho(projeto["slug"], contexto["caminho"])
             atualizar_metadados_projeto(projeto["slug"], {
                 "titulo": campos["titulo"],
                 "descricao": campos["descricao"],

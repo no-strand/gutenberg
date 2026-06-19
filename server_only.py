@@ -1,7 +1,6 @@
 """
 Inicialização simplificada do servidor web para uso local, útil em testes e execução apenas no navegador.
 
-Créditos do projeto: Nostrand.
 """
 
 #!/usr/bin/env python3

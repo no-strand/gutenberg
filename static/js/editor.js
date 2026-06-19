@@ -5,6 +5,7 @@
 
 const i18n = (key, vars = {}) => (window.t ? window.t(key, vars) : key);
 
+const editorConfig = window.EDITOR_CONFIG || {};
 const editor = document.getElementById('editorTexto');
 const campoTituloCapitulo = document.getElementById('campoTituloCapitulo');
 const statusAutosave = document.getElementById('statusAutosave');
@@ -32,6 +33,18 @@ const revisaoStatus = document.getElementById('revisaoStatus');
 const btnIgnorarBlocoRevisao = document.getElementById('btnIgnorarBlocoRevisao');
 const btnRevisarBlocoRevisao = document.getElementById('btnRevisarBlocoRevisao');
 const btnAceitarBlocoRevisao = document.getElementById('btnAceitarBlocoRevisao');
+const autocompleteLivro = document.getElementById('autocompleteEditorLivro');
+const modalCatalogoLivro = document.getElementById('modalCatalogoLivro');
+const formCatalogoLivro = document.getElementById('formCatalogoLivro');
+const catalogoLivroTipo = document.getElementById('catalogoLivroTipo');
+const catalogoLivroId = document.getElementById('catalogoLivroId');
+const catalogoLivroNomeOriginal = document.getElementById('catalogoLivroNomeOriginal');
+const catalogoLivroNome = document.getElementById('catalogoLivroNome');
+const catalogoLivroDescricao = document.getElementById('catalogoLivroDescricao');
+const catalogoLivroNomeLabel = document.getElementById('catalogoLivroNomeLabel');
+const catalogoLivroDescricaoLabel = document.getElementById('catalogoLivroDescricaoLabel');
+const tituloModalCatalogoLivro = document.getElementById('tituloModalCatalogoLivro');
+const statusCatalogoLivro = document.getElementById('statusCatalogoLivro');
 
 if (!editor) {
   console.warn('Editor EPUB não encontrado na página.');
@@ -40,8 +53,8 @@ if (!editor) {
 const requestIdle = window.requestIdleCallback || ((cb) => setTimeout(() => cb({ didTimeout: false, timeRemaining: () => 0 }), 1));
 const cancelIdle = window.cancelIdleCallback || clearTimeout;
 
-const STORAGE_SEPARADOR_DECORATIVO = `editor:separador-decorativo:${window.EDITOR_CONFIG?.slug || 'global'}`;
-const STORAGE_DELIMITADOR_DECORATIVO = `editor:delimitador-decorativo:${window.EDITOR_CONFIG?.slug || 'global'}`;
+const STORAGE_SEPARADOR_DECORATIVO = `editor:separador-decorativo:${editorConfig?.slug || 'global'}`;
+const STORAGE_DELIMITADOR_DECORATIVO = `editor:delimitador-decorativo:${editorConfig?.slug || 'global'}`;
 const SEPARADORES_DECORATIVOS = ['◆◆◆', '◇◇◇', '✦✦✦', '★★★', '☆☆☆', '❖❖❖', '✥✥✥'];
 const DELIMITADORES_DECORATIVOS = [
   { abertura: '『', fechamento: '』' },
@@ -62,6 +75,19 @@ const CLASSES_ALINHAMENTO = ['alinhar-a-esquerda', 'alinhar-centro', 'alinhar-a-
 const CLASSES_RECUO = ['recuo-a-esquerda', 'recuo-a-direita'];
 const CLASSES_FONTE = ['fonte-sans', 'fonte-serif', 'fonte-mono'];
 const INLINE_FONT_SELECTOR = 'span.fonte-sans, span.fonte-serif, span.fonte-mono';
+
+const catalogosLivro = {
+  personagens: Array.isArray(editorConfig.catalogoPersonagens) ? editorConfig.catalogoPersonagens : [],
+  locais: Array.isArray(editorConfig.catalogoLocais) ? editorConfig.catalogoLocais : [],
+  anotacoes: Array.isArray(editorConfig.catalogoAnotacoes) ? editorConfig.catalogoAnotacoes : [],
+};
+let autocompleteLivroState = { items: [], active: -1, block: null, startOffset: 0, endOffset: 0, query: '' };
+let infoHoverTooltipLivro = null;
+let hoverLivroFrame = 0;
+let lastLivroHoverEvent = null;
+let altLinkLivroModeEnabled = false;
+let catalogoLivroLinkAtivo = null;
+let catalogoLivroItemAtivo = null;
 
 let ultimoRangeEditor = null;
 let autosaveTimer = null;
@@ -1888,6 +1914,7 @@ function handleInput(event) {
   updateToolbarState();
   scheduleAutosave();
   scheduleHistoryCommit('input');
+  maybeBookResourceAutocomplete();
 }
 
 function handleSelectionMutation() {
@@ -1905,6 +1932,388 @@ function applyShortcutHandler(event) {
   scheduleHistoryCommit(`shortcut-${key}`);
   return true;
 }
+
+
+function normalizeResourceSearch(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleUpperCase('pt-BR')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function allBookResourceItems() {
+  const items = [];
+  (catalogosLivro.personagens || []).forEach((item) => {
+    if (item?.nome) items.push({ tipo: 'personagens', label: String(item.nome), descricao: String(item.descricao || ''), id: String(item.id || ''), origem: String(item.origem || ''), imagem: String(item.imagem || '') });
+  });
+  (catalogosLivro.locais || []).forEach((item) => {
+    if (item?.nome) items.push({ tipo: 'locais', label: String(item.nome), descricao: String(item.descricao || ''), id: String(item.id || ''), origem: String(item.origem || ''), imagem: String(item.imagem || '') });
+  });
+  (catalogosLivro.anotacoes || []).forEach((item) => {
+    if (item?.nome) items.push({ tipo: 'anotacoes', label: String(item.nome), descricao: String(item.descricao || ''), id: String(item.id || ''), origem: String(item.origem || ''), imagem: '' });
+  });
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = `${item.tipo}:${normalizeResourceSearch(item.label)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function getBookResourceQuery() {
+  const range = getCurrentRange();
+  if (!range?.collapsed) return null;
+  const block = getBlock(range.startContainer);
+  if (!block) return null;
+  const textBefore = getTextUntilCaretInBlock(block, range);
+  const match = String(textBefore || '').match(/[\p{L}\p{N}_'’.-]{2,}$/u);
+  if (!match) return null;
+  const query = match[0];
+  const endOffset = getTextOffsetWithin(range.startContainer, range.startOffset, block);
+  const startOffset = Math.max(0, endOffset - query.length);
+  return { block, query, startOffset, endOffset };
+}
+
+function hideBookResourceAutocomplete() {
+  if (!autocompleteLivro) return;
+  autocompleteLivro.classList.add('oculto');
+  autocompleteLivro.replaceChildren();
+  autocompleteLivroState = { items: [], active: -1, block: null, startOffset: 0, endOffset: 0, query: '' };
+}
+
+function escapeHtmlForBookAutocomplete(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function getSelectionCaretRectForBook() {
+  const range = getCurrentRange();
+  if (!range) return null;
+  const clone = range.cloneRange();
+  clone.collapse(false);
+  let rect = clone.getBoundingClientRect();
+  if ((!rect || (!rect.width && !rect.height)) && range.startContainer) {
+    const marker = document.createElement('span');
+    marker.textContent = '\u200b';
+    clone.insertNode(marker);
+    rect = marker.getBoundingClientRect();
+    marker.remove();
+  }
+  return rect && (rect.top || rect.bottom || rect.height || rect.width) ? rect : null;
+}
+
+function bookResourceTypeLabel(tipo) {
+  if (tipo === 'personagens') return 'Personagem';
+  if (tipo === 'locais') return 'Local';
+  if (tipo === 'anotacoes') return 'Anotação';
+  return 'Recurso';
+}
+
+function bookResourceFieldLabel(tipo, field) {
+  if (tipo === 'anotacoes') return field === 'description' ? 'Anotação' : 'Título';
+  return field === 'description' ? i18n('common.description') : i18n('common.name');
+}
+
+function renderBookResourceAutocomplete() {
+  if (!autocompleteLivro || !autocompleteLivroState.items.length || !autocompleteLivroState.block) return hideBookResourceAutocomplete();
+  const caretRect = getSelectionCaretRectForBook() || autocompleteLivroState.block.getBoundingClientRect();
+  const parentRect = autocompleteLivro.parentElement.getBoundingClientRect();
+  autocompleteLivro.style.left = `${Math.max(0, caretRect.left - parentRect.left)}px`;
+  autocompleteLivro.style.top = `${Math.max(0, caretRect.bottom - parentRect.top + 6)}px`;
+  const fragment = document.createDocumentFragment();
+  autocompleteLivroState.items.forEach((item, idx) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `autocomplete-editor-livro-item${idx === autocompleteLivroState.active ? ' ativo' : ''}`;
+    btn.dataset.index = String(idx);
+    btn.innerHTML = `<strong>${escapeHtmlForBookAutocomplete(item.label)}</strong><span>${escapeHtmlForBookAutocomplete(bookResourceTypeLabel(item.tipo))}</span>`;
+    fragment.appendChild(btn);
+  });
+  autocompleteLivro.replaceChildren(fragment);
+  autocompleteLivro.classList.remove('oculto');
+}
+
+function maybeBookResourceAutocomplete() {
+  if (!autocompleteLivro || !editor) return;
+  const context = getBookResourceQuery();
+  if (!context) return hideBookResourceAutocomplete();
+  const query = normalizeResourceSearch(context.query);
+  if (query.length < 2) return hideBookResourceAutocomplete();
+  const items = allBookResourceItems()
+    .filter((item) => normalizeResourceSearch(item.label).startsWith(query) && normalizeResourceSearch(item.label) !== query)
+    .slice(0, 8);
+  if (!items.length) return hideBookResourceAutocomplete();
+  const same = autocompleteLivroState.block === context.block && autocompleteLivroState.query === query && autocompleteLivroState.items.length === items.length && autocompleteLivroState.items.every((item, idx) => item.label === items[idx].label && item.tipo === items[idx].tipo);
+  autocompleteLivroState = {
+    items,
+    active: same ? Math.max(0, Math.min(autocompleteLivroState.active, items.length - 1)) : 0,
+    block: context.block,
+    startOffset: context.startOffset,
+    endOffset: context.endOffset,
+    query,
+  };
+  renderBookResourceAutocomplete();
+}
+
+function chooseBookResourceAutocomplete(item = autocompleteLivroState.items[autocompleteLivroState.active]) {
+  if (!item || !autocompleteLivroState.block) return false;
+  const block = autocompleteLivroState.block;
+  const range = createRangeFromTextOffsets(block, autocompleteLivroState.startOffset, autocompleteLivroState.endOffset);
+  const link = document.createElement('a');
+  link.href = '#';
+  link.className = 'editor-recurso-link';
+  link.dataset.recursoTipo = item.tipo;
+  link.dataset.recursoNome = item.label;
+  link.title = `${bookResourceTypeLabel(item.tipo)}: ${item.label}`;
+  link.textContent = item.label;
+  range.deleteContents();
+  range.insertNode(link);
+  const after = document.createRange();
+  after.setStartAfter(link);
+  after.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(after);
+  hideBookResourceAutocomplete();
+  normalizeBlocks();
+  saveCurrentRange();
+  updateToolbarState();
+  markEditorDirty();
+  scheduleAutosave();
+  scheduleHistoryCommit('resource-link');
+  return true;
+}
+
+function handleBookAutocompleteKeydown(event) {
+  if (!autocompleteLivroState.items.length || autocompleteLivro?.classList.contains('oculto')) return false;
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    autocompleteLivroState.active = (autocompleteLivroState.active + 1) % autocompleteLivroState.items.length;
+    renderBookResourceAutocomplete();
+    return true;
+  }
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    autocompleteLivroState.active = (autocompleteLivroState.active - 1 + autocompleteLivroState.items.length) % autocompleteLivroState.items.length;
+    renderBookResourceAutocomplete();
+    return true;
+  }
+  if (event.key === 'Enter' || event.key === 'Tab') {
+    event.preventDefault();
+    chooseBookResourceAutocomplete();
+    return true;
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    hideBookResourceAutocomplete();
+    return true;
+  }
+  return false;
+}
+
+function normalizeBookSpaces(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function findBookResourceItem(tipo, nome) {
+  const normalized = normalizeBookSpaces(nome).toLowerCase();
+  if (!normalized) return null;
+  return (catalogosLivro[tipo] || []).find((item) => normalizeBookSpaces(item?.nome).toLowerCase() === normalized) || null;
+}
+
+function ensureBookInfoHoverTooltip() {
+  if (infoHoverTooltipLivro) return infoHoverTooltipLivro;
+  infoHoverTooltipLivro = document.createElement('div');
+  infoHoverTooltipLivro.className = 'info-hover-roteiro oculto';
+  document.body.appendChild(infoHoverTooltipLivro);
+  return infoHoverTooltipLivro;
+}
+
+function hideBookInfoHoverTooltip() {
+  const tip = ensureBookInfoHoverTooltip();
+  tip.classList.add('oculto');
+  tip.innerHTML = '';
+}
+
+function positionBookInfoHoverTooltip(clientX, clientY) {
+  const tip = ensureBookInfoHoverTooltip();
+  const gap = 16;
+  const maxLeft = Math.max(8, window.innerWidth - tip.offsetWidth - 8);
+  const maxTop = Math.max(8, window.innerHeight - tip.offsetHeight - 8);
+  let left = clientX + gap;
+  let top = clientY + gap;
+  if (left > maxLeft) left = Math.max(8, clientX - tip.offsetWidth - gap);
+  if (top > maxTop) top = Math.max(8, clientY - tip.offsetHeight - gap);
+  tip.style.left = `${left}px`;
+  tip.style.top = `${top}px`;
+}
+
+function getBookResourceInfoFromLink(link) {
+  if (!link) return null;
+  const tipoRaw = link.dataset.recursoTipo || '';
+  const tipo = tipoRaw === 'locais' ? 'locais' : (tipoRaw === 'anotacoes' ? 'anotacoes' : 'personagens');
+  const nome = link.dataset.recursoNome || link.textContent || '';
+  const item = findBookResourceItem(tipo, nome);
+  return {
+    catalogoTipo: tipo,
+    tipo: tipo === 'locais' ? i18n('common.location_singular') : (tipo === 'anotacoes' ? 'Anotação' : i18n('common.character_singular')),
+    nome: item?.nome || nome,
+    descricao: normalizeBookSpaces(item?.descricao || '') || i18n('common.no_description'),
+    item: item || { nome, descricao: '' },
+    link,
+  };
+}
+
+function showBookInfoHoverTooltip(info, clientX, clientY) {
+  if (!info) return hideBookInfoHoverTooltip();
+  const tip = ensureBookInfoHoverTooltip();
+  const helpText = altLinkLivroModeEnabled ? i18n('script.alt_pressed_click_edit') : i18n('script.hold_alt_to_edit');
+  tip.innerHTML = `<strong>${escapeHtmlForBookAutocomplete(info.tipo)}</strong><span>${escapeHtmlForBookAutocomplete(info.nome || '')}</span><p>${escapeHtmlForBookAutocomplete(info.descricao || i18n('common.no_description'))}</p><em>${escapeHtmlForBookAutocomplete(helpText)}</em>`;
+  tip.classList.remove('oculto');
+  positionBookInfoHoverTooltip(clientX, clientY);
+}
+
+function runBookResourceHoverFrame() {
+  hoverLivroFrame = 0;
+  const event = lastLivroHoverEvent;
+  if (!event) return;
+  const link = event.target instanceof Element ? event.target.closest('.editor-recurso-link') : null;
+  if (!link || !editor?.contains(link)) return hideBookInfoHoverTooltip();
+  showBookInfoHoverTooltip(getBookResourceInfoFromLink(link), event.clientX, event.clientY);
+}
+
+function handleBookResourceHover(event) {
+  lastLivroHoverEvent = event;
+  if (hoverLivroFrame) return;
+  hoverLivroFrame = requestAnimationFrame(runBookResourceHoverFrame);
+}
+
+function syncBookAltLinkModeState(forceValue = null) {
+  altLinkLivroModeEnabled = typeof forceValue === 'boolean' ? forceValue : altLinkLivroModeEnabled;
+  if (editor) editor.classList.toggle('alt-link-mode', !!altLinkLivroModeEnabled);
+}
+
+function openBookCatalogEditor(tipo, item = {}, link = null) {
+  if (!modalCatalogoLivro || !formCatalogoLivro) return;
+  const safeTipo = tipo === 'locais' ? 'locais' : (tipo === 'anotacoes' ? 'anotacoes' : 'personagens');
+  const nome = item?.nome || link?.dataset?.recursoNome || link?.textContent || '';
+  if (catalogoLivroNomeLabel && catalogoLivroNome) catalogoLivroNomeLabel.firstChild.textContent = bookResourceFieldLabel(safeTipo, 'name');
+  if (catalogoLivroDescricaoLabel && catalogoLivroDescricao) catalogoLivroDescricaoLabel.firstChild.textContent = bookResourceFieldLabel(safeTipo, 'description');
+  if (catalogoLivroNome) catalogoLivroNome.placeholder = safeTipo === 'anotacoes' ? 'Título da anotação' : '';
+  if (catalogoLivroDescricao) catalogoLivroDescricao.placeholder = safeTipo === 'anotacoes' ? 'Texto da anotação' : '';
+  catalogoLivroTipo.value = safeTipo;
+  catalogoLivroId.value = item?.id || '';
+  catalogoLivroNomeOriginal.value = nome || '';
+  catalogoLivroNome.value = nome || '';
+  catalogoLivroDescricao.value = item?.descricao || '';
+  catalogoLivroLinkAtivo = link || null;
+  catalogoLivroItemAtivo = item || null;
+  if (tituloModalCatalogoLivro) tituloModalCatalogoLivro.textContent = `${i18n('common.edit_item')} — ${safeTipo === 'locais' ? i18n('common.location_singular') : (safeTipo === 'anotacoes' ? 'Anotação' : i18n('common.character_singular'))}`;
+  if (statusCatalogoLivro) statusCatalogoLivro.textContent = '';
+  modalCatalogoLivro.classList.remove('oculto');
+  setTimeout(() => catalogoLivroNome?.focus(), 30);
+}
+
+function closeBookCatalogEditor() {
+  modalCatalogoLivro?.classList.add('oculto');
+  catalogoLivroLinkAtivo = null;
+  catalogoLivroItemAtivo = null;
+}
+
+async function postBookCatalogJSON(url, payload) {
+  const response = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload || {})});
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.ok === false) throw new Error(data.erro || i18n('js.save_error'));
+  return data;
+}
+
+function refreshBookCatalogsFromResponse(data, tipo) {
+  if (!data) return;
+  if (Array.isArray(data.personagens)) catalogosLivro.personagens = data.personagens;
+  if (Array.isArray(data.lugares)) catalogosLivro.locais = data.lugares;
+  if (Array.isArray(data.locais)) catalogosLivro.locais = data.locais;
+  if (Array.isArray(data.anotacoes)) catalogosLivro.anotacoes = data.anotacoes;
+  if (Array.isArray(data.itens)) catalogosLivro[tipo] = data.itens;
+}
+
+function handleBookResourceLinkClick(event) {
+  const link = event.target instanceof Element ? event.target.closest('.editor-recurso-link') : null;
+  if (!link || !editor?.contains(link)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (!event.altKey) return;
+  const info = getBookResourceInfoFromLink(link);
+  if (!info) return;
+  openBookCatalogEditor(info.catalogoTipo, info.item || { nome: info.nome, descricao: '' }, link);
+}
+
+function bindBookResourceAutocomplete() {
+  if (!autocompleteLivro || !editor) return;
+  autocompleteLivro.addEventListener('mousedown', (event) => event.preventDefault());
+  autocompleteLivro.addEventListener('click', (event) => {
+    const btn = event.target instanceof Element ? event.target.closest('button[data-index]') : null;
+    if (!btn) return;
+    const item = autocompleteLivroState.items[Number(btn.dataset.index || 0)];
+    chooseBookResourceAutocomplete(item);
+  });
+  editor.addEventListener('click', handleBookResourceLinkClick);
+  editor.addEventListener('mousemove', handleBookResourceHover);
+  editor.addEventListener('mouseleave', hideBookInfoHoverTooltip);
+  editor.addEventListener('scroll', hideBookInfoHoverTooltip);
+  window.addEventListener('scroll', hideBookInfoHoverTooltip, { passive: true });
+  window.addEventListener('resize', hideBookInfoHoverTooltip);
+}
+
+formCatalogoLivro?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const tipoRaw = catalogoLivroTipo?.value || '';
+  const tipo = tipoRaw === 'locais' ? 'locais' : (tipoRaw === 'anotacoes' ? 'anotacoes' : 'personagens');
+  const nomeOriginal = normalizeBookSpaces(catalogoLivroNomeOriginal?.value || '');
+  const nome = normalizeBookSpaces(catalogoLivroNome?.value || '');
+  const descricao = String(catalogoLivroDescricao?.value || '').trim();
+  if (!nome) {
+    if (statusCatalogoLivro) statusCatalogoLivro.textContent = i18n('js.catalog_name_required');
+    return;
+  }
+  if (nome.length > 80) {
+    if (statusCatalogoLivro) statusCatalogoLivro.textContent = i18n('js.catalog_name_max');
+    return;
+  }
+  if (descricao.length > 4000) {
+    if (statusCatalogoLivro) statusCatalogoLivro.textContent = i18n('js.catalog_description_max');
+    return;
+  }
+  if (statusCatalogoLivro) statusCatalogoLivro.textContent = i18n('js.saving');
+  try {
+    const baseUrl = `/api/projetos/${encodeURIComponent(editorConfig.slug)}/recursos/catalogo/${encodeURIComponent(tipo)}`;
+    const id = catalogoLivroId?.value || '';
+    const imagem = tipo === 'anotacoes' ? '' : (catalogoLivroItemAtivo?.imagem || '');
+    if (nomeOriginal && nomeOriginal.toLowerCase() !== nome.toLowerCase()) {
+      const deleteData = await postBookCatalogJSON(`${baseUrl}/excluir`, { id, nome: nomeOriginal });
+      refreshBookCatalogsFromResponse(deleteData, tipo);
+    }
+    const data = await postBookCatalogJSON(baseUrl, { id: nomeOriginal.toLowerCase() === nome.toLowerCase() ? id : '', nome, descricao, imagem });
+    refreshBookCatalogsFromResponse(data, tipo);
+    if (catalogoLivroLinkAtivo) {
+      catalogoLivroLinkAtivo.textContent = nome;
+      catalogoLivroLinkAtivo.dataset.recursoNome = nome;
+      catalogoLivroLinkAtivo.dataset.recursoTipo = tipo;
+      catalogoLivroLinkAtivo.title = `${tipo === 'locais' ? i18n('common.location_singular') : (tipo === 'anotacoes' ? 'Anotação' : i18n('common.character_singular'))}: ${nome}`;
+      markEditorDirty();
+      scheduleAutosave();
+      scheduleHistoryCommit('resource-link-edit');
+    }
+    if (statusCatalogoLivro) statusCatalogoLivro.textContent = i18n('js.save_item_success');
+    closeBookCatalogEditor();
+    hideBookInfoHoverTooltip();
+  } catch (err) {
+    if (statusCatalogoLivro) statusCatalogoLivro.textContent = err.message || i18n('js.save_error');
+  }
+});
+
+modalCatalogoLivro?.querySelectorAll('[data-fechar-catalogo-livro="true"]').forEach((el) => el.addEventListener('click', closeBookCatalogEditor));
 
 function capitalizarPrimeiraPalavraDeNovaLinha() {
   return capitalizeFirstWordWhenCompleted(getCurrentRange());
@@ -2091,10 +2500,11 @@ function initializeEditor() {
   editor.addEventListener('paste', handlePaste);
   editor.addEventListener('input', handleInput);
   editor.addEventListener('focus', () => { handleSelectionMutation(); scheduleEnsureCaretVisible(true); });
-  editor.addEventListener('click', () => { handleSelectionMutation(); scheduleEnsureCaretVisible(true); });
-  editor.addEventListener('keyup', () => { handleSelectionMutation(); scheduleEnsureCaretVisible(true); });
+  editor.addEventListener('click', () => { handleSelectionMutation(); scheduleEnsureCaretVisible(true); maybeBookResourceAutocomplete(); });
+  editor.addEventListener('keyup', () => { handleSelectionMutation(); scheduleEnsureCaretVisible(true); maybeBookResourceAutocomplete(); });
   editor.addEventListener('mouseup', handleSelectionMutation);
   editor.addEventListener('keydown', (event) => {
+    if (handleBookAutocompleteKeydown(event)) return;
     const isMod = event.ctrlKey || event.metaKey;
     if (isMod && !event.altKey && String(event.key).toLowerCase() === 'z') {
       event.preventDefault();
@@ -2126,6 +2536,12 @@ function initializeEditor() {
   });
 
   initDecorativeMenuEvents();
+  bindBookResourceAutocomplete();
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Alt') syncBookAltLinkModeState(true); });
+  document.addEventListener('keyup', (ev) => { if (ev.key === 'Alt') syncBookAltLinkModeState(false); });
+  window.addEventListener('blur', () => syncBookAltLinkModeState(false));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) syncBookAltLinkModeState(false); });
+  syncBookAltLinkModeState(false);
 
   btnAbrirRevisaoOrtografica?.addEventListener('click', iniciarRevisaoOrtografica);
   modalRevisaoOrtografica?.querySelectorAll('[data-fechar-revisao="true"]').forEach((el) => el.addEventListener('click', fecharModalRevisaoOrtografica));

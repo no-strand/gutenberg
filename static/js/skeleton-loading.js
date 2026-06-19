@@ -1,6 +1,5 @@
 /**
  * Finaliza o estado de carregamento visual quando a página já está pronta.
- * Créditos do projeto: Nostrand.
  */
 
 (function(){

@@ -1,6 +1,5 @@
 /**
  * Controla o leitor alternativo baseado em iframe para conteúdos estruturados, como EPUB.
- * Créditos do projeto: Nostrand.
  */
 
 const areaLeitura = document.getElementById('areaLeitura');

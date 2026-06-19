@@ -1,6 +1,5 @@
 /**
  * Efeito visual de partículas usado como elemento estético em páginas do projeto.
- * Créditos do projeto: Nostrand.
  */
 
 // static/particles.js

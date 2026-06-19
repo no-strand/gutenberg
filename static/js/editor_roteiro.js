@@ -1,6 +1,5 @@
 /**
  * Controla o editor de roteiros com paginação visual, navegação por cenas e recursos específicos do formato.
- * Créditos do projeto: Nostrand.
  */
 
 /** I18n. Usada pelo fluxo principal da aplicação. */
@@ -44,11 +43,14 @@ let autocompleteState = { items: [], active: -1, block: null, mode: '', context:
 let catalogos = {
   personagens: Array.isArray(cfg.catalogoPersonagens) ? [...cfg.catalogoPersonagens] : [],
   locais: Array.isArray(cfg.catalogoLocais) ? [...cfg.catalogoLocais] : [],
+  anotacoes: Array.isArray(cfg.catalogoAnotacoes) ? [...cfg.catalogoAnotacoes] : [],
 };
 let pendingPersistCatalog = new Map();
 let parentheticalNormalizeTimer = null;
 let altLinkModeEnabled = false;
 let savedSelection = null;
+let catalogoLinkAtivo = null;
+let catalogoItemAtivo = null;
 let infoHoverTooltip = null;
 let repaginationFrame = 0;
 let repaginationQueuedPreserveSelection = true;
@@ -408,6 +410,76 @@ function escapeHtml(value) {
   return String(value || '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 }
 
+function textoTraduzido(key, fallback) {
+  const value = i18n(key);
+  return value === key ? fallback : value;
+}
+
+function normalizeResourceSearch(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLocaleUpperCase('pt-BR')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function scriptResourceTypeLabel(tipo) {
+  if (tipo === 'anotacoes') return textoTraduzido('resources.note', 'Anotação');
+  if (tipo === 'locais') return i18n('common.location_singular');
+  return i18n('common.character_singular');
+}
+
+function scriptResourceFieldLabel(tipo, field) {
+  if (tipo === 'anotacoes') return field === 'description' ? textoTraduzido('resources.note', 'Anotação') : textoTraduzido('resources.title_label', 'Título');
+  return field === 'description' ? i18n('common.description') : i18n('common.name');
+}
+
+function autocompleteItemLabel(item) {
+  return typeof item === 'object' && item ? String(item.label || item.nome || '') : String(item || '');
+}
+
+function autocompleteItemSignature(item) {
+  if (typeof item === 'object' && item) return `${item.tipo || ''}:${autocompleteItemLabel(item)}`;
+  return autocompleteItemLabel(item);
+}
+
+function dedupeResourceAutocompleteItems(items) {
+  const seen = new Set();
+  const result = [];
+  (items || []).forEach((item) => {
+    const label = autocompleteItemLabel(item);
+    const key = `${item?.tipo || 'item'}:${normalizeResourceSearch(label)}`;
+    if (!label || seen.has(key)) return;
+    seen.add(key);
+    result.push(item);
+  });
+  return result;
+}
+
+function createRangeFromOffsets(element, start, end = start) {
+  if (!element) return null;
+  const range = document.createRange();
+  const locate = (target) => {
+    let remaining = Math.max(0, target || 0);
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
+    let node = null;
+    while ((node = walker.nextNode())) {
+      const len = node.textContent.length;
+      if (remaining <= len) return { node, offset: remaining };
+      remaining -= len;
+    }
+    if (element.lastChild) return { node: element.lastChild, offset: element.lastChild.textContent?.length || element.lastChild.childNodes?.length || 0 };
+    return null;
+  };
+  const startPos = locate(start);
+  const endPos = locate(end);
+  if (!startPos || !endPos) return null;
+  range.setStart(startPos.node, startPos.offset);
+  range.setEnd(endPos.node, endPos.offset);
+  return range;
+}
+
 /** Getstoredscripttheme. Usada pelo fluxo principal da aplicação. */
 function getStoredScriptTheme() {
   try {
@@ -492,6 +564,21 @@ function getCatalogContextForBlock(block) {
   return null;
 }
 /** Gethoverinfoforblock. Usada pelo fluxo principal da aplicação. */
+function getCatalogContextForResourceLink(link) {
+  if (!link) return null;
+  const tipoRaw = link.dataset.recursoTipo || '';
+  const catalogoTipo = tipoRaw === 'anotacoes' ? 'anotacoes' : (tipoRaw === 'locais' ? 'locais' : 'personagens');
+  const nome = link.dataset.recursoNome || link.textContent || '';
+  const item = getCatalogItemByName(catalogoTipo, nome);
+  return {
+    catalogoTipo,
+    tipo: scriptResourceTypeLabel(catalogoTipo),
+    nome: item?.nome || nome,
+    descricao: normalizeSpaces(item?.descricao || '') || i18n('common.no_description'),
+    item: item || { nome, descricao: '' },
+    link,
+  };
+}
 function getHoverInfoForBlock(block) {
   const context = getCatalogContextForBlock(block);
   if (!context) return null;
@@ -517,6 +604,13 @@ function runEditorHoverFrame() {
   hoverFrame = 0;
   const event = lastHoverEvent;
   if (!event) return;
+  const link = event.target instanceof Element ? event.target.closest('.editor-recurso-link') : null;
+  if (link && editor?.contains(link)) {
+    const linkInfo = getCatalogContextForResourceLink(link);
+    if (!linkInfo) return hideInfoHoverTooltip();
+    showInfoHoverTooltip(linkInfo, event.clientX, event.clientY);
+    return;
+  }
   const block = event.target instanceof Element ? event.target.closest('.roteiro-bloco') : null;
   if (!block || !editor?.contains(block)) return hideInfoHoverTooltip();
   const info = getHoverInfoForBlock(block);
@@ -537,7 +631,7 @@ function syncAltLinkModeState(forceValue = null) {
 /** Normalizespaces. Usada pelo fluxo principal da aplicação. */
 function normalizeSpaces(value) { return String(value || '').replace(/\s+/g, ' ').trim(); }
 function upperInputValue(input) {
-  if (!input) return;
+  if (!input || input.dataset.uppercase !== 'true') return;
   const start = input.selectionStart;
   const end = input.selectionEnd;
   const upper = String(input.value || '').toUpperCase();
@@ -557,8 +651,9 @@ function applyUppercaseInputs(root = document) {
   });
 }
 /** Formatcatalogname. Usada pelo fluxo principal da aplicação. */
-function formatCatalogName(value) {
-  return normalizeSpaces(value).toUpperCase();
+function formatCatalogName(value, tipo = catalogoTipo?.value || '') {
+  const clean = normalizeSpaces(value);
+  return tipo === 'anotacoes' ? clean : clean.toUpperCase();
 }
 /** Validarcatalogoeditor. Usada pelo fluxo principal da aplicação. */
 function validarCatalogoEditor() {
@@ -566,7 +661,7 @@ function validarCatalogoEditor() {
   const descricao = String(catalogoDescricao?.value || '').trim();
   if (!nome) return i18n('js.catalog_name_required');
   if (nome.length > 60) return i18n('js.catalog_name_max');
-  if (descricao.length > 240) return i18n('js.catalog_description_max');
+  if (descricao.length > 4000) return i18n('js.catalog_description_max');
   return '';
 }
 /** Getscenenumberprefix. Usada pelo fluxo principal da aplicação. */
@@ -1682,13 +1777,24 @@ function getNames(tipo) { return (catalogos[tipo] || []).map(item => normalizeSp
 function filterUnique(values) {
   return [...new Map(values.filter(Boolean).map(v => [String(v).toUpperCase(), String(v).toUpperCase()])).values()];
 }
+function refreshCatalogosFromResponse(data, tipo) {
+  if (!data) return;
+  if (Array.isArray(data.personagens)) catalogos.personagens = data.personagens;
+  if (Array.isArray(data.locais)) catalogos.locais = data.locais;
+  if (Array.isArray(data.lugares)) catalogos.locais = data.lugares;
+  if (Array.isArray(data.anotacoes)) catalogos.anotacoes = data.anotacoes;
+  if (Array.isArray(data.itens) && tipo) catalogos[tipo] = data.itens;
+}
 async function persistCatalogItem(tipo, item) {
-  const resp = await fetch(`/api/projetos/${cfg.slug}/roteiros/${cfg.numero}/catalogo/${tipo}`, {
+  const url = tipo === 'anotacoes'
+    ? `/api/projetos/${cfg.slug}/recursos/catalogo/anotacoes`
+    : `/api/projetos/${cfg.slug}/roteiros/${cfg.numero}/catalogo/${tipo}`;
+  const resp = await fetch(url, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item)
   });
   const data = await resp.json();
   if (!resp.ok || !data.ok) throw new Error(data.erro || i18n('js.save_item_error'));
-  catalogos[tipo] = data.itens || [];
+  refreshCatalogosFromResponse(data, tipo);
   renderCatalogList();
 }
 /** Queuepersistcatalog. Usada pelo fluxo principal da aplicação. */
@@ -1779,6 +1885,36 @@ function buildSceneHeadingAutocomplete(rawText) {
   }
   return { items: getFilteredLocais(parsed.local), mode: 'scene_local', context: { prefix: parsed.prefix, local: parsed.local } };
 }
+function allScriptAnnotationItems() {
+  return dedupeResourceAutocompleteItems((catalogos.anotacoes || []).map((item) => ({
+    tipo: 'anotacoes',
+    label: String(item?.nome || ''),
+    descricao: String(item?.descricao || ''),
+    id: String(item?.id || ''),
+    origem: String(item?.origem || ''),
+  })).filter((item) => item.label));
+}
+function buildAnnotationAutocomplete(block) {
+  if (!block) return null;
+  const type = block.dataset.blockType || '';
+  if (['scene_heading', 'character', 'transition', 'shot'].includes(type)) return null;
+  const offsets = getSelectionOffsetsWithin(block);
+  if (!offsets?.collapsed) return null;
+  const textBefore = blockPlainText(block).slice(0, offsets.end);
+  const match = String(textBefore || '').match(/[\p{L}\p{N}_'’.-]{2,}$/u);
+  if (!match) return null;
+  const typed = match[0];
+  const query = normalizeResourceSearch(typed);
+  if (query.length < 2) return null;
+  const items = allScriptAnnotationItems()
+    .filter((item) => {
+      const normalized = normalizeResourceSearch(item.label);
+      return normalized.startsWith(query) && normalized !== query;
+    })
+    .slice(0, 8);
+  if (!items.length) return null;
+  return { items, mode: 'resource_note', context: { startOffset: Math.max(0, offsets.end - typed.length), endOffset: offsets.end, query } };
+}
 /** Maybeautocomplete. Usada pelo fluxo principal da aplicação. */
 function maybeAutocomplete(block) {
   if (!block || !autocomplete) return hideAutocomplete();
@@ -1797,12 +1933,14 @@ function maybeAutocomplete(block) {
     else result = { items: TRANSITIONS.filter(item => !query || item.includes(query)), mode: 'transition', context: {} };
   }
 
-  const items = filterUnique(result?.items || []).slice(0, 8);
+  if (!result) result = buildAnnotationAutocomplete(block);
+  const rawItems = result?.items || [];
+  const items = result?.mode === 'resource_note' ? dedupeResourceAutocompleteItems(rawItems).slice(0, 8) : filterUnique(rawItems).slice(0, 8);
   if (!items.length) return hideAutocomplete();
   const previous = autocompleteState;
   const sameBlock = previous.block === block;
   const sameMode = previous.mode === (result.mode || '');
-  const sameItems = previous.items.length === items.length && previous.items.every((item, idx) => item === items[idx]);
+  const sameItems = previous.items.length === items.length && previous.items.every((item, idx) => autocompleteItemSignature(item) === autocompleteItemSignature(items[idx]));
   const nextActive = sameBlock && sameMode && sameItems
     ? Math.max(0, Math.min(previous.active, items.length - 1))
     : 0;
@@ -1821,8 +1959,19 @@ function renderAutocomplete() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'autocomplete-item' + (idx === autocompleteState.active ? ' ativo' : '');
-    btn.textContent = item;
-    btn.dataset.value = item;
+    btn.dataset.index = String(idx);
+    btn.dataset.value = autocompleteItemLabel(item);
+    if (typeof item === 'object' && item?.tipo) {
+      const label = document.createElement('span');
+      label.className = 'autocomplete-item-label';
+      label.textContent = autocompleteItemLabel(item);
+      const meta = document.createElement('small');
+      meta.className = 'autocomplete-item-meta';
+      meta.textContent = scriptResourceTypeLabel(item.tipo);
+      btn.append(label, meta);
+    } else {
+      btn.textContent = autocompleteItemLabel(item);
+    }
     fragment.appendChild(btn);
   });
   autocomplete.replaceChildren(fragment);
@@ -1830,6 +1979,12 @@ function renderAutocomplete() {
 }
 /** Chooseautocomplete. Usada pelo fluxo principal da aplicação. */
 function chooseAutocomplete(value) {
+  const item = typeof value === 'object' && value ? value : null;
+  const valueText = autocompleteItemLabel(value);
+  if (autocompleteState.mode === 'resource_note') {
+    chooseScriptResourceAutocomplete(item || autocompleteState.items[autocompleteState.active]);
+    return;
+  }
   invalidateStructureCaches({ pages: false });
   const block = autocompleteState.block;
   if (!block) return;
@@ -1837,18 +1992,18 @@ function chooseAutocomplete(value) {
   const ctx = autocompleteState.context || {};
 
   if (mode === 'scene_prefix') {
-    block.textContent = `${getSceneNumberPrefix(Number(block.dataset.sceneNumber || cfg.numeracaoInicial || 1))}${value} `;
+    block.textContent = `${getSceneNumberPrefix(Number(block.dataset.sceneNumber || cfg.numeracaoInicial || 1))}${valueText} `;
     markBlockDirty(block);
   } else if (mode === 'scene_local') {
-    block.textContent = `${getSceneNumberPrefix(Number(block.dataset.sceneNumber || cfg.numeracaoInicial || 1))}${ctx.prefix || ''} ${value} `;
+    block.textContent = `${getSceneNumberPrefix(Number(block.dataset.sceneNumber || cfg.numeracaoInicial || 1))}${ctx.prefix || ''} ${valueText} `;
     markBlockDirty(block);
   } else if (mode === 'scene_period') {
     const prefix = normalizeSpaces(ctx.prefix || '');
     const local = normalizeSpaces(ctx.local || '');
-    block.textContent = `${getSceneNumberPrefix(Number(block.dataset.sceneNumber || cfg.numeracaoInicial || 1))}${prefix}${local ? ` ${local}` : ''} - ${value}`.trim();
+    block.textContent = `${getSceneNumberPrefix(Number(block.dataset.sceneNumber || cfg.numeracaoInicial || 1))}${prefix}${local ? ` ${local}` : ''} - ${valueText}`.trim();
     markBlockDirty(block);
   } else {
-    block.textContent = value;
+    block.textContent = valueText;
     markBlockDirty(block);
   }
 
@@ -1858,6 +2013,37 @@ function chooseAutocomplete(value) {
   placeCaretAtEnd(block);
   if (mode !== 'scene_period' && mode !== 'transition') maybeAutocomplete(block);
   scheduleAutosave();
+}
+function chooseScriptResourceAutocomplete(item) {
+  if (!item || !autocompleteState.block) return false;
+  const block = autocompleteState.block;
+  const ctx = autocompleteState.context || {};
+  const startOffset = Number(ctx.startOffset);
+  const endOffset = Number(ctx.endOffset);
+  const range = Number.isFinite(startOffset) && Number.isFinite(endOffset) ? createRangeFromOffsets(block, startOffset, endOffset) : null;
+  if (!range) return false;
+  const link = document.createElement('a');
+  link.href = '#';
+  link.className = 'editor-recurso-link';
+  link.dataset.recursoTipo = 'anotacoes';
+  link.dataset.recursoNome = autocompleteItemLabel(item);
+  link.title = `${scriptResourceTypeLabel('anotacoes')}: ${autocompleteItemLabel(item)}`;
+  link.textContent = autocompleteItemLabel(item);
+  range.deleteContents();
+  range.insertNode(link);
+  const after = document.createRange();
+  after.setStartAfter(link);
+  after.collapse(true);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(after);
+  hideAutocomplete();
+  markBlockDirty(block);
+  saveSelection();
+  updateCurrentTypeIndicator(block);
+  scheduleSoftRepagination({ preserveSelection: true, delay: 120 });
+  scheduleAutosave();
+  return true;
 }
 /** Rendercataloglist. Usada pelo fluxo principal da aplicação. */
 function renderCatalogList() {
@@ -1880,34 +2066,51 @@ function renderCatalogList() {
       </div>`;
     const [btnEdit, btnDelete] = card.querySelectorAll('button');
     btnEdit?.addEventListener('click', () => openCatalogEditor(tipo, item));
-    btnDelete?.addEventListener('click', () => deleteCatalogItem(tipo, item.nome));
+    btnDelete?.addEventListener('click', () => deleteCatalogItem(tipo, item.nome, item.id || ''));
     catalogoLista.appendChild(card);
   });
 }
-async function deleteCatalogItem(tipo, nome) {
+async function deleteCatalogItem(tipo, nome, id = '') {
   if (!window.confirm(i18n('script.delete_item_confirm', { name: nome }))) return;
-  const resp = await fetch(`/api/projetos/${cfg.slug}/roteiros/${cfg.numero}/catalogo/${tipo}/excluir`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome })
+  const url = tipo === 'anotacoes'
+    ? `/api/projetos/${cfg.slug}/recursos/catalogo/anotacoes/excluir`
+    : `/api/projetos/${cfg.slug}/roteiros/${cfg.numero}/catalogo/${tipo}/excluir`;
+  const resp = await fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome, id })
   });
   const data = await resp.json();
   if (!resp.ok || !data.ok) return;
-  catalogos[tipo] = data.itens || [];
+  refreshCatalogosFromResponse(data, tipo);
   renderCatalogList();
 }
 /** Opencatalog. Usada pelo fluxo principal da aplicação. */
 function openCatalog(tipo) {
   if (!catalogoTipo || !tituloModalCatalogo) return;
   catalogoTipo.value = tipo;
-  tituloModalCatalogo.textContent = tipo === 'personagens' ? i18n('js.characters_label') : i18n('js.locations_label');
+  tituloModalCatalogo.textContent = tipo === 'personagens' ? i18n('js.characters_label') : (tipo === 'anotacoes' ? textoTraduzido('resources.notes', 'Anotações') : i18n('js.locations_label'));
   renderCatalogList();
   closeModal(modalCatalogoEditor);
   openModal(modalCatalogo);
 }
 /** Opencatalogeditor. Usada pelo fluxo principal da aplicação. */
-function openCatalogEditor(tipo, item = null) {
+function openCatalogEditor(tipo, item = null, link = null) {
   if (!catalogoTipo) return;
-  catalogoTipo.value = tipo;
+  const safeTipo = tipo === 'anotacoes' ? 'anotacoes' : (tipo === 'locais' ? 'locais' : 'personagens');
+  const isNote = safeTipo === 'anotacoes';
+  catalogoTipo.value = safeTipo;
+  catalogoLinkAtivo = link || null;
+  catalogoItemAtivo = item || null;
   tituloModalCatalogoEditor.textContent = item ? i18n('common.edit_item') : i18n('common.new_item');
+  const nomeLabel = catalogoNome?.closest('label');
+  const descricaoLabel = catalogoDescricao?.closest('label');
+  if (nomeLabel?.firstChild) nomeLabel.firstChild.textContent = scriptResourceFieldLabel(safeTipo, 'name');
+  if (descricaoLabel?.firstChild) descricaoLabel.firstChild.textContent = scriptResourceFieldLabel(safeTipo, 'description');
+  if (catalogoNome) {
+    catalogoNome.dataset.uppercase = isNote ? 'false' : 'true';
+    catalogoNome.placeholder = isNote ? textoTraduzido('resources.note_title_placeholder', 'Título da anotação') : '';
+    catalogoNome.maxLength = isNote ? 80 : 60;
+  }
+  if (catalogoDescricao) catalogoDescricao.placeholder = isNote ? textoTraduzido('resources.note_placeholder', 'Escreva o texto da anotação...') : i18n('script.describe_item');
   catalogoNomeOriginal.value = item?.nome || '';
   catalogoNome.value = item?.nome || '';
   catalogoDescricao.value = item?.descricao || '';
@@ -2407,6 +2610,15 @@ editor?.addEventListener('click', (event) => {
   saveSelection();
   const block = getCurrentBlock();
   handleBlockFocus(block);
+  const clickedLink = event.target instanceof Element ? event.target.closest('.editor-recurso-link') : null;
+  if (clickedLink && editor?.contains(clickedLink)) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.altKey) return;
+    const linkInfo = getCatalogContextForResourceLink(clickedLink);
+    if (linkInfo) openCatalogEditor(linkInfo.catalogoTipo, linkInfo.item || { nome: linkInfo.nome, descricao: '' }, clickedLink);
+    return;
+  }
   if (!event.altKey) return;
   const clickedBlock = event.target instanceof Element ? event.target.closest('.roteiro-bloco') : null;
   if (!clickedBlock || !editor?.contains(clickedBlock)) return;
@@ -2515,7 +2727,7 @@ editor?.addEventListener('keydown', (ev) => {
       renderAutocomplete();
       return;
     }
-    if (ev.key === 'Enter' && autocompleteState.active >= 0) {
+    if ((ev.key === 'Enter' || ev.key === 'Tab') && autocompleteState.active >= 0) {
       ev.preventDefault();
       chooseAutocomplete(autocompleteState.items[autocompleteState.active]);
       return;
@@ -2634,13 +2846,24 @@ formCatalogoEditor?.addEventListener('submit', async (ev) => {
   }
   if (statusCatalogo) statusCatalogo.textContent = i18n('js.saving');
   try {
+    const itemId = catalogoItemAtivo?.id || '';
     if (original && original.toLowerCase() !== nome.toLowerCase()) {
-      await deleteCatalogItem(tipo, original);
+      await deleteCatalogItem(tipo, original, itemId);
     }
     await persistCatalogItem(tipo, {
+      id: original.toLowerCase() === nome.toLowerCase() ? itemId : '',
       nome,
       descricao: catalogoDescricao.value.trim(),
     });
+    if (catalogoLinkAtivo?.isConnected) {
+      catalogoLinkAtivo.textContent = nome;
+      catalogoLinkAtivo.dataset.recursoNome = nome;
+      catalogoLinkAtivo.dataset.recursoTipo = tipo;
+      catalogoLinkAtivo.title = `${scriptResourceTypeLabel(tipo)}: ${nome}`;
+      const linkedBlock = catalogoLinkAtivo.closest('.roteiro-bloco');
+      if (linkedBlock) markBlockDirty(linkedBlock);
+      scheduleAutosave();
+    }
     if (statusCatalogo) statusCatalogo.textContent = i18n('js.save_item_success');
     closeModal(modalCatalogoEditor);
     openModal(modalCatalogo);
@@ -2667,7 +2890,9 @@ autocomplete?.addEventListener('mousedown', (ev) => {
   const button = ev.target instanceof Element ? ev.target.closest('.autocomplete-item') : null;
   if (!button) return;
   ev.preventDefault();
-  chooseAutocomplete(button.dataset.value || button.textContent || '');
+  const index = Number.parseInt(button.dataset.index || '', 10);
+  const item = Number.isInteger(index) ? autocompleteState.items[index] : null;
+  chooseAutocomplete(item || button.dataset.value || button.textContent || '');
 });
 applyUppercaseInputs();
 applyScriptTheme(getStoredScriptTheme(), { persist: false });

@@ -1,7 +1,6 @@
 """
 Exportação de projetos e roteiros para DOCX e PDF, incluindo capa, formatação e estatísticas.
 
-Créditos do projeto: Nostrand.
 """
 
 from __future__ import annotations

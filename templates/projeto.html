@@ -1,4 +1,3 @@
-<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
 {% extends 'base.html' %}
 {% block titulo %}{{ projeto.titulo }}{% endblock %}
 {% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/projeto.css') }}">{% endblock %}
@@ -12,11 +11,11 @@
   </div>
   <div class="coluna-dados-projeto">
     <div class="topo-info-projeto">
-      <a href="{{ url_for('pagina_inicial') }}" class="botao-secundario botao-voltar-estilizado botao-com-icone"><img class="icone-img" src="{{ url_for('static', filename='img/voltar.png') }}" alt=""><span>{{ t('nav.back') }}</span></a>
-      <button type="button" id="abrirModalEditarProjeto" class="botao-secundario botao-com-icone"><span class="icone-svg">{{ icon_svg('edit')|safe }}</span><span>{{ t('project.edit_project') }}</span></button>
-      <button type="button" id="abrirModalImportarCapitulosGut" class="botao-secundario botao-com-icone"><span class="icone-svg">{{ icon_svg('open')|safe }}</span><span>{{ t('project.import_chapters') }}</span></button>
+      <a href="{{ url_for('pagina_inicial') }}" class="botao-secundario botao-voltar-estilizado botao-com-icone" title="{{ t('nav.back') }}" aria-label="{{ t('nav.back') }}"><img class="icone-img" src="{{ url_for('static', filename='img/voltar.png') }}" alt=""><span>{{ t('nav.back') }}</span></a>
+      <button type="button" id="abrirModalEditarProjeto" class="botao-secundario botao-com-icone" title="{{ t('project.edit_project') }}" aria-label="{{ t('project.edit_project') }}"><span class="icone-svg">{{ icon_svg('edit')|safe }}</span><span>{{ t('project.edit_project') }}</span></button>
+      <button type="button" id="abrirModalImportarCapitulosGut" class="botao-secundario botao-com-icone" title="{{ t('project.import_chapters') }}" aria-label="{{ t('project.import_chapters') }}"><span class="icone-svg">{{ icon_svg('open')|safe }}</span><span>{{ t('project.import_chapters') }}</span></button>
       <input type="file" id="inputGutImportacao" accept=".gut,.docx,.pdf,.txt" hidden>
-      <button type="button" id="botaoSalvarCapitulosGut" class="botao-secundario botao-com-icone" {% if not projeto.capitulos %}disabled{% endif %}><span class="icone-svg">{{ icon_svg('save')|safe }}</span><span>{{ t('project.save_chapters') }}</span></button>
+      <button type="button" id="botaoSalvarCapitulosGut" class="botao-secundario botao-com-icone" title="{{ t('project.save_chapters') }}" aria-label="{{ t('project.save_chapters') }}" {% if not projeto.capitulos %}disabled{% endif %}><span class="icone-svg">{{ icon_svg('save')|safe }}</span><span>{{ t('project.save_chapters') }}</span></button>
           </div>
     <h1 class="limite-2linhas-projeto" title="{{ projeto.titulo }}">{{ projeto.titulo }}</h1>
     <p class="resumo-projeto limite-3linhas" title="{{ projeto.descricao or t('index.no_description') }}">{{ projeto.descricao or t('index.no_description') }}</p>
@@ -29,10 +28,10 @@
     </div>
   </div>
   <div class="grupo-acoes-topo grupo-acoes-topo-maior">
-    <button class="botao-primario fonte-botao-grande botao-com-icone" id="abrirModalCapitulo"><img class="icone-img" src="{{ url_for('static', filename='img/adicionar.png') }}" alt=""><span>{{ t('project.new_chapter') }}</span></button>
-    <a class="botao-leitura btn-continuar-projeto fonte-botao-grande sem-icone-textual botao-com-icone" href="{{ url_for('rota_continuar_projeto', slug=projeto.slug) }}"><img class="icone-img" src="{{ url_for('static', filename='img/ler.png') }}" alt=""><span class="pad">{{ t('common.continue') }}</span></a>
-    <button class="botao-secundario fonte-botao-grande botao-com-icone" id="abrirModalEstatisticasProjeto"><span class="icone-svg">{{ icon_svg('stats')|safe }}</span><span>{{ t('project.statistics') }}</span></button>
-    <button class="botao-primario fonte-botao-grande sem-icone-textual botao-com-icone" id="abrirModalExportacao"><img class="icone-img" src="{{ url_for('static', filename='img/exportar.png') }}" alt=""><span class="pad">{{ t('common.export') }}</span></button>
+    <button class="botao-primario fonte-botao-grande botao-com-icone" id="abrirModalCapitulo" title="{{ t('project.new_chapter') }}" aria-label="{{ t('project.new_chapter') }}"><img class="icone-img" src="{{ url_for('static', filename='img/adicionar.png') }}" alt=""><span>{{ t('project.new_chapter') }}</span></button>
+    <a class="botao-secundario fonte-botao-grande botao-com-icone" href="{{ url_for('pagina_recursos_projeto', slug=projeto.slug) }}" title="{{ t('resources.title') }}" aria-label="{{ t('resources.title') }}"><span class="icone-svg">{{ icon_svg('info')|safe }}</span><span>{{ t('resources.title') }}</span></a>
+    <button class="botao-secundario fonte-botao-grande botao-com-icone" id="abrirModalEstatisticasProjeto" title="{{ t('project.statistics') }}" aria-label="{{ t('project.statistics') }}"><span class="icone-svg">{{ icon_svg('stats')|safe }}</span><span>{{ t('project.statistics') }}</span></button>
+    <button class="botao-primario fonte-botao-grande sem-icone-textual botao-com-icone" id="abrirModalExportacao" title="{{ t('common.export') }}" aria-label="{{ t('common.export') }}"><img class="icone-img" src="{{ url_for('static', filename='img/exportar.png') }}" alt=""><span class="pad">{{ t('common.export') }}</span></button>
   </div>
 </section>
 

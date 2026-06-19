@@ -1,4 +1,3 @@
-<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
 
 {% extends 'base.html' %}
 {% block titulo %}{{ t('library.page_title') }} - Gutenberg{% endblock %}
@@ -47,6 +46,7 @@
 <section class="grade-projetos grade-biblioteca" id="gradeBiblioteca">
   {% for livro in livros %}
   <article class="card-projeto card-livro compacto"
+    title="{{ livro.titulo }}"
     data-slug="{{ livro.slug }}"
     data-estado="{{ livro.estado_leitura }}"
     data-busca="{{ (livro.titulo ~ ' ' ~ (livro.autor or '') ~ ' ' ~ (livro.idioma or '') ~ ' ' ~ livro.arquivo_original)|lower }}"

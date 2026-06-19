@@ -1,6 +1,5 @@
 /**
  * Comanda a tela inicial e o formulário de criação de projetos.
- * Créditos do projeto: Nostrand.
  */
 
 /** I18n. Usada pelo fluxo principal da aplicação. */
@@ -63,7 +62,7 @@ function atualizarCamposTipoProjeto(){
   grupoContatosProjeto?.classList.remove('oculto');
   grupoInformacoesProjeto?.classList.toggle('oculto', !isRoteiro);
 }
-abrirModalProjeto?.addEventListener('click', ()=> { abrirModal(modalProjeto); atualizarCamposTipoProjeto(); });
+abrirModalProjeto?.addEventListener('click', ()=> { if (campoTipoProjeto) campoTipoProjeto.disabled = false; abrirModal(modalProjeto); atualizarCamposTipoProjeto(); });
 campoTipoProjeto?.addEventListener('change', atualizarCamposTipoProjeto);
 document.querySelectorAll('[data-fechar-modal="true"]').forEach(el => el.addEventListener('click', (ev)=> { ev.preventDefault(); ev.stopPropagation(); fecharModal(el.closest('.modal')); }));
 document.querySelectorAll('[data-modal-card="true"]').forEach(el => el.addEventListener('click', (ev)=> ev.stopPropagation()));
@@ -160,9 +159,12 @@ function gutPendenteFoiDescartado(contexto){
 function preencherFormularioProjetoComGutPendente(){
   const gutPendente = gutPendenteAtual();
   if (!gutPendente?.ativo || gutPendente?.erro) return;
+  const pendenteRecursos = gutPendente.tipo_arquivo === 'recursos';
   if (campoTipoProjeto) {
-    campoTipoProjeto.value = gutPendente.tipo_projeto || 'livro';
-    campoTipoProjeto.disabled = true;
+    campoTipoProjeto.value = pendenteRecursos
+      ? (gutPendente.metadados?.tipo || 'livro')
+      : (gutPendente.tipo_projeto || 'livro');
+    campoTipoProjeto.disabled = !pendenteRecursos;
   }
   atualizarCamposTipoProjeto();
   formProjeto?.querySelector('[name="titulo"]')?.setAttribute('value', gutPendente.metadados?.titulo || '');
@@ -239,3 +241,107 @@ modalGutPendente?.querySelectorAll('[data-fechar-modal="true"]').forEach((elemen
     fecharModal(modalGutPendente);
   });
 });
+
+(function verificarAtualizacaoSemanalHome() {
+  const tr = (key, vars = {}) => (window.t ? window.t(key, vars) : key);
+  const CHAVE_ULTIMA_VERIFICACAO = 'gutenberg-atualizacao-semanal-ultima-verificacao';
+  const UMA_SEMANA_MS = 7 * 24 * 60 * 60 * 1000;
+
+  function deveVerificar() {
+    try {
+      const ultimo = Number(localStorage.getItem(CHAVE_ULTIMA_VERIFICACAO) || 0);
+      return !ultimo || (Date.now() - ultimo) >= UMA_SEMANA_MS;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  function marcarVerificado() {
+    try { localStorage.setItem(CHAVE_ULTIMA_VERIFICACAO, String(Date.now())); } catch (_) {}
+  }
+
+  function removerPopupExistente() {
+    document.querySelectorAll('.atualizacao-popup').forEach((item) => item.remove());
+  }
+
+  function mostrarPopup(dados) {
+    if (dados?.silencioso || dados?.atualizacao_indisponivel) return;
+    removerPopupExistente();
+    const popup = document.createElement('aside');
+    popup.className = 'atualizacao-popup';
+    popup.setAttribute('role', 'status');
+
+    const titulo = document.createElement('strong');
+    const texto = document.createElement('p');
+    const acoes = document.createElement('div');
+    acoes.className = 'atualizacao-popup-acoes';
+
+    const botaoFechar = document.createElement('button');
+    botaoFechar.type = 'button';
+    botaoFechar.className = 'botao-secundario atualizacao-popup-fechar';
+    botaoFechar.textContent = dados?.ha_atualizacao ? tr('updates.dismiss') : tr('common.close');
+    botaoFechar.addEventListener('click', () => popup.remove());
+
+    if (!dados?.ok) {
+      titulo.textContent = tr('updates.toast_error_title');
+      texto.textContent = dados?.erro || tr('updates.toast_error_text');
+      popup.classList.add('erro');
+      acoes.appendChild(botaoFechar);
+    } else if (dados.ha_atualizacao) {
+      titulo.textContent = tr('updates.toast_available_title');
+      texto.textContent = dados.pode_atualizar ? tr('updates.toast_available_text', { version: dados.versao_remota || '' }) : (dados.aviso || tr('updates.no_installer'));
+      popup.classList.add('disponivel');
+
+      const botaoAtualizar = document.createElement('button');
+      botaoAtualizar.type = 'button';
+      botaoAtualizar.className = 'botao-primario atualizacao-popup-atualizar';
+      botaoAtualizar.textContent = tr('updates.update_now');
+      botaoAtualizar.disabled = !dados.pode_atualizar;
+      botaoAtualizar.addEventListener('click', async () => {
+        botaoAtualizar.disabled = true;
+        texto.textContent = tr('updates.starting');
+        try {
+          const resposta = await fetch('/api/atualizacao/iniciar', { method: 'POST', cache: 'no-store' });
+          const retorno = await resposta.json().catch(() => ({}));
+          if (!resposta.ok || !retorno.ok) {
+            texto.textContent = retorno.erro || tr('updates.error');
+            botaoAtualizar.disabled = !dados.pode_atualizar;
+            return;
+          }
+          texto.textContent = retorno.mensagem || tr('updates.started');
+        } catch (erro) {
+          texto.textContent = tr('updates.error');
+          botaoAtualizar.disabled = !dados.pode_atualizar;
+        }
+      });
+      acoes.appendChild(botaoFechar);
+      acoes.appendChild(botaoAtualizar);
+    } else {
+      titulo.textContent = tr('updates.toast_updated_title');
+      texto.textContent = tr('updates.toast_updated_text');
+      popup.classList.add('atualizado');
+      acoes.appendChild(botaoFechar);
+      setTimeout(() => popup.remove(), 8500);
+    }
+
+    popup.appendChild(titulo);
+    popup.appendChild(texto);
+    popup.appendChild(acoes);
+    document.body.appendChild(popup);
+    requestAnimationFrame(() => popup.classList.add('visivel'));
+  }
+
+  async function verificar() {
+    if (!deveVerificar()) return;
+    marcarVerificado();
+    try {
+      const resposta = await fetch('/api/atualizacao/verificar?automatico=semanal', { cache: 'no-store' });
+      const dados = await resposta.json().catch(() => ({}));
+      mostrarPopup(dados);
+    } catch (erro) {
+      // Na verificação semanal, falhas de conexão são ignoradas silenciosamente.
+    }
+  }
+
+  setTimeout(verificar, 1200);
+})();

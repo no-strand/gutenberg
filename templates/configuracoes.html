@@ -1,4 +1,3 @@
-<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
 {% extends 'base.html' %}
 {% block titulo %}{{ t("nav.settings") }}{% endblock %}
 {% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/configuracoes.css') }}">{% endblock %}
@@ -28,9 +27,9 @@
           <span class="icone-svg">{{ icon_svg('open')|safe }}</span>
           <span>{{ t('settings.documentation') }}</span>
         </a>
-        <button class="botao-secundario botao-com-icone botao-documentacao" type="button" data-open-creditos-modal>
-          <span class="icone-svg">{{ icon_svg('users')|safe }}</span>
-          <span>{{ t('settings.creditos') }}</span>
+        <button class="botao-secundario botao-com-icone botao-documentacao" type="button" id="botaoVerificarAtualizacao">
+          <span class="icone-svg">{{ icon_svg('refresh')|safe }}</span>
+          <span>{{ t('settings.check_updates') }}</span>
         </button>
       </div>
     </label>
@@ -79,6 +78,32 @@
     </div>
   </section>
 
+
+  <div class="modal oculto" id="modalAtualizacao" aria-hidden="true">
+    <div class="modal-overlay" data-close-update-modal></div>
+    <div class="modal-conteudo pequeno atualizacao-modal-card" role="dialog" aria-modal="true" aria-labelledby="modalAtualizacaoTitulo" data-modal-card="true">
+      <div class="modal-topo">
+        <h2 id="modalAtualizacaoTitulo">{{ t('updates.modal_title') }}</h2>
+        <button class="botao-fechar" type="button" aria-label="{{ t('modal.close') }}" data-close-update-modal>&times;</button>
+      </div>
+      <div class="atualizacao-modal-body">
+        <div class="atualizacao-status" id="atualizacaoStatus">{{ t('updates.ready') }}</div>
+        <div class="atualizacao-info oculto" id="atualizacaoInfo">
+          <div class="atualizacao-versoes">
+            <span><strong>{{ t('updates.current_version') }}</strong> <span id="atualizacaoVersaoAtual">-</span></span>
+            <span><strong>{{ t('updates.latest_version') }}</strong> <span id="atualizacaoVersaoRemota">-</span></span>
+          </div>
+          <p class="atualizacao-descricao" id="atualizacaoDescricao"></p>
+          <div class="atualizacao-notas oculto" id="atualizacaoNotas"></div>
+        </div>
+        <div class="atualizacao-acoes">
+          <button class="botao-secundario" type="button" data-close-update-modal>{{ t('common.close') }}</button>
+          <button class="botao-primario" type="button" id="botaoIniciarAtualizacao" disabled>{{ t('updates.update_now') }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </section>
 {% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='js/configuracoes.js') }}"></script>{% endblock %}
@@ -106,7 +131,8 @@
   </section>
   <section class="sk-leitura">
     <div class="sk-linha titulo sk-bloco"></div>
-    {% for _ in range(10) %}<div class="sk-linha sk-bloco{% if loop.index % 4 == 0 %} media{% endif %}"></div>{% endfor %}
+    {% for _ in range(8) %}<div class="sk-linha sk-bloco{% if loop.index % 4 == 0 %} media{% endif %}"></div>{% endfor %}
   </section>
+
 </section>
 {% endblock %}

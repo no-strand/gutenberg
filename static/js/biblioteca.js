@@ -1,6 +1,5 @@
 /**
  * Lógica da página da biblioteca: filtros, busca, coleções e estados visuais.
- * Créditos do projeto: Nostrand.
  */
 
 /** I18n. Usada pelo fluxo principal da aplicação. */

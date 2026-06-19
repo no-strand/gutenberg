@@ -1,0 +1,1423 @@
+{
+  "app.browser_mode_tooltip": "Modo browser ativo: {url}",
+  "app.footer_by": "por Nostrand",
+  "app.footer_version": "Gutenberg - Versão: {version}",
+  "app.open_in_browser": "Abrir no navegador",
+  "autocorrect.apply": "Aplicar",
+  "autocorrect.ignore": "Ignorar",
+  "autocorrect.possible_correction": "Possível correção.",
+  "autocorrect.reason_a_gente_singular": "“A gente” costuma pedir verbo no singular.",
+  "autocorrect.reason_duplicate_word": "Palavra duplicada.",
+  "autocorrect.reason_loose_lose": "“loose” pode ter sido usado no lugar de “lose”.",
+  "autocorrect.reason_mais_mas": "“mais” pode ter sido usado no lugar de “mas”.",
+  "autocorrect.reason_mal_mau": "“mal” pode ter sido usado no lugar de “mau”.",
+  "autocorrect.reason_mau_mal": "“mau” pode ter sido usado no lugar de “mal”.",
+  "autocorrect.reason_mim_before_infinitive": "“mim” geralmente não executa ação antes de infinitivo.",
+  "autocorrect.reason_missing_ha": "Pode faltar “há” em expressão de tempo passado.",
+  "autocorrect.reason_missing_pode_accent": "Pode faltar acento em “pôde” no passado.",
+  "autocorrect.reason_missing_se_nao": "Pode faltar a forma “se não” separada.",
+  "autocorrect.reason_missing_senao": "Pode faltar a forma “senão”.",
+  "autocorrect.reason_nos_plural": "“nós” costuma pedir verbo na 1ª pessoa do plural.",
+  "autocorrect.reason_por_que_question": "Expressão muito frequente: “por que” separado em pergunta.",
+  "autocorrect.reason_possible_wrong_form": "Possível forma incorreta: “{wrong}”.",
+  "autocorrect.reason_repeated_quotes": "Aspas duplas repetidas.",
+  "autocorrect.reason_sentence_lowercase": "Início de frase em minúscula.",
+  "autocorrect.reason_their_there": "“their” pode ter sido usado no lugar de “there”.",
+  "autocorrect.reason_then_than": "“then” pode ter sido usado no lugar de “than”.",
+  "autocorrect.reason_your_youre": "“your” pode ter sido usado no lugar de “you’re”.",
+  "autocorrect.suggestion": "Sugestão",
+  "autocorrect.term_pairs": [
+    [
+      "advinhar",
+      "adivinhar"
+    ],
+    [
+      "advinha",
+      "adivinha"
+    ],
+    [
+      "advinhou",
+      "adivinhou"
+    ],
+    [
+      "derrepente",
+      "de repente"
+    ],
+    [
+      "derepente",
+      "de repente"
+    ],
+    [
+      "derrepende",
+      "de repente"
+    ],
+    [
+      "concerteza",
+      "com certeza"
+    ],
+    [
+      "comcerteza",
+      "com certeza"
+    ],
+    [
+      "concertesa",
+      "com certeza"
+    ],
+    [
+      "conserteza",
+      "com certeza"
+    ],
+    [
+      "denovo",
+      "de novo"
+    ],
+    [
+      "apartir",
+      "a partir"
+    ],
+    [
+      "apartirde",
+      "a partir de"
+    ],
+    [
+      "porisso",
+      "por isso"
+    ],
+    [
+      "por causa que",
+      "porque"
+    ],
+    [
+      "praque",
+      "para que"
+    ],
+    [
+      "agente",
+      "a gente"
+    ],
+    [
+      "agnt",
+      "a gente"
+    ],
+    [
+      "afim",
+      "a fim"
+    ],
+    [
+      "enves",
+      "em vez"
+    ],
+    [
+      "auto estima",
+      "autoestima"
+    ],
+    [
+      "mal humor",
+      "mau humor"
+    ],
+    [
+      "dia a dia",
+      "dia a dia"
+    ],
+    [
+      "voce",
+      "você"
+    ],
+    [
+      "voces",
+      "vocês"
+    ],
+    [
+      "voçe",
+      "você"
+    ],
+    [
+      "voçê",
+      "você"
+    ],
+    [
+      "tambem",
+      "também"
+    ],
+    [
+      "alguem",
+      "alguém"
+    ],
+    [
+      "ninguem",
+      "ninguém"
+    ],
+    [
+      "ate",
+      "até"
+    ],
+    [
+      "sera",
+      "será"
+    ],
+    [
+      "ja",
+      "já"
+    ],
+    [
+      "so",
+      "só"
+    ],
+    [
+      "la",
+      "lá"
+    ],
+    [
+      "ca",
+      "cá"
+    ],
+    [
+      "nao",
+      "não"
+    ],
+    [
+      "porem",
+      "porém"
+    ],
+    [
+      "alem",
+      "além"
+    ],
+    [
+      "tambem",
+      "também"
+    ],
+    [
+      "tambêm",
+      "também"
+    ],
+    [
+      "hifen",
+      "hífen"
+    ],
+    [
+      "item",
+      "item"
+    ],
+    [
+      "fasso",
+      "faço"
+    ],
+    [
+      "fassa",
+      "faça"
+    ],
+    [
+      "faser",
+      "fazer"
+    ],
+    [
+      "fazido",
+      "feito"
+    ],
+    [
+      "truxe",
+      "trouxe"
+    ],
+    [
+      "trusse",
+      "trouxe"
+    ],
+    [
+      "troxe",
+      "trouxe"
+    ],
+    [
+      "seje",
+      "seja"
+    ],
+    [
+      "esteje",
+      "esteja"
+    ],
+    [
+      "estejem",
+      "estejam"
+    ],
+    [
+      "interviu",
+      "interveio"
+    ],
+    [
+      "interviemos",
+      "interviemos"
+    ],
+    [
+      "interviram",
+      "intervieram"
+    ],
+    [
+      "houveram",
+      "houve"
+    ],
+    [
+      "existiram muitas pessoas",
+      "houve muitas pessoas"
+    ],
+    [
+      "impecilho",
+      "empecilho"
+    ],
+    [
+      "ingnorar",
+      "ignorar"
+    ],
+    [
+      "ingnorar",
+      "ignorar"
+    ],
+    [
+      "enchergar",
+      "enxergar"
+    ],
+    [
+      "enchergando",
+      "enxergando"
+    ],
+    [
+      "encherguei",
+      "enxerguei"
+    ],
+    [
+      "geito",
+      "jeito"
+    ],
+    [
+      "geitinho",
+      "jeitinho"
+    ],
+    [
+      "jeitinho",
+      "jeitinho"
+    ],
+    [
+      "previlégio",
+      "privilégio"
+    ],
+    [
+      "previlegio",
+      "privilégio"
+    ],
+    [
+      "beneficiente",
+      "beneficente"
+    ],
+    [
+      "excessão",
+      "exceção"
+    ],
+    [
+      "excessões",
+      "exceções"
+    ],
+    [
+      "suspenção",
+      "suspensão"
+    ],
+    [
+      "suspenções",
+      "suspensões"
+    ],
+    [
+      "discução",
+      "discussão"
+    ],
+    [
+      "discuçao",
+      "discussão"
+    ],
+    [
+      "probrema",
+      "problema"
+    ],
+    [
+      "poblema",
+      "problema"
+    ],
+    [
+      "mendingo",
+      "mendigo"
+    ],
+    [
+      "estrupo",
+      "estupro"
+    ],
+    [
+      "supérfulo",
+      "supérfluo"
+    ],
+    [
+      "supérfula",
+      "supérflua"
+    ],
+    [
+      "reinvindicar",
+      "reivindicar"
+    ],
+    [
+      "reinvidicar",
+      "reivindicar"
+    ],
+    [
+      "reinvindicou",
+      "reivindicou"
+    ],
+    [
+      "comprimentar",
+      "cumprimentar"
+    ],
+    [
+      "comprimento",
+      "cumprimento"
+    ],
+    [
+      "paralização",
+      "paralisação"
+    ],
+    [
+      "paralizado",
+      "paralisado"
+    ],
+    [
+      "paralizar",
+      "paralisar"
+    ],
+    [
+      "pesquizar",
+      "pesquisar"
+    ],
+    [
+      "quiz",
+      "quis"
+    ],
+    [
+      "quiseram",
+      "quiseram"
+    ],
+    [
+      "mecher",
+      "mexer"
+    ],
+    [
+      "mecheu",
+      "mexeu"
+    ],
+    [
+      "mechendo",
+      "mexendo"
+    ],
+    [
+      "chingando",
+      "xingando"
+    ],
+    [
+      "xuxu",
+      "chuchu"
+    ],
+    [
+      "cabeleleiro",
+      "cabeleireiro"
+    ],
+    [
+      "largatixa",
+      "lagartixa"
+    ],
+    [
+      "mortandela",
+      "mortadela"
+    ],
+    [
+      "asterístico",
+      "asterisco"
+    ],
+    [
+      "bicabornato",
+      "bicarbonato"
+    ],
+    [
+      "berinjela",
+      "berinjela"
+    ],
+    [
+      "beneficente",
+      "beneficente"
+    ],
+    [
+      "obsceção",
+      "obsessão"
+    ],
+    [
+      "obcessão",
+      "obsessão"
+    ],
+    [
+      "assessorio",
+      "acessório"
+    ],
+    [
+      "sobre tudo",
+      "sobretudo"
+    ],
+    [
+      "sobre tudo isso",
+      "sobretudo isso"
+    ],
+    [
+      "ao meu ver",
+      "a meu ver"
+    ],
+    [
+      "ao invés",
+      "em vez"
+    ],
+    [
+      "há anos atrás",
+      "há anos"
+    ],
+    [
+      "a muito tempo",
+      "há muito tempo"
+    ],
+    [
+      "a alguns anos",
+      "há alguns anos"
+    ],
+    [
+      "perca de tempo",
+      "perda de tempo"
+    ],
+    [
+      "de mais",
+      "demais"
+    ],
+    [
+      "de menos",
+      "de menos"
+    ],
+    [
+      "mais porém",
+      "mas porém"
+    ],
+    [
+      "mais também",
+      "mas também"
+    ],
+    [
+      "mais não",
+      "mas não"
+    ],
+    [
+      "mais eu",
+      "mas eu"
+    ],
+    [
+      "mais ela",
+      "mas ela"
+    ],
+    [
+      "mais ele",
+      "mas ele"
+    ],
+    [
+      "mais nós",
+      "mas nós"
+    ],
+    [
+      "mais nos",
+      "mas nos"
+    ],
+    [
+      "mais vocês",
+      "mas vocês"
+    ],
+    [
+      "mais eles",
+      "mas eles"
+    ],
+    [
+      "mais elas",
+      "mas elas"
+    ],
+    [
+      "mais isso",
+      "mas isso"
+    ],
+    [
+      "mais aquilo",
+      "mas aquilo"
+    ],
+    [
+      "mais isto",
+      "mas isto"
+    ],
+    [
+      "mais na verdade",
+      "mas na verdade"
+    ],
+    [
+      "mais ainda assim",
+      "mas ainda assim"
+    ],
+    [
+      "fazem anos",
+      "faz anos"
+    ],
+    [
+      "fazem meses",
+      "faz meses"
+    ],
+    [
+      "fazem dias",
+      "faz dias"
+    ],
+    [
+      "derrepente",
+      "de repente"
+    ],
+    [
+      "menas",
+      "menos"
+    ],
+    [
+      "nóis",
+      "nós"
+    ],
+    [
+      "talvezes",
+      "talvez"
+    ],
+    [
+      "gratuíto",
+      "gratuito"
+    ],
+    [
+      "rúbrica",
+      "rubrica"
+    ],
+    [
+      "ítem",
+      "item"
+    ],
+    [
+      "subzídio",
+      "subsídio"
+    ],
+    [
+      "cônjuge",
+      "cônjuge"
+    ],
+    [
+      "estorquir",
+      "extorquir"
+    ],
+    [
+      "entorpeçente",
+      "entorpecente"
+    ],
+    [
+      "frustado",
+      "frustrado"
+    ],
+    [
+      "frustada",
+      "frustrada"
+    ],
+    [
+      "frustração",
+      "frustração"
+    ],
+    [
+      "empecilho",
+      "empecilho"
+    ],
+    [
+      "beneficiente",
+      "beneficente"
+    ],
+    [
+      "devagarzinho",
+      "devagarinho"
+    ],
+    [
+      "de encontro",
+      "ao encontro"
+    ],
+    [
+      "a nivel de",
+      "em nível de"
+    ],
+    [
+      "a grosso modo",
+      "grosso modo"
+    ],
+    [
+      "nada haver",
+      "nada a ver"
+    ],
+    [
+      "tem haver",
+      "tem a ver"
+    ],
+    [
+      "haverão",
+      "haverá"
+    ],
+    [
+      "se não me engano",
+      "se não me engano"
+    ]
+  ],
+  "backend.chapter_not_found": "Capítulo não encontrado.",
+  "backend.chapter_title_required": "O título do capítulo é obrigatório.",
+  "backend.contact_invalid": "Informe um contato válido: e-mail ou telefone.",
+  "backend.error_converting_pdf_to_epub": "Erro ao converter o PDF para EPUB.",
+  "backend.exporter_only_epub_stats": "Este exportador é exclusivo para estatísticas de EPUB.",
+  "backend.field.additional_info": "As informações adicionais",
+  "backend.field.author": "O autor",
+  "backend.field.chapter_title": "O título do capítulo",
+  "backend.field.contact": "O contato",
+  "backend.field.description": "A descrição",
+  "backend.field.footer": "O rodapé",
+  "backend.field.genre": "O gênero",
+  "backend.field.header": "O cabeçalho",
+  "backend.field.logline": "A logline",
+  "backend.field.name": "O nome",
+  "backend.field.project_title": "O título do projeto",
+  "backend.field.script_name": "O nome do roteiro",
+  "backend.field.synopsis": "A sinopse",
+  "backend.field_max": "{field} pode ter no máximo {limit} caracteres.",
+  "backend.gemini_empty": "O Gemini não retornou texto revisado para este bloco.",
+  "backend.gemini_failed": "Falha ao consultar o Gemini: {detail}",
+  "backend.gut_type_incompatible": "Incompatibilidade de tipo: este arquivo Gutenberg não pertence a este tipo de projeto.",
+  "backend.invalid_catalog_type": "Tipo de catálogo inválido.",
+  "backend.invalid_document_type": "Tipo de documento inválido.",
+  "backend.invalid_gut_extension": "Selecione um arquivo Gutenberg.",
+  "backend.invalid_gutr_extension": "Formato inválido. Use um arquivo .gutr.",
+  "backend.invalid_script_for_export": "Roteiro inválido para exportação.",
+  "backend.name_required": "O nome é obrigatório.",
+  "backend.no_book_file_uploaded": "Nenhum arquivo EPUB ou PDF enviado.",
+  "backend.no_epub_uploaded": "Nenhum arquivo EPUB enviado.",
+  "backend.no_gut_file_sent": "Nenhum arquivo Gutenberg foi enviado.",
+  "backend.no_gutr_file_sent": "Nenhum arquivo .gutr foi enviado.",
+  "backend.no_image_sent": "Nenhuma imagem enviada.",
+  "backend.no_pending_gut": "Nenhum arquivo Gutenberg pendente foi aberto pelo programa.",
+  "backend.no_text_for_review": "Nenhum texto foi enviado para revisão.",
+  "backend.no_valid_book_added": "Nenhum arquivo EPUB ou PDF válido foi adicionado.",
+  "backend.no_valid_epub_added": "Nenhum EPUB válido foi adicionado.",
+  "backend.project_exists": "Já existe um projeto com esse nome.",
+  "backend.project_not_found": "Projeto não encontrado.",
+  "backend.project_title_required": "O título do projeto é obrigatório.",
+  "backend.scene_initial_number_invalid": "A numeração de cena inicial deve ser um número inteiro válido.",
+  "backend.scene_initial_number_range": "A numeração de cena inicial deve ficar entre 1 e {max}.",
+  "backend.scene_prefix_invalid": "O prefixo do número de cena deve conter apenas zeros e no máximo {limit} caracteres.",
+  "backend.script_name_required": "O nome do roteiro é obrigatório.",
+  "backend.script_not_found": "Roteiro não encontrado.",
+  "backend.script_projects_no_cover": "Projetos de roteiro não utilizam capa.",
+  "backend.scripts_export_docx_pdf_only": "Roteiros podem ser exportados apenas em DOCX ou PDF.",
+  "backend.select_script_to_export": "Selecione um roteiro para exportar.",
+  "backend.set_api_key": "Defina sua chave da API nas configurações.",
+  "backend.tags_max_total": "As tags podem ter no máximo {limit} caracteres no total.",
+  "backend.use_script_editor_stats": "Use as estatísticas do editor de roteiro para este projeto.",
+  "backend.xhtml_exported_in": "Arquivos XHTML exportados em: {folder}",
+  "common.all": "Todos",
+  "common.author": "Autor",
+  "common.cancel": "Cancelar",
+  "common.character_singular": "Personagem",
+  "common.characters": "Personagens",
+  "common.close": "Fechar",
+  "common.contacts": "Contatos",
+  "common.continue": "Continuar",
+  "common.create": "Criar",
+  "common.created": "Criado",
+  "common.delete": "Excluir",
+  "common.description": "Descrição",
+  "common.edit": "Editar",
+  "common.edit_info": "Editar informações",
+  "common.edit_item": "Editar item",
+  "common.edit_label": "Editar",
+  "common.export": "Exportar",
+  "common.format": "Formato",
+  "common.genre": "Gênero",
+  "common.hide_comments": "Ocultar comentários",
+  "common.ignore": "Ignorar",
+  "common.import": "Importar",
+  "common.language": "Idioma",
+  "common.loading": "Carregando...",
+  "common.location_singular": "Local",
+  "common.locations": "Locais",
+  "common.name": "Nome",
+  "common.new": "Novo",
+  "common.new_item": "Novo item",
+  "common.no_description": "Sem descrição",
+  "common.read": "Ler",
+  "common.ready": "Pronto",
+  "common.save": "Salvar",
+  "common.save_changes": "Salvar alterações",
+  "common.search": "Pesquisar...",
+  "common.show_comments": "Mostrar comentários",
+  "common.synopsis": "Sinopse",
+  "common.title": "Título",
+  "common.type_current": "Tipo atual",
+  "common.type_here": "Digite...",
+  "common.updated": "Atualizado",
+  "common.visual_mode": "Modo visual",
+  "editor.accept_review": "Aceitar revisão",
+  "editor.align_center": "Centralizar",
+  "editor.align_left": "Alinhar à esquerda",
+  "editor.align_right": "Alinhar à direita",
+  "editor.bold": "Negrito",
+  "editor.clear_formatting": "Limpar edição",
+  "editor.corrected_suggestion": "Sugestão corrigida",
+  "editor.current_text": "Texto atual",
+  "editor.decorative_separator": "Separador decorativo",
+  "editor.decorative_wrapper": "Delimitador decorativo",
+  "editor.font_mono_short": "Mono",
+  "editor.font_sans_short": "Sans",
+  "editor.font_serif_short": "Serif",
+  "editor.h1": "Título principal H1",
+  "editor.h2": "Seção H2",
+  "editor.h3": "Subseção H3",
+  "editor.horizontal_rule": "Linha horizontal",
+  "editor.indent_left": "Recuo à esquerda",
+  "editor.indent_right": "Recuo à direita",
+  "editor.insert_image": "Inserir imagem",
+  "editor.inserted_image_alt": "Imagem inserida",
+  "editor.italic": "Itálico",
+  "editor.justify": "Justificar",
+  "editor.list": "Lista",
+  "editor.no_title": "Sem título",
+  "editor.paragraph": "Parágrafo",
+  "editor.preparing_review": "Preparando os blocos para revisão...",
+  "editor.redo": "Refazer",
+  "editor.review": "Revisar",
+  "editor.review_all_processed": "Todos os blocos foram processados.",
+  "editor.review_block_counter": "Bloco {current} de {total}",
+  "editor.review_blocks_auto_split": "Os blocos da revisão serão separados automaticamente em trechos.",
+  "editor.review_click_start": "Clique em “Revisar” para iniciar a revisão.",
+  "editor.review_click_start_this_block": "Clique em “Revisar” para iniciar a revisão deste bloco.",
+  "editor.review_click_this_block": "Clique em “Revisar” para revisar este bloco.",
+  "editor.review_consulting": "Consultando...",
+  "editor.review_could_not_generate": "Não foi possível gerar a sugestão agora.",
+  "editor.review_done": "Revisão concluída.",
+  "editor.review_fetching_suggestion": "Buscando sugestão corrigida...",
+  "editor.review_no_corrections": "Nenhuma correção sugerida para este bloco.",
+  "editor.review_no_pending_blocks": "Não há mais blocos pendentes nesta revisão.",
+  "editor.review_not_enough_text": "O editor ainda não possui texto suficiente para revisão.",
+  "editor.review_nothing": "Nada para revisar.",
+  "editor.review_service_failure": "Falha ao consultar o serviço de revisão.",
+  "editor.review_suggestion_ready": "Sugestão pronta para comparação.",
+  "editor.review_write_some_content": "Escreva algum conteúdo no editor e abra a revisão novamente.",
+  "editor.review_you_can_close": "Você já pode fechar a janela.",
+  "editor.save_failed": "Falha ao salvar.",
+  "editor.select_block_manual_review": "Selecione um bloco para revisar manualmente.",
+  "editor.spell_review": "Revisão ortográfica",
+  "editor.underline": "Sublinhado",
+  "editor.undo": "Desfazer",
+  "index.additional_info": "Informações adicionais",
+  "index.author": "Autor",
+  "index.author_label": "Autor",
+  "index.book_format": "EPUB",
+  "index.choose_project_for_import": "Escolha o projeto de destino",
+  "index.contact": "Contato (e-mail ou telefone)",
+  "index.contact_placeholder": "nome@exemplo.com ou +55 11 99999-9999",
+  "index.contacts": "Contatos",
+  "index.cover": "Capa do projeto",
+  "index.create_new_project": "Criar novo projeto",
+  "index.create_project": "Criar projeto",
+  "index.created": "Criado",
+  "index.delete": "Excluir",
+  "index.description": "Descrição",
+  "index.hero_pill": "Criação literária",
+  "index.hero_subtitle": "Organize seus projetos, escreva e exporte em EPUB, DOCX ou PDF.",
+  "index.hero_title": "Crie roteiros e livros EPUB.",
+  "index.import_into_selected_project": "Importar no projeto selecionado",
+  "index.language": "Idioma",
+  "index.modal_new_project": "Novo projeto",
+  "index.new_project": "Novo projeto",
+  "index.no_description": "Sem descrição.",
+  "index.no_projects_for_pending_gut": "Não há nenhum projeto compatível disponível. Deseja criar um novo projeto agora?",
+  "index.no_projects_for_pending_gutr": "Não há nenhum projeto disponível. Deseja criar um novo projeto agora para importar esses recursos?",
+  "index.open": "Abrir",
+  "index.pending_gut_desc": "O arquivo {file} foi aberto com o Gutenberg. Escolha um projeto do tipo {kind} para importar, ou crie um novo projeto.",
+  "index.pending_gut_title": "Importar arquivo Gutenberg",
+  "index.pending_gutr_desc": "O arquivo {file} foi aberto com o Gutenberg. Escolha um projeto de livro ou roteiro para importar os recursos, ou crie um novo projeto.",
+  "index.pending_gutr_title": "Importar recursos Gutenberg",
+  "index.project_kind": "Tipo do projeto",
+  "index.project_kind.book": "Livro",
+  "index.project_kind.script": "Roteiro",
+  "index.project_type.book": "Livro",
+  "index.project_type.script": "Roteiro",
+  "index.save_gut_title": "Salvar arquivo Gutenberg",
+  "index.stats": "Estatísticas",
+  "index.tags": "Tags",
+  "index.tags_csv": "Tags (separadas por vírgula)",
+  "index.title_required": "Título *",
+  "index.toggle_projects_view": "Alternar visualização dos projetos",
+  "index.updated": "Atualizado",
+  "index.view_explorer": "Visualização explorer",
+  "index.view_grid": "Visualização em grade",
+  "js.add_books_error": "Não foi possível adicionar os livros.",
+  "js.add_more_content_words": "Adicione mais conteúdo para ver palavras recorrentes.",
+  "js.adding_book": "Adicionando livro...",
+  "js.adding_books": "Adicionando {count} livros...",
+  "js.api_consult_error": "Não foi possível consultar a API.",
+  "js.api_consult_error_now": "Não foi possível consultar a API agora.",
+  "js.avg_density_words_per_paragraph": "densidade média de {density} palavras por parágrafo",
+  "js.book_panel": "Painel do livro",
+  "js.books_added_success": "{total} livro(s) adicionado(s) com sucesso.",
+  "js.catalog_description_max": "A descrição pode ter no máximo 240 caracteres.",
+  "js.catalog_name_max": "O nome pode ter no máximo 60 caracteres.",
+  "js.catalog_name_required": "O nome é obrigatório.",
+  "js.catalog_project": "Catálogo do projeto",
+  "js.chapter_distribution": "Distribuição entre capítulos",
+  "js.chapter_reading_time": "Capítulo {number} · {time} de leitura",
+  "js.chapter_title_max": "O título do capítulo pode ter no máximo 70 caracteres.",
+  "js.chapter_title_required": "O título do capítulo é obrigatório.",
+  "js.chapters": "Capítulos",
+  "js.character_badge": "Personagem",
+  "js.characters_label": "Personagens",
+  "js.confirm_delete_library_book": "Excluir este livro da biblioteca?",
+  "js.confirm_delete_project": "Excluir este projeto?",
+  "js.confirm_delete_script": "Excluir roteiro?",
+  "js.content_features": "Recursos do conteúdo",
+  "js.create_chapter_error": "Erro ao criar capítulo.",
+  "js.create_error": "Erro ao criar.",
+  "js.create_script_error": "Erro ao criar roteiro.",
+  "js.creating": "Criando...",
+  "js.creating_script": "Criando roteiro...",
+  "js.delete_chapter_confirm": "Excluir capítulo?",
+  "js.delete_title": "Excluir",
+  "js.dialog_quote_blocks": "{percent}% em blocos de fala/citação",
+  "js.edit_title": "Editar",
+  "js.editorial_overview": "Panorama editorial",
+  "js.embedded_in_chapters": "embutidas nos capítulos",
+  "js.empty_chapters": "Capítulos vazios",
+  "js.epub_structure": "Estrutura do EPUB",
+  "js.estimated_reading": "Leitura estimada",
+  "js.export_cancelled": "Exportação cancelada.",
+  "js.export_error": "Erro ao exportar.",
+  "js.export_failed": "Falha na exportação.",
+  "js.export_success": "Exportado com sucesso.",
+  "js.exporting": "Exportando...",
+  "js.h1_titles": "Títulos H1",
+  "js.h2_titles": "Títulos H2",
+  "js.h3_titles": "Títulos H3",
+  "js.images": "Imagens",
+  "js.import_cancelled": "Importação cancelada.",
+  "js.import_error": "Erro ao importar o arquivo Gutenberg.",
+  "js.import_many_wait": "Importando {count} livros. Aguarde a conclusão do processo.",
+  "js.import_one_wait": "Importando o livro. Aguarde a conclusão do processo.",
+  "js.import_pdf_wait": "Convertendo PDF para EPUB 3.0 e importando para a biblioteca. Aguarde a conclusão do processo.",
+  "js.import_preparing": "Preparando importação do arquivo...",
+  "js.import_success_reloading": "Importação concluída com sucesso. Recarregando a biblioteca...",
+  "js.importing_gut": "Importando arquivo...",
+  "js.internal_external_refs": "referências internas/externas",
+  "js.internal_sections": "seções internas",
+  "js.links": "Links",
+  "js.list_items": "{total} itens de lista",
+  "js.lists": "Listas",
+  "js.loading_project_stats": "Carregando estatísticas do projeto...",
+  "js.location_badge": "Local",
+  "js.locations_label": "Locais",
+  "js.longest_chapter": "Capítulo mais extenso",
+  "js.main_openings": "aberturas principais",
+  "js.minutes_short": "{total} min",
+  "js.no_chapters_for_analysis": "Nenhum capítulo com texto suficiente para análise.",
+  "js.no_character_identified": "Nenhum personagem identificado.",
+  "js.no_character_lines_yet": "Nenhum personagem com falas ainda.",
+  "js.no_location_identified": "Nenhum local identificado nos cabeçalhos de cena.",
+  "js.no_script_characters_linked": "Nenhum personagem vinculado a este roteiro.",
+  "js.no_script_characters_registered": "Nenhum personagem cadastrado neste roteiro.",
+  "js.no_script_locations_linked": "Nenhum local vinculado a este roteiro.",
+  "js.no_script_locations_registered": "Nenhum local cadastrado neste roteiro.",
+  "js.not_enough_text_yet": "Ainda não há texto suficiente.",
+  "js.paragraphs": "Parágrafos",
+  "js.pending_changes": "Alterações pendentes...",
+  "js.processing_file": "Processando arquivo Gutenberg...",
+  "js.project_additional_info_max": "As informações adicionais podem ter no máximo 50 caracteres.",
+  "js.project_author_max": "O nome do autor pode ter no máximo 80 caracteres.",
+  "js.project_contact_invalid": "Informe um contato válido: e-mail ou telefone.",
+  "js.project_contact_max": "O contato pode ter no máximo 70 caracteres.",
+  "js.project_description_max": "A descrição pode ter no máximo 1000 caracteres.",
+  "js.project_overview_desc": "Resumo organizado de todos os capítulos do projeto.",
+  "js.project_required": "O título do projeto é obrigatório.",
+  "js.project_stats_error": "Erro ao carregar estatísticas.",
+  "js.project_tags_max": "As tags podem ter no máximo 180 caracteres.",
+  "js.project_title_max": "O título do projeto pode ter no máximo 70 caracteres.",
+  "js.quotes": "Citações",
+  "js.ready_for_development": "prontos para desenvolvimento",
+  "js.recurring_vocabulary": "Vocabulário recorrente",
+  "js.recurring_vocabulary_desc": "Palavras comuns com 4 letras ou mais, filtrando conectivos frequentes para destacar termos mais presentes no manuscrito.",
+  "js.save_cover_error": "Erro ao salvar capa.",
+  "js.save_error": "Erro ao salvar.",
+  "js.save_item_error": "Falha ao salvar item.",
+  "js.save_item_success": "Item salvo.",
+  "js.save_success": "Arquivo salvo com sucesso.",
+  "js.saved": "Salvo",
+  "js.saving": "Salvando...",
+  "js.saving_gut": "Salvando arquivo Gutenberg...",
+  "js.script_characters_title": "Personagens do roteiro",
+  "js.script_footer_max": "O rodapé pode ter no máximo 40 caracteres.",
+  "js.script_genre_max": "O gênero pode ter no máximo 60 caracteres.",
+  "js.script_header_max": "O cabeçalho pode ter no máximo 40 caracteres.",
+  "js.script_initial_number_invalid": "A numeração inicial deve estar entre 1 e 9999.",
+  "js.script_locations_title": "Locais do roteiro",
+  "js.script_logline_max": "A logline pode ter no máximo 280 caracteres.",
+  "js.script_name_required": "O nome do roteiro é obrigatório.",
+  "js.script_prefix_invalid": "O prefixo do número de cena deve aceitar de 1 a 4 zeros.",
+  "js.script_synopsis_max": "A sinopse pode ter no máximo 1000 caracteres.",
+  "js.script_title_max": "O nome do roteiro pode ter no máximo 70 caracteres.",
+  "js.seconds_short_compact": "{value} seg",
+  "js.shortest_chapter": "Capítulo mais enxuto",
+  "js.subsections": "subseções",
+  "js.unique_vocabulary": "Vocabulário único",
+  "js.updating_info": "Alterando informações...",
+  "js.upload_book_error": "Erro ao enviar os arquivos da biblioteca.",
+  "js.upload_epub_error": "Erro ao enviar os arquivos EPUB.",
+  "language.en_US": "English (US)",
+  "language.pt_BR": "Português (BR)",
+  "library.add_book": "Adicionar livro",
+  "library.adding_book": "Adicionando livro...",
+  "library.all_collections": "Todas as coleções",
+  "library.close_collections": "Fechar coleções",
+  "library.collections": "Coleções",
+  "library.collections_title": "Coleções da biblioteca",
+  "library.cover_of": "Capa de {title}",
+  "library.delete_book_aria": "Excluir {title}",
+  "library.empty_desc": "Adicione livros em EPUB ou PDF para criar sua área de leitura.",
+  "library.empty_title": "Sua biblioteca ainda está vazia.",
+  "library.filter_read": "Lidos",
+  "library.filter_reading": "Lendo",
+  "library.hero_pill": "Biblioteca EPUB/PDF",
+  "library.hero_subtitle": "Adicione seus livros em EPUB ou PDF para leitura.",
+  "library.hero_title": "Sua biblioteca de livros EPUB e PDF.",
+  "library.mark_read_aria": "Marcar {title} como lido",
+  "library.no_books_found": "Nenhum livro encontrado.",
+  "library.no_books_found_desc": "Ajuste o filtro, a busca ou a coleção selecionada.",
+  "library.no_collections": "Nenhuma coleção semelhante com dois ou mais livros foi encontrada.",
+  "library.no_cover": "Sem capa",
+  "library.page_title": "Biblioteca",
+  "library.preparing_import": "Preparando importação do livro.",
+  "library.reading_filter": "Filtro de leitura",
+  "modal.close": "Fechar",
+  "nav.back": "Voltar",
+  "nav.editor": "Editor",
+  "nav.library": "Biblioteca",
+  "nav.settings": "Configurações",
+  "project.add_cover": "Clique para adicionar uma capa",
+  "project.change_cover": "Clique para trocar a capa",
+  "project.chapter_number": "Capítulo {number}",
+  "project.chapter_title_required": "Título do capítulo *",
+  "project.cover_alt": "Capa do projeto",
+  "project.edit_project": "Editar projeto",
+  "project.epub_statistics": "Estatísticas do EPUB",
+  "project.epub_version": "Versão do EPUB",
+  "project.epub_version_option_2": "EPUB 2.0",
+  "project.epub_version_option_3": "EPUB 3.0",
+  "project.export_pdf": "Exportar PDF",
+  "project.export_project": "Exportar projeto",
+  "project.format_docx": "DOCX (Manuscrito)",
+  "project.format_epub": "EPUB",
+  "project.format_pdf": "PDF (Manuscrito)",
+  "project.generating_pdf": "Gerando PDF...",
+  "project.import_chapters": "Importar capítulos",
+  "project.import_chapters_modal_count": "Capítulos atuais neste projeto: {count}.",
+  "project.import_chapters_modal_empty": "Este projeto ainda não tem capítulo.",
+  "project.import_chapters_modal_message": "Selecione um arquivo do tipo: (.gut, .docx, .pdf ou .txt) para ser importado.",
+  "project.last_change": "Última alteração: {date}",
+  "project.new_chapter": "Novo capítulo",
+  "project.no_chapters_desc": "Adicione um capítulo para começar a escrever.",
+  "project.no_chapters_title": "Nenhum capítulo criado",
+  "project.save_chapters": "Salvar capítulos",
+  "project.statistics": "Estatísticas",
+  "project.xhtml_simple": "XHTML simples",
+  "reader.chapter_tree": "Árvore de capítulos",
+  "reader.close_summary": "Fechar sumário",
+  "reader.font": "Fonte",
+  "reader.font_mono": "Monoespaçada",
+  "reader.font_sans": "Sans-serif",
+  "reader.font_serif": "Serifada",
+  "reader.font_size": "Tamanho da fonte",
+  "reader.mode": "Modo",
+  "reader.no_book_chapters": "Este livro não possui capítulos detectados.",
+  "reader.no_chapters": "Nenhum capítulo disponível.",
+  "reader.page_title": "Leitura",
+  "reader.reading_mode": "Modo leitura",
+  "reader.summary": "Sumário",
+  "reader.visual_mode": "Modo visual da leitura",
+  "resources.add_balloon": "Adicionar balão",
+  "resources.all_connections_cancelled": "Todas as ligações foram canceladas",
+  "resources.balloon": "Balão",
+  "resources.cancel_connection": "Cancelar ligações",
+  "resources.catalog_project": "Catálogo do projeto",
+  "resources.catalog_saved": "Catálogo salvo",
+  "resources.character": "Personagem",
+  "resources.characters": "Personagens",
+  "resources.characters_desc": "Crie personagens com descrições e imagem de referência.",
+  "resources.choose_handle": "Escolha outra alça para conectar",
+  "resources.connect_bottom": "Ligar pela base",
+  "resources.connect_left": "Ligar pela esquerda",
+  "resources.connect_right": "Ligar pela direita",
+  "resources.connect_top": "Ligar pelo topo",
+  "resources.connection_cancelled": "Ligações canceladas",
+  "resources.connection_removed": "Ligação desfeita",
+  "resources.default_page_html": "<h2>Ideias do projeto</h2><p>Escreva aqui resumos, regras do mundo, cenas soltas e referências.</p>",
+  "resources.default_page_title": "Página inicial",
+  "resources.delete_balloon_confirm": "Excluir este balão e suas ligações?",
+  "resources.delete_hide_confirm": "Excluir/ocultar \"{name}\" deste painel?",
+  "resources.delete_page": "Excluir página",
+  "resources.delete_page_confirm": "Excluir a página \"{title}\"?",
+  "resources.description": "Descrição",
+  "resources.description_placeholder": "Descreva aparência, função narrativa, história, personalidade, detalhes visuais...",
+  "resources.detected_in_script": "detectado no roteiro",
+  "resources.edit_item": "Editar {type}",
+  "resources.export_error": "Não foi possível salvar os recursos.",
+  "resources.export_preparing": "Preparando arquivo de recursos...",
+  "resources.export_success": "Recursos salvos em .gutr",
+  "resources.flow": "Fluxo",
+  "resources.flow_desc": "Crie balões de fluxo, arraste-os e ligue as alças laterais. Clique em uma alça e depois em outra para criar uma linha; use Alt + clique em uma ponta conectada para desfazer a ligação.",
+  "resources.flow_saved": "Fluxo salvo",
+  "resources.flow_saving": "Salvando fluxo...",
+  "resources.flowchart": "Fluxograma",
+  "resources.heading1": "Título 1",
+  "resources.heading2": "Título 2",
+  "resources.heading3": "Título 3",
+  "resources.hero_desc": "Organize os recursos do projetos e crie fluxogramas visuais.",
+  "resources.image": "Imagem",
+  "resources.image_preview_alt": "Prévia da imagem",
+  "resources.image_read_failed": "Falha ao ler imagem.",
+  "resources.import_error": "Não foi possível importar recursos.",
+  "resources.import_resources": "Importar recursos",
+  "resources.import_success": "Recursos importados",
+  "resources.importing": "Importando recursos...",
+  "resources.info": "Informações",
+  "resources.info_formatting": "Formatação da informação",
+  "resources.info_saved": "Informações salvas",
+  "resources.info_saved_in_project": "Informação salva no projeto.",
+  "resources.info_saving": "Salvando informações...",
+  "resources.invalid_gutr": "Selecione um arquivo .gutr.",
+  "resources.item": "Item",
+  "resources.item_removed": "Item removido",
+  "resources.items": "Itens",
+  "resources.keep_one_page": "Mantenha pelo menos uma página.",
+  "resources.list": "Lista",
+  "resources.load_failed": "Falha ao carregar.",
+  "resources.loading_project_resources": "Carregando recursos do projeto...",
+  "resources.name": "Nome",
+  "resources.name_required": "Informe um nome.",
+  "resources.new_balloon": "Novo balão",
+  "resources.new_block": "Novo bloco",
+  "resources.new_character": "Novo personagem",
+  "resources.new_item": "Novo item",
+  "resources.new_note": "Nova anotação",
+  "resources.new_page": "Nova página",
+  "resources.new_page_html": "<h2>Nova página</h2><p></p>",
+  "resources.new_place": "Novo lugar",
+  "resources.no_connection_on_handle": "Nenhuma ligação nessa ponta",
+  "resources.no_connections_to_cancel": "Nenhuma ligação para cancelar",
+  "resources.no_content": "Sem conteúdo.",
+  "resources.no_description": "Sem descrição.",
+  "resources.no_flow_nodes": "Nenhum balão no fluxo ainda.",
+  "resources.no_info": "Nenhuma informação cadastrada.",
+  "resources.no_item_name": "Sem nome",
+  "resources.no_items": "Nenhum item cadastrado ainda.",
+  "resources.no_items_view": "Nenhum item cadastrado.",
+  "resources.no_reference_image": "Sem imagem de referência",
+  "resources.note": "Anotação",
+  "resources.note_placeholder": "Escreva o texto da anotação...",
+  "resources.note_title_placeholder": "Título da anotação",
+  "resources.notes": "Anotações",
+  "resources.notes_desc": "Crie anotações, lembretes, regras, observações, etc.",
+  "resources.open_panel": "Abrir painel",
+  "resources.page_title": "Recursos - {project}",
+  "resources.page_title_placeholder": "Título da página",
+  "resources.pages": "Páginas",
+  "resources.paragraph": "Parágrafo",
+  "resources.place": "Lugar",
+  "resources.places": "Lugares",
+  "resources.places_desc": "Crie locais, cenários e referências visuais.",
+  "resources.planning_badge": "Planejamento do projeto",
+  "resources.project_prefix": "Projeto: {project}",
+  "resources.project_resources": "Recursos do projeto",
+  "resources.project_resources_shortcut": "Recursos do projeto (Ctrl+Alt+U)",
+  "resources.ready": "Pronto",
+  "resources.reference_image": "Imagem de referência",
+  "resources.remove_image": "Remover imagem",
+  "resources.resize": "Redimensionar",
+  "resources.save_resources": "Salvar recursos",
+  "resources.saved_in_project": "",
+  "resources.saved_in_project_feminine": "salva no projeto",
+  "resources.saving": "Salvando...",
+  "resources.source": "Fonte",
+  "resources.title": "Recursos",
+  "resources.title_label": "Título",
+  "resources.title_required": "Informe um título.",
+  "resources.untitled": "Sem título",
+  "script.action_balance_help": "A ação usa uma equivalência aproximada a partir da quantidade de palavras descritivas. Isso ajuda a enxergar o balanço de leitura entre descrição e fala.",
+  "script.additional_info": "Informações adicionais",
+  "script.alt_pressed_click_edit": "Alt pressionado: clique para editar",
+  "script.and": "e",
+  "script.average_per_chapter": "Média por capítulo",
+  "script.average_per_line": "Média por fala",
+  "script.average_per_paragraph": "Média por parágrafo",
+  "script.average_per_scene_approx": "Média aproximada por cena: {value}.",
+  "script.average_per_sentence": "Média por frase",
+  "script.average_scenes": "Cenas médias",
+  "script.block_plural": "blocos",
+  "script.block_singular": "bloco",
+  "script.catalog_scripts_characters": "Personagens do roteiro",
+  "script.catalog_scripts_locations": "Locais do roteiro",
+  "script.catalog_title": "Catálogo",
+  "script.chapter_time_pages": "Capítulo {number} · {time} · {pages} páginas estimadas",
+  "script.chapter_word_percent": "{words} palavras · {percent}%",
+  "script.character_entries": "Entradas de personagem",
+  "script.characters": "Caracteres",
+  "script.characters_count": "Caracteres",
+  "script.contact_email_or_phone": "Contato (e-mail ou telefone)",
+  "script.continuity_script": "Continuity Script",
+  "script.copyright": "Copyright",
+  "script.copyright_help": "Exibe um copyright discreto na capa do roteiro.",
+  "script.delete_item_confirm": "Excluir \"{name}\"?",
+  "script.describe_item": "Descreva este item...",
+  "script.dialogue_blocks": "blocos de diálogo",
+  "script.dialogue_time_sum": "Soma de tempo dos diálogos.",
+  "script.dialogue_vs_action": "Diálogo vs ação",
+  "script.document_type": "Tipo de documento",
+  "script.document_type_complete": "COMPLETO",
+  "script.document_type_outline": "OUTLINE",
+  "script.document_type_script": "ROTEIRO",
+  "script.document_type_statistics": "ESTATÍSTICA",
+  "script.dominant_character": "Personagem dominante",
+  "script.dominant_time": "Tempo dominante",
+  "script.edit_project": "Editar projeto",
+  "script.edit_script_info": "Editar informações do roteiro",
+  "script.editor_block_action": "Ação",
+  "script.editor_block_character": "Personagem",
+  "script.editor_block_comment": "Comentário",
+  "script.editor_block_dialogue": "Diálogo",
+  "script.editor_block_music": "Música",
+  "script.editor_block_neutral": "Neutro",
+  "script.editor_block_parenthetical": "Parênteses",
+  "script.editor_block_scene_heading": "Cabeçalho da cena",
+  "script.editor_block_shot": "Plano",
+  "script.editor_block_transition": "Transição",
+  "script.editor_theme_mode": "Modo",
+  "script.editor_theme_pages": "Modo visual das páginas do roteiro",
+  "script.end": "Fim",
+  "script.entry_plural": "entradas",
+  "script.entry_singular": "entrada",
+  "script.export_script": "Exportar roteiro",
+  "script.export_select": "Roteiro",
+  "script.footer": "Rodapé",
+  "script.format_docx": "DOCX",
+  "script.format_pdf": "PDF",
+  "script.header": "Cabeçalho",
+  "script.hold_alt_to_edit": "Segure Alt para editar",
+  "script.hour_plural": "horas",
+  "script.hour_singular": "hora",
+  "script.import_scripts": "Importar roteiros",
+  "script.import_scripts_modal_count": "Roteiros atuais neste projeto: {count}.",
+  "script.import_scripts_modal_empty": "Este projeto ainda não tem roteiro.",
+  "script.import_scripts_modal_message": "Selecione um arquivo do tipo: (.gut, .docx, .pdf ou .txt) para ser importado.",
+  "script.lexical_diversity": "{value}% de diversidade",
+  "script.line_plural": "falas",
+  "script.line_singular": "fala",
+  "script.line_word_count": "{lines} falas",
+  "script.lines": "Falas",
+  "script.logline_summary": "Logline / Resumo",
+  "script.long_scenes": "Cenas longas",
+  "script.longest_scene": "Cena mais longa",
+  "script.manage_catalog": "Gerenciar catálogo",
+  "script.mapped_scenes": "cenas mapeadas",
+  "script.metrics_help_text": "Essas métricas ajudam a controlar tamanho, revisão e densidade do roteiro sem misturar comentários internos.",
+  "script.middle": "Meio",
+  "script.minute_plural": "minutos",
+  "script.minute_singular": "minuto",
+  "script.narrative_beginning": "Início",
+  "script.narrative_distribution": "Distribuição narrativa",
+  "script.narrative_presence": "Presença narrativa",
+  "script.new_script": "Novo roteiro",
+  "script.new_script_default": "NOVO ROTEIRO",
+  "script.no_items_registered": "Nenhum item cadastrado.",
+  "script.no_lines_found": "Nenhuma fala encontrada.",
+  "script.no_name": "Sem nome",
+  "script.no_registered_items": "Nenhum item cadastrado.",
+  "script.no_scene": "Sem cena",
+  "script.no_scene_found": "Nenhuma cena encontrada.",
+  "script.no_synopsis": "Sem sinopse.",
+  "script.no_title": "Sem título",
+  "script.none_created_desc": "Adicione um roteiro para começar a estruturar seu projeto.",
+  "script.none_created_title": "Nenhum roteiro criado",
+  "script.none_found_scene": "Nenhuma cena encontrada.",
+  "script.not_enough_scenes_for_rhythm": "Sem cenas suficientes para medir o ritmo.",
+  "script.not_identified": "NÃO IDENTIFICADO",
+  "script.page_title_edit": "Editar roteiro {title}",
+  "script.pages_estimated": "{count} páginas estimadas",
+  "script.per_scene": "por cena",
+  "script.placeholder_action": "Descreva a ação da cena...",
+  "script.placeholder_character": "PERSONAGEM",
+  "script.placeholder_comment": "Comentário interno do roteiro...",
+  "script.placeholder_dialogue": "Digite o diálogo...",
+  "script.placeholder_music": "MÚSICA / TRILHA...",
+  "script.placeholder_parenthetical": "(tom / intenção)",
+  "script.placeholder_scene_heading": "INT. LOCAL - NOITE",
+  "script.placeholder_shot": "PLANO DETALHE",
+  "script.placeholder_transition": "CORTE PARA",
+  "script.plain_text": "texto puro",
+  "script.production_draft": "Production Draft",
+  "script.prose_density": "densidade da prosa",
+  "script.reading_pace": "ritmo de leitura",
+  "script.reams": "Laudas",
+  "script.reams_base": "base de 300 palavras",
+  "script.revised_draft": "Revised Draft",
+  "script.rhythm": "Ritmo",
+  "script.rhythm_highlight": "Cena mais densa: {densest} • {densestDuration}. Cena mais ágil: {fastest} • {fastestDuration}.",
+  "script.save_error": "Erro ao salvar.",
+  "script.save_script": "Salvar roteiro",
+  "script.saved": "Salvo.",
+  "script.scene_initial_number": "Numeração de cena inicial",
+  "script.scene_label": "Cena",
+  "script.scene_metrics": "Métricas por cena",
+  "script.scene_number_prefix": "Prefixo do número de cena",
+  "script.scene_periods": [
+    "DIA",
+    "TARDE",
+    "NOITE",
+    "MANHÃ",
+    "MAIS TARDE"
+  ],
+  "script.scene_plural": "cenas",
+  "script.scene_singular": "cena",
+  "script.script_default_with_number": "ROTEIRO {number}",
+  "script.script_items": "Itens do roteiro",
+  "script.script_name": "Nome do roteiro",
+  "script.script_number": "Roteiro {number}",
+  "script.script_type": "Tipo de roteiro",
+  "script.seconds_per_line": "{value}s por fala",
+  "script.seconds_plural": "segundos",
+  "script.seconds_singular": "segundo",
+  "script.select_script": "Selecione o roteiro",
+  "script.sentences_count": "{count} sentenças",
+  "script.shooting_script": "Shooting Script",
+  "script.short_scenes": "Cenas curtas",
+  "script.spec_script": "Spec Script",
+  "script.stats_create_scenes_hint": "Crie cenas e diálogos para visualizar o ritmo do roteiro.",
+  "script.stats_dashboard": "Painel do roteiro",
+  "script.stats_title": "Estatísticas do roteiro",
+  "script.summary": "Resumo",
+  "script.text_metrics": "Métricas de texto",
+  "script.time_per_line": "Tempo por fala",
+  "script.total": "Total",
+  "script.total_distinct": "personagens distintos",
+  "script.total_scenes": "Cenas totais",
+  "script.total_time": "Tempo total",
+  "script.total_usage": "Uso total",
+  "script.total_words": "Total de palavras",
+  "script.tracked_words": "{duration} de diálogo • {blocks} • {words} palavras rastreadas",
+  "script.transitions": [
+    "CORTE PARA",
+    "FADE IN",
+    "FADE OUT",
+    "FADE PARA",
+    "FUSÃO PARA",
+    "VOLTA PARA",
+    "CORTE DIRETO PARA",
+    "ESCURECER"
+  ],
+  "script.unique_locations": "Locais únicos",
+  "script.untitled": "SEM TÍTULO",
+  "script.use_scenes": "cena",
+  "script.use_scenes_plural": "cenas",
+  "script.useful_characters": "caracteres úteis",
+  "script.with_spaces": "com espaços",
+  "script.with_text": "{count} com texto",
+  "script.without_space": "Sem espaço",
+  "script.without_spaces": "Sem espaços",
+  "script.word_count_and_density": "{words} palavras",
+  "script.words": "Palavras",
+  "script.words_count": "{count} palavras",
+  "script.words_per_chapter": "palavras por capítulo",
+  "script_type.continuity_script": "Continuity Script",
+  "script_type.production_draft": "Production Draft",
+  "script_type.revised_draft": "Revised Draft",
+  "script_type.shooting_script": "Shooting Script",
+  "script_type.spec_script": "Spec Script",
+  "settings.app_language": "Idioma do programa",
+  "settings.base_font_size": "Tamanho base da fonte",
+  "settings.browser_mode": "Modo browser",
+  "settings.browser_mode_desc": "Quando ativado, o app inicia como servidor local acessível pelo navegador, com tray quando disponível.",
+  "settings.check_updates": "Verificar atualizações",
+  "settings.default_paragraph_indent": "Recuo padrão do parágrafo",
+  "settings.documentation": "Documentação",
+  "settings.editor_effect": "Efeito no editor",
+  "settings.editor_effect_desc": "Liga ou desliga as partículas apenas nas janelas dos editores.",
+  "settings.export_folder": "Pasta de exportação",
+  "settings.gemini_key": "Chave da API do Google Gemini",
+  "settings.h1_size": "Tamanho do H1",
+  "settings.h2_size": "Tamanho do H2",
+  "settings.h3_size": "Tamanho do H3",
+  "settings.increased_indent": "Recuo aumentado",
+  "settings.language": "Idioma da interface",
+  "settings.library_folder": "Pasta da biblioteca",
+  "settings.line_spacing": "Espaço entre linhas",
+  "settings.off": "Off",
+  "settings.on": "On",
+  "settings.paragraph_spacing": "Espaço entre parágrafos",
+  "settings.preview_h1": "Pré-visualização H1",
+  "settings.preview_h2": "Pré-visualização H2",
+  "settings.preview_h3": "Pré-visualização H3",
+  "settings.preview_p1": "Este é um parágrafo com o recuo padrão, o espaçamento entre linhas e o espaço entre parágrafos aplicados para refletir o comportamento do leitor e do editor.",
+  "settings.preview_p2": "Este exemplo mostra como fica um parágrafo sem recuo usando a ação de remover recuo no editor.",
+  "settings.preview_p3": "Este exemplo mostra o recuo aumentado, útil quando você quiser avançar mais o primeiro parágrafo.",
+  "settings.preview_p4": "Ao salvar, essas configurações passam a valer globalmente no modo leitura, no modo edição e também na exportação.",
+  "settings.preview_p5": "A chave do Gemini é usada apenas na revisão dos editores e fica salva localmente no config.json do aplicativo.",
+  "settings.reading_width": "Largura da área de leitura",
+  "settings.save": "Salvar configurações",
+  "settings.title": "Configurações globais de leitura e exportação",
+  "theme.code_like": "Code-like",
+  "theme.dark": "Dark",
+  "theme.dark_blue": "Dark Blue",
+  "theme.frost": "Frost",
+  "theme.light": "Light",
+  "theme.pastel_pink": "Pastel Pink",
+  "theme.serpia": "Serpia",
+  "theme.sunset_mode": "Sunset Mode",
+  "theme.terminal_calm": "Terminal Calm",
+  "theme.warm_brown": "Warm Brown",
+  "updates.checking": "Verificando atualizações...",
+  "updates.current_version": "Versão atual:",
+  "updates.dismiss": "Depois",
+  "updates.download_size": "Tamanho do instalador: {size}",
+  "updates.error": "Não foi possível verificar atualizações no momento.",
+  "updates.latest_version": "Versão disponível:",
+  "updates.modal_title": "Atualizações do Gutenberg",
+  "updates.no_installer": "A versão mais recente foi encontrada, mas não há pacote compatível com este sistema operacional para atualização automática.",
+  "updates.ready": "Clique em verificar para procurar uma nova versão.",
+  "updates.release_notes": "Notas da versão",
+  "updates.started": "O processo de atualização foi iniciado.",
+  "updates.starting": "Baixando atualização e iniciando o pacote compatível...",
+  "updates.toast_available_text": "Existe uma nova versão do Gutenberg: {version}.",
+  "updates.toast_available_title": "Atualização disponível",
+  "updates.toast_error_text": "Não foi possível verificar atualizações agora.",
+  "updates.toast_error_title": "Verificação de atualização",
+  "updates.toast_updated_text": "O programa já está atualizado.",
+  "updates.toast_updated_title": "Verificação de atualização",
+  "updates.update_available": "Nova versão disponível para instalação.",
+  "updates.update_now": "Atualizar agora",
+  "updates.updated": "O Gutenberg já está atualizado.",
+  "validation.invalid_format": "Formato inválido.",
+  "validation.max_characters": "Máximo de {max} caracteres.",
+  "validation.max_value": "Valor máximo: {max}.",
+  "validation.min_value": "Valor mínimo: {min}.",
+  "validation.required_field": "Campo obrigatório.",
+  "validation.valid_email_or_phone": "Digite um e-mail ou telefone válido.",
+  "validation.valid_number": "Digite um número válido.",
+  "updates.compatible_system": "Sistema detectado: {system}",
+  "updates.package_name": "Pacote: {name}",
+  "updates.manual_unavailable": "A verificação de atualização não está disponível no momento."
+}

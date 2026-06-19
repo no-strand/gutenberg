@@ -1,6 +1,5 @@
 """Exporta snapshots estruturados do projeto no formato binário .gut.
 
-Créditos do projeto: Nostrand.
 """
 
 from __future__ import annotations
@@ -18,6 +17,7 @@ from bs4 import BeautifulSoup
 from .manipulador_capitulos import criar_capitulo, ler_capitulo, salvar_capitulo
 from .manipulador_projetos import atualizar_metadados_projeto, obter_pasta_projeto, obter_projeto
 from .manipulador_roteiros import criar_roteiro, ler_roteiro, salvar_roteiro, atualizar_roteiro_info
+from .manipulador_recursos_projeto import ler_recursos_projeto, mesclar_recursos_importados, normalizar_recursos
 from .utilidades import APP_VERSAO, agora_iso, nome_seguro, obter_pasta_exportacao_projeto
 from .logging_config import obter_logger, registrar_etapa
 logger = obter_logger(__name__)
@@ -269,6 +269,36 @@ def exportar_gut_roteiro(slug: str, numero_roteiro: int | None) -> Path:
 
 
 @registrar_etapa
+def exportar_gutr_recursos(slug: str) -> Path:
+    """Exporta todos os recursos atuais do projeto para um pacote .gutr."""
+    projeto = obter_projeto(slug)
+    pasta_projeto = obter_pasta_projeto(slug)
+    recursos = normalizar_recursos(ler_recursos_projeto(pasta_projeto))
+    payload = {
+        "container": "gutenberg_gutr",
+        "schema_version": ARQUIVO_VERSAO,
+        "exportado_em": agora_iso(),
+        "app_versao": APP_VERSAO,
+        "tipo_arquivo": "recursos",
+        "projeto": _metadados_base_projeto(projeto),
+        "conteudo": {
+            "recursos": recursos,
+            "quantidades": {
+                "informacoes": len(recursos.get("informacoes") or []),
+                "balões_fluxo": len((recursos.get("fluxo") or {}).get("nodes") or []),
+                "ligacoes_fluxo": len((recursos.get("fluxo") or {}).get("edges") or []),
+                "personagens": len(recursos.get("personagens") or []),
+                "lugares": len(recursos.get("lugares") or []),
+                "anotacoes": len(recursos.get("anotacoes") or []),
+            },
+        },
+    }
+    pasta_destino = obter_pasta_exportacao_projeto(str(projeto.get("titulo") or slug))
+    destino = pasta_destino / f"{_nome_base_destino(projeto)}_recursos.gutr"
+    return _empacotar_payload(payload, destino)
+
+
+@registrar_etapa
 def ler_cabecalho_gut(caminho: str | Path) -> dict[str, Any]:
     """
     Lê conteúdo persistido e devolve dados estruturados para consumo pelo restante da aplicação.
@@ -368,6 +398,51 @@ def ler_payload_gut(caminho: str | Path) -> dict[str, Any]:
         para quem apenas precisa acionar este comportamento.
     """
     return validar_payload_gut(ler_cabecalho_gut(caminho))
+
+
+@registrar_etapa
+def validar_payload_gutr(payload: dict[str, Any]) -> dict[str, Any]:
+    """Valida um pacote .gutr de recursos do Gutenberg."""
+    if not isinstance(payload, dict):
+        raise ValueError("Arquivo de recursos Gutenberg inválido.")
+    if payload.get("container") != "gutenberg_gutr":
+        raise ValueError("Arquivo incompatível com recursos do Gutenberg.")
+    if str(payload.get("tipo_arquivo") or "").strip().lower() != "recursos":
+        raise ValueError("Tipo de arquivo de recursos inválido.")
+    conteudo = payload.get("conteudo") or {}
+    recursos = conteudo.get("recursos") if isinstance(conteudo, dict) else None
+    if not isinstance(recursos, dict):
+        raise ValueError("Estrutura de recursos inválida.")
+    return payload
+
+
+@registrar_etapa
+def ler_payload_gutr(caminho: str | Path) -> dict[str, Any]:
+    """Lê e valida um arquivo .gutr."""
+    return validar_payload_gutr(ler_cabecalho_gut(caminho))
+
+
+@registrar_etapa
+def importar_gutr_em_projeto(slug: str, caminho_gutr: str | Path) -> dict[str, Any]:
+    """Importa um pacote .gutr e adiciona seus recursos ao projeto atual."""
+    payload = ler_payload_gutr(caminho_gutr)
+    recursos_payload = ((payload.get("conteudo") or {}).get("recursos") or {})
+    pasta_projeto = obter_pasta_projeto(slug)
+    atualizados = mesclar_recursos_importados(pasta_projeto, recursos_payload)
+    return {
+        "ok": True,
+        "tipo_arquivo": "recursos",
+        "slug": slug,
+        "recursos": atualizados,
+        "importados": {
+            "informacoes": len((normalizar_recursos(recursos_payload).get("informacoes") or [])),
+            "balões_fluxo": len(((normalizar_recursos(recursos_payload).get("fluxo") or {}).get("nodes") or [])),
+            "ligacoes_fluxo": len(((normalizar_recursos(recursos_payload).get("fluxo") or {}).get("edges") or [])),
+            "personagens": len((normalizar_recursos(recursos_payload).get("personagens") or [])),
+            "lugares": len((normalizar_recursos(recursos_payload).get("lugares") or [])),
+            "anotacoes": len((normalizar_recursos(recursos_payload).get("anotacoes") or [])),
+        },
+    }
 
 
 @registrar_etapa

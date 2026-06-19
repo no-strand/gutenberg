@@ -1,4 +1,3 @@
-<!-- Template ou página de interface do Gutenberg. Créditos do projeto: Nostrand. -->
 {% extends 'base.html' %}
 {% block titulo %}{{ t('reader.page_title') }} - {{ capitulo.titulo }}{% endblock %}
 {% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/leitor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/biblioteca.css') }}">{% endblock %}
@@ -30,8 +29,12 @@
       <option value="code-like" {% if config_global.leitor_tema == 'code-like' %}selected{% endif %}>{{ t('theme.code_like') }}</option>
     </select>
   </div>
-  <label>{{ t('reader.font') }}<select id="controleFonte"><option value="fonte-serif" {% if config_global.leitor_fonte == 'fonte-serif' %}selected{% endif %}>{{ t('reader.font_serif') }}</option><option value="fonte-sans" {% if config_global.leitor_fonte == 'fonte-sans' %}selected{% endif %}>{{ t('reader.font_sans') }}</option><option value="fonte-mono" {% if config_global.leitor_fonte == 'fonte-mono' %}selected{% endif %}>{{ t('reader.font_mono') }}</option></select></label>
-  <label class="label-range-leitor">{{ t('reader.font_size') }}<input type="range" id="controleTamanho" min="16" max="32" value="{{ config_global.leitor_tamanho_fonte_px or config_global.tamanho_fonte_px }}"></label>
+  <div class="reader-control-wrap reader-font-wrap" title="{{ t('reader.font') }}">
+    <select id="controleFonte" class="reader-font-select" aria-label="{{ t('reader.font') }}"><option value="fonte-serif" {% if config_global.leitor_fonte == 'fonte-serif' %}selected{% endif %}>{{ t('reader.font_serif') }}</option><option value="fonte-sans" {% if config_global.leitor_fonte == 'fonte-sans' %}selected{% endif %}>{{ t('reader.font_sans') }}</option><option value="fonte-mono" {% if config_global.leitor_fonte == 'fonte-mono' %}selected{% endif %}>{{ t('reader.font_mono') }}</option></select>
+  </div>
+  <div class="reader-control-wrap reader-range-wrap label-range-leitor" title="{{ t('reader.font_size') }}">
+    <input type="range" id="controleTamanho" min="16" max="32" value="{{ config_global.leitor_tamanho_fonte_px or config_global.tamanho_fonte_px }}" aria-label="{{ t('reader.font_size') }}">
+  </div>
   <div class="navegacao-capitulos navegacao-capitulos-painel">
     {% if capitulo_anterior %}<a class="botao-secundario botao-navegacao" href="{{ url_for('ler_livro_biblioteca', slug=livro.slug, numero=capitulo_anterior.id) }}">&lt;</a>{% else %}<span class="botao-secundario botao-navegacao desativado">&lt;</span>{% endif %}
     {% if proximo_capitulo %}<a class="botao-secundario botao-navegacao" href="{{ url_for('ler_livro_biblioteca', slug=livro.slug, numero=proximo_capitulo.id) }}">&gt;</a>{% else %}<span class="botao-secundario botao-navegacao desativado">&gt;</span>{% endif %}

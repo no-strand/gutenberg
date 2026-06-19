@@ -1,6 +1,5 @@
 /**
  * Motor de autocorreção do editor, com análise de texto, sugestões e interação visual com o usuário.
- * Créditos do projeto: Nostrand.
  */
 
 /** Aci18n. Usada pelo fluxo principal da aplicação. */

@@ -16,7 +16,7 @@ from .logging_config import obter_logger, registrar_etapa
 logger = obter_logger(__name__)
 
 APP_NOME = "Gutenberg"
-APP_VERSAO = "1.1.0.0"
+APP_VERSAO = "1.0.0"
 RAIZ_PROJETO = Path(__file__).resolve().parent.parent
 RAIZ_RECURSOS = Path(getattr(sys, "_MEIPASS", RAIZ_PROJETO))
 

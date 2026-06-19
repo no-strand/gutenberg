@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from modules import i18n, manipulador_projetos, manipulador_roteiros, persistencia_editor_db, utilidades
+from modules import i18n, manipulador_projetos, manipulador_recursos_projeto, manipulador_roteiros, persistencia_editor_db, utilidades
 
 
 class IsolatedProjectTestCase(unittest.TestCase):
@@ -68,6 +68,7 @@ class IsolatedProjectTestCase(unittest.TestCase):
         persistencia_editor_db._DB_LOCKS.clear()
         persistencia_editor_db._DB_INIT_DONE.clear()
         manipulador_roteiros._DB_CACHE.clear()
+        manipulador_recursos_projeto._DB_CACHE.clear()
         i18n.limpar_cache_i18n()
 
         utilidades.garantir_estrutura_app()
@@ -90,6 +91,7 @@ class IsolatedProjectTestCase(unittest.TestCase):
         """
         try:
             manipulador_roteiros._DB_CACHE.clear()
+            manipulador_recursos_projeto._DB_CACHE.clear()
             persistencia_editor_db._DB_LOCKS.clear()
             persistencia_editor_db._DB_INIT_DONE.clear()
             i18n.limpar_cache_i18n()

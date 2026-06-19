@@ -1,6 +1,5 @@
 /**
  * Validação genérica de campos, mensagens de erro e contadores de formulários.
- * Créditos do projeto: Nostrand.
  */
 
 (function(){

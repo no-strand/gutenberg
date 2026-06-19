@@ -1,4 +1,3 @@
-/* Folha de estilos da interface do Gutenberg. Créditos do projeto: Nostrand. */
 
 
 .grade-biblioteca{margin-top:28px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:22px}
