@@ -8,8 +8,23 @@
   if (!modal || !openButtons.length) return;
   const infoDetailModal = document.getElementById('modalRecursosInfoDetalhe');
   const catalogDetailModal = document.getElementById('modalRecursosCatalogoDetalhe');
+  const CATALOG_TYPES = ['personagens', 'lugares', 'anotacoes'];
+  const VIEW_PAGE_TABS = {
+    informacoes: '#recursosViewTabsInformacoes',
+    fluxo: '#recursosViewTabsFluxo',
+    personagens: '#recursosViewTabsPersonagens',
+    lugares: '#recursosViewTabsLugares',
+    anotacoes: '#recursosViewTabsAnotacoes',
+  };
   let cache = null;
   let activeTab = 'informacoes';
+  const activeResourcePageIds = {
+    informacoes: null,
+    fluxo: null,
+    personagens: null,
+    lugares: null,
+    anotacoes: null,
+  };
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   function tr(key, vars = {}, fallback = '') {
@@ -23,11 +38,20 @@
   function openModal(tab = ''){ if (tab) switchTab(tab); modal.classList.remove('oculto'); loadResources(); }
   function closeModal(){ modal.classList.add('oculto'); closeElement(infoDetailModal); closeElement(catalogDetailModal); }
   function setStatus(text){ const el = $('#recursosViewStatus'); if (el) el.textContent = text || ''; }
+  function defaultPageTitle(tipo){
+    if (tipo === 'fluxo') return tr('resources.flow', {}, 'Fluxo');
+    if (tipo === 'personagens') return tr('resources.characters', {}, 'Personagens');
+    if (tipo === 'lugares') return tr('resources.places', {}, 'Lugares');
+    if (tipo === 'anotacoes') return tr('resources.notes', {}, 'Anotações');
+    return tr('resources.default_page_title', {}, 'Página inicial');
+  }
+  function normalizeText(value, fallback = ''){ return String(value ?? '').trim() || fallback; }
+  function fallbackPageId(tipo, idx){ return `${tipo || 'pagina'}_${idx + 1}`; }
   function switchTab(tab){
     activeTab = tab;
     $$('[data-recursos-view-tab]', modal).forEach(btn => btn.classList.toggle('ativo', btn.dataset.recursosViewTab === tab));
     $$('[data-recursos-view-panel]', modal).forEach(panel => panel.classList.toggle('ativo', panel.dataset.recursosViewPanel === tab));
-    if (tab === 'fluxo') requestAnimationFrame(() => renderFlowView(cache?.fluxo || {nodes:[], edges:[]}));
+    if (tab === 'fluxo') requestAnimationFrame(() => renderFlowView(activeFlowPage()));
   }
   async function loadResources(){
     if (cache) { renderAll(cache); return; }
@@ -43,14 +67,138 @@
       setStatus(err.message || tr('resources.load_failed', {}, 'Falha ao carregar.'));
     }
   }
+  function normalizeInfoPages(value){
+    const raw = Array.isArray(value) ? value : [];
+    return raw.filter(page => page && typeof page === 'object').map((page, idx) => ({
+      id: String(page.id || fallbackPageId('info', idx)),
+      titulo: normalizeText(page.titulo || page.nome, tr('resources.untitled', {}, 'Sem título')),
+      html: String(page.html || page.conteudo || '<p></p>'),
+      data_criacao: page.data_criacao || '',
+      data_atualizacao: page.data_atualizacao || '',
+    }));
+  }
+  function normalizeInfoTabs(data){
+    const raw = Array.isArray(data?.informacoes_abas || data?.abas_informacoes) ? (data.informacoes_abas || data.abas_informacoes) : [];
+    const looksLikeTabs = raw.some(tab => tab && typeof tab === 'object' && (Array.isArray(tab.paginas) || Array.isArray(tab.pages) || Array.isArray(tab.informacoes)));
+    if (!looksLikeTabs) {
+      const legacyPages = normalizeInfoPages(data?.informacoes || []);
+      return legacyPages.length ? [{
+        id: 'informacoes_principal',
+        titulo: defaultPageTitle('informacoes'),
+        paginas: legacyPages,
+        data_criacao: '',
+        data_atualizacao: '',
+      }] : [];
+    }
+    return raw.filter(tab => tab && typeof tab === 'object').map((tab, idx) => ({
+      id: String(tab.id || fallbackPageId('info_tab', idx)),
+      titulo: normalizeText(tab.titulo || tab.nome, defaultPageTitle('informacoes')),
+      paginas: normalizeInfoPages(tab.paginas || tab.pages || tab.informacoes),
+      data_criacao: tab.data_criacao || '',
+      data_atualizacao: tab.data_atualizacao || '',
+    }));
+  }
+  function normalizeFlow(flow){
+    const src = flow && typeof flow === 'object' ? flow : {};
+    return {
+      nodes: Array.isArray(src.nodes) ? src.nodes : [],
+      edges: Array.isArray(src.edges) ? src.edges : [],
+    };
+  }
+  function normalizeFlowPages(data){
+    const raw = Array.isArray(data?.fluxos) ? data.fluxos : [];
+    if (raw.length) {
+      return raw.filter(page => page && typeof page === 'object').map((page, idx) => {
+        const flow = normalizeFlow(page.fluxo || page);
+        return {
+          id: String(page.id || fallbackPageId('fluxo', idx)),
+          titulo: normalizeText(page.titulo || page.nome, defaultPageTitle('fluxo')),
+          nodes: flow.nodes,
+          edges: flow.edges,
+          data_criacao: page.data_criacao || '',
+          data_atualizacao: page.data_atualizacao || '',
+        };
+      });
+    }
+    const legacy = normalizeFlow(data?.fluxo);
+    return (legacy.nodes.length || legacy.edges.length) ? [{id:'fluxo_principal', titulo:defaultPageTitle('fluxo'), ...legacy}] : [];
+  }
+  function catalogPagesKey(tipo){ return `${tipo}_paginas`; }
+  function normalizeCatalogPages(data, tipo){
+    const raw = Array.isArray(data?.[catalogPagesKey(tipo)]) ? data[catalogPagesKey(tipo)] : [];
+    const pages = raw.filter(page => page && typeof page === 'object').map((page, idx) => ({
+      id: String(page.id || fallbackPageId(tipo, idx)),
+      titulo: normalizeText(page.titulo || page.nome, defaultPageTitle(tipo)),
+      data_criacao: page.data_criacao || '',
+      data_atualizacao: page.data_atualizacao || '',
+    }));
+    if (!pages.length && Array.isArray(data?.[tipo]) && data[tipo].length) {
+      pages.push({id:`${tipo}_principal`, titulo:defaultPageTitle(tipo), data_criacao:'', data_atualizacao:''});
+    }
+    return pages;
+  }
+  function normalizeCatalogItems(items, pages){
+    const raw = Array.isArray(items) ? items : [];
+    const valid = new Set((pages || []).map(page => String(page.id)));
+    const fallback = pages?.[0]?.id || '';
+    return raw.map(item => {
+      const pageId = String(item?.pagina_id || '');
+      return {...(item || {}), pagina_id: valid.has(pageId) ? pageId : fallback};
+    });
+  }
+  function ensureActiveResourcePage(tipo, pages){
+    const list = Array.isArray(pages) ? pages : [];
+    if (!list.length) { activeResourcePageIds[tipo] = null; return null; }
+    if (!list.some(page => String(page.id) === String(activeResourcePageIds[tipo]))) {
+      activeResourcePageIds[tipo] = list[0].id;
+    }
+    return activeResourcePageIds[tipo];
+  }
+  function activePage(tipo, pages){
+    const activeId = ensureActiveResourcePage(tipo, pages);
+    return (pages || []).find(page => String(page.id) === String(activeId)) || (pages || [])[0] || null;
+  }
+  function activeFlowPage(){
+    if (!cache) return {nodes: [], edges: []};
+    const pages = normalizeFlowPages(cache);
+    return activePage('fluxo', pages) || {nodes: [], edges: []};
+  }
+  function renderViewPageTabs(tipo, pages, onSwitch){
+    const box = $(VIEW_PAGE_TABS[tipo] || '');
+    if (!box) return;
+    const bar = box.closest('.resource-page-bar');
+    const list = Array.isArray(pages) ? pages : [];
+    box.innerHTML = '';
+    bar?.classList.toggle('oculto', !list.length);
+    if (!list.length) return;
+    const activeId = ensureActiveResourcePage(tipo, list);
+    list.forEach((page, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `resource-page-tab recursos-view-page-tab${String(page.id) === String(activeId) ? ' ativo' : ''}`;
+      btn.title = page.titulo || `${tr('resources.pages', {}, 'Página')} ${idx + 1}`;
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', String(page.id) === String(activeId) ? 'true' : 'false');
+      const span = document.createElement('span');
+      span.className = 'resource-page-tab-title';
+      span.textContent = page.titulo || btn.title;
+      btn.appendChild(span);
+      btn.addEventListener('click', () => {
+        if (String(activeResourcePageIds[tipo]) === String(page.id)) return;
+        activeResourcePageIds[tipo] = page.id;
+        onSwitch?.();
+      });
+      box.appendChild(btn);
+    });
+  }
   function renderAll(data){
     const subtitulo = $('#recursosProjetoSubtitulo');
     if (subtitulo) subtitulo.textContent = data?.projeto?.titulo ? tr('resources.project_prefix', {project: data.projeto.titulo}, `Projeto: ${data.projeto.titulo}`) : tr('resources.hero_desc', {}, 'Informações, fluxo, personagens, lugares e anotações.');
-    renderInfo(data.informacoes || []);
-    renderFlowView(data.fluxo || {nodes:[], edges:[]});
-    renderCatalogCards(data.personagens || [], $('#recursosViewPersonagens'), 'personagens', '👤');
-    renderCatalogCards(data.lugares || [], $('#recursosViewLugares'), 'lugares', '📍');
-    renderCatalogCards(data.anotacoes || [], $('#recursosViewAnotacoes'), 'anotacoes', '📝');
+    renderInfo(data);
+    renderFlow(data);
+    renderCatalog(data, 'personagens', $('#recursosViewPersonagens'), '👤');
+    renderCatalog(data, 'lugares', $('#recursosViewLugares'), '📍');
+    renderCatalog(data, 'anotacoes', $('#recursosViewAnotacoes'), '📝');
   }
   function makeButtonCard(title, className = 'recursos-view-title-card'){
     const btn = document.createElement('button');
@@ -62,24 +210,46 @@
     btn.appendChild(h3);
     return btn;
   }
-  function renderInfo(pages){
+  function renderInfo(data){
+    const tabs = normalizeInfoTabs(data || {});
+    renderViewPageTabs('informacoes', tabs, () => renderInfo(cache || data));
+    const tab = activePage('informacoes', tabs);
+    renderInfoPages(tab?.paginas || [], tab);
+  }
+  function renderInfoPages(pages, tab){
     const box = $('#recursosViewInformacoes');
     if (!box) return;
+    const list = Array.isArray(pages) ? pages : [];
     box.innerHTML = '';
-    if (!pages.length) { box.innerHTML = `<div class="vazio-recursos">${escapeHtml(tr('resources.no_info', {}, 'Nenhuma informação cadastrada.'))}</div>`; return; }
-    pages.forEach(page => {
+    if (!list.length) { box.innerHTML = `<div class="vazio-recursos">${escapeHtml(tr('resources.no_info', {}, 'Nenhuma informação cadastrada.'))}</div>`; return; }
+    list.forEach(page => {
       const card = makeButtonCard(page.titulo || tr('resources.untitled', {}, 'Sem título'), 'recursos-view-title-card recursos-view-info-title-card');
-      card.addEventListener('click', () => openInfoDetail(page));
+      card.addEventListener('click', () => openInfoDetail(page, tab));
       box.appendChild(card);
     });
   }
-  function openInfoDetail(page){
+  function openInfoDetail(page, tab){
     if (!infoDetailModal) return;
     const titleEl = $('#recursosInfoDetalheTitulo', infoDetailModal);
+    const subtitleEl = $('#recursosInfoDetalheSubtitulo', infoDetailModal);
     const contentEl = $('#recursosInfoDetalheConteudo', infoDetailModal);
     if (titleEl) { titleEl.textContent = page?.titulo || tr('resources.untitled', {}, 'Sem título'); titleEl.title = page?.titulo || tr('resources.untitled', {}, 'Sem título'); }
+    if (subtitleEl) subtitleEl.textContent = tab?.titulo ? `${tr('resources.info', {}, 'Informações')} · ${tab.titulo}` : tr('resources.info_saved_in_project', {}, 'Informação salva no projeto');
     if (contentEl) contentEl.innerHTML = safeInfoHtml(page?.html);
     openElement(infoDetailModal);
+  }
+  function renderFlow(data){
+    const pages = normalizeFlowPages(data || {});
+    renderViewPageTabs('fluxo', pages, () => renderFlow(cache || data));
+    const page = activePage('fluxo', pages);
+    renderFlowView(page || {nodes: [], edges: []});
+  }
+  function renderCatalog(data, tipo, box, emoji){
+    const pages = normalizeCatalogPages(data || {}, tipo);
+    renderViewPageTabs(tipo, pages, () => renderCatalog(cache || data, tipo, box, emoji));
+    const page = activePage(tipo, pages);
+    const items = normalizeCatalogItems(data?.[tipo] || [], pages).filter(item => !page || String(item.pagina_id || '') === String(page.id));
+    renderCatalogCards(items, box, tipo, emoji);
   }
   function renderCatalogCards(items, box, tipo, emoji){
     if (!box) return;
@@ -131,8 +301,9 @@
   function renderFlowView(flow){
     const box = $('#recursosViewFluxo');
     if (!box) return;
-    const nodes = Array.isArray(flow.nodes) ? flow.nodes : [];
-    const edges = Array.isArray(flow.edges) ? flow.edges : [];
+    const normalized = normalizeFlow(flow);
+    const nodes = Array.isArray(normalized.nodes) ? normalized.nodes : [];
+    const edges = Array.isArray(normalized.edges) ? normalized.edges : [];
     if (!nodes.length) { box.innerHTML = `<div class="vazio-recursos">${escapeHtml(tr('resources.no_flow_nodes', {}, 'Nenhum balão no fluxo ainda.'))}</div>`; return; }
     const maxX = Math.max(1200, ...nodes.map(n => Number(n.x || 0) + Number(n.width || 240) + 160));
     const maxY = Math.max(760, ...nodes.map(n => Number(n.y || 0) + Number(n.height || 150) + 160));

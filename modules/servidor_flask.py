@@ -84,6 +84,7 @@ from .manipulador_recursos_projeto import (
     salvar_fluxo_projeto,
     salvar_informacoes_projeto,
     salvar_item_catalogo_projeto,
+    salvar_paginas_catalogo_projeto,
 )
 from .i18n import carregar_locale, idioma_projeto_rotulo, normalizar_idioma_app, t
 from .atualizador import verificar_atualizacao, iniciar_atualizacao
@@ -1236,8 +1237,13 @@ def _recursos_projeto_combinados(slug: str) -> dict[str, object]:
             "titulo": projeto.get("titulo") or slug,
             "tipo": projeto.get("tipo") or "livro",
         },
+        "informacoes_abas": combinados.get("informacoes_abas", []),
         "informacoes": combinados.get("informacoes", []),
         "fluxo": combinados.get("fluxo", {"nodes": [], "edges": []}),
+        "fluxos": combinados.get("fluxos", []),
+        "personagens_paginas": combinados.get("personagens_paginas", []),
+        "lugares_paginas": combinados.get("lugares_paginas", []),
+        "anotacoes_paginas": combinados.get("anotacoes_paginas", []),
         "personagens": combinados.get("personagens_combinados", []),
         "lugares": combinados.get("lugares_combinados", []),
         "anotacoes": combinados.get("anotacoes_combinadas", []),
@@ -1739,7 +1745,11 @@ def criar_app() -> Flask:
     def api_salvar_informacoes_recursos_projeto(slug: str):
         dados = request.get_json(silent=True) or {}
         try:
-            salvar_informacoes_projeto(obter_pasta_projeto(slug), dados.get("informacoes") or [])
+            salvar_informacoes_projeto(
+                obter_pasta_projeto(slug),
+                dados.get("informacoes") or [],
+                dados.get("informacoes_abas") if "informacoes_abas" in dados else dados.get("abas_informacoes"),
+            )
             atualizar_data_projeto(slug)
             return jsonify(_recursos_projeto_combinados(slug))
         except Exception as exc:
@@ -1750,7 +1760,8 @@ def criar_app() -> Flask:
     def api_salvar_fluxo_recursos_projeto(slug: str):
         dados = request.get_json(silent=True) or {}
         try:
-            salvar_fluxo_projeto(obter_pasta_projeto(slug), dados.get("fluxo") or {})
+            payload_fluxo = dados if isinstance(dados.get("fluxos"), list) else (dados.get("fluxo") or {})
+            salvar_fluxo_projeto(obter_pasta_projeto(slug), payload_fluxo)
             atualizar_data_projeto(slug)
             return jsonify(_recursos_projeto_combinados(slug))
         except Exception as exc:
@@ -1769,6 +1780,24 @@ def criar_app() -> Flask:
         except Exception as exc:
             return _resposta_erro_json(str(exc), 400)
 
+    @app.post("/api/projetos/<slug>/recursos/catalogo/<tipo>/paginas")
+    @registrar_etapa
+    def api_salvar_paginas_catalogo_recursos_projeto(slug: str, tipo: str):
+        dados = request.get_json(silent=True) or {}
+        try:
+            salvar_paginas_catalogo_projeto(
+                obter_pasta_projeto(slug),
+                tipo,
+                dados.get("paginas") or [],
+                dados.get("items") if "items" in dados else dados.get("itens"),
+            )
+            atualizar_data_projeto(slug)
+            return jsonify(_recursos_projeto_combinados(slug))
+        except ValueError as exc:
+            return _resposta_erro_json(str(exc), 400)
+        except Exception as exc:
+            return _resposta_erro_json(str(exc), 400)
+
     @app.post("/api/projetos/<slug>/recursos/catalogo/<tipo>/excluir")
     @registrar_etapa
     def api_excluir_catalogo_recursos_projeto(slug: str, tipo: str):
@@ -1779,6 +1808,7 @@ def criar_app() -> Flask:
                 tipo,
                 identificador=dados.get("id"),
                 nome=dados.get("nome"),
+                pagina_id=dados.get("pagina_id"),
             )
             atualizar_data_projeto(slug)
             return jsonify(_recursos_projeto_combinados(slug))

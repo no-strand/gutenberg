@@ -1,11 +1,29 @@
 /** Recursos criativos por projeto: informações, fluxo, personagens, lugares e anotações. */
 (function(){
   const slug = window.PROJETO_SLUG || '';
+  const MAX_RESOURCE_PAGES = 7;
+  const CATALOG_TYPES = ['personagens', 'lugares', 'anotacoes'];
+  const PAGE_TABS = {
+    informacoes: {container:'#tabsPaginasInfo', add:'#btnNovaPaginaInfo'},
+    fluxo: {container:'#tabsPaginasFluxo', add:'#btnNovaPaginaFluxo'},
+    personagens: {container:'#tabsPaginasPersonagens', add:'#btnNovaPaginaPersonagens'},
+    lugares: {container:'#tabsPaginasLugares', add:'#btnNovaPaginaLugares'},
+    anotacoes: {container:'#tabsPaginasAnotacoes', add:'#btnNovaPaginaAnotacoes'},
+  };
   let state = normalizeState(window.PROJETO_RECURSOS_INITIAL || {});
   let activeTab = 'informacoes';
-  let activeInfoId = state.informacoes[0]?.id || null;
+  let activeInfoTabId = state.informacoes_abas[0]?.id || null;
+  let activeInfoPageIds = Object.fromEntries((state.informacoes_abas || []).map(tab => [tab.id, tab.paginas?.[0]?.id || null]));
+  let activeInfoId = activeInfoPageIds[activeInfoTabId] || null;
+  let activeFlowId = state.fluxos[0]?.id || null;
+  let activeCatalogPageIds = {
+    personagens: state.personagens_paginas[0]?.id || null,
+    lugares: state.lugares_paginas[0]?.id || null,
+    anotacoes: state.anotacoes_paginas[0]?.id || null,
+  };
   let infoSaveTimer = null;
   let flowSaveTimer = null;
+  const catalogPagesSaveTimers = {};
   let selectedHandle = null;
   let dragState = null;
   let resizeState = null;
@@ -22,7 +40,6 @@
     const value = typeof window.t === 'function' ? window.t(key, vars) : key;
     return value && value !== key ? value : (fallback || key);
   }
-
   function uid(prefix){ return `${prefix}_${Math.random().toString(16).slice(2)}${Date.now().toString(16).slice(-5)}`; }
   function escapeHtml(value){ return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
   function stripHtml(value){ const div = document.createElement('div'); div.innerHTML = String(value || ''); return (div.textContent || '').replace(/\s+/g,' ').trim(); }
@@ -31,14 +48,173 @@
     statusEl.textContent = text || tr('resources.ready', {}, 'Pronto');
     statusEl.dataset.tone = tone;
   }
-  function normalizeState(data){
-    const informacoes = Array.isArray(data.informacoes) && data.informacoes.length ? data.informacoes : [{id: uid('info'), titulo: tr('resources.default_page_title', {}, 'Página inicial'), html: '<p></p>'}];
+
+  function defaultPageTitle(tipo){
+    if (tipo === 'fluxo') return tr('resources.flow', {}, 'Fluxo');
+    if (tipo === 'personagens') return tr('resources.characters', {}, 'Personagens');
+    if (tipo === 'lugares') return tr('resources.places', {}, 'Lugares');
+    if (tipo === 'anotacoes') return tr('resources.notes', {}, 'Anotações');
+    return tr('resources.default_page_title', {}, 'Página inicial');
+  }
+  function catalogPagesKey(tipo){ return `${tipo}_paginas`; }
+  function resourcePages(tipo){
+    if (tipo === 'informacoes') return state.informacoes_abas || [];
+    if (tipo === 'fluxo') return state.fluxos;
+    return state[catalogPagesKey(tipo)] || [];
+  }
+  function activeResourcePageId(tipo){
+    if (tipo === 'informacoes') return activeInfoTabId;
+    if (tipo === 'fluxo') return activeFlowId;
+    return activeCatalogPageIds[tipo];
+  }
+  function setActiveResourcePageId(tipo, id){
+    if (tipo === 'informacoes') activeInfoTabId = id;
+    else if (tipo === 'fluxo') activeFlowId = id;
+    else activeCatalogPageIds[tipo] = id;
+  }
+  function normalizeResourcePages(value, tipo){
+    const raw = Array.isArray(value) ? value : [];
+    const pages = [];
+    const seen = new Set();
+    raw.forEach((page) => {
+      if (!page || typeof page !== 'object' || pages.length >= MAX_RESOURCE_PAGES) return;
+      const id = String(page.id || uid(tipo));
+      if (seen.has(id)) return;
+      seen.add(id);
+      pages.push({
+        id,
+        titulo: String(page.titulo || page.nome || defaultPageTitle(tipo)).slice(0, tipo === 'informacoes' ? 90 : 60),
+        data_criacao: page.data_criacao || '',
+        data_atualizacao: page.data_atualizacao || '',
+      });
+    });
+    if (!pages.length) pages.push({id: `${tipo}_principal`, titulo: defaultPageTitle(tipo), data_criacao:'', data_atualizacao:''});
+    return pages.slice(0, MAX_RESOURCE_PAGES);
+  }
+  function defaultInfoPage(){
+    const now = new Date().toISOString();
     return {
-      informacoes: informacoes.map(p => ({id: String(p.id || uid('info')), titulo: String(p.titulo || tr('resources.untitled', {}, 'Sem título')), html: String(p.html || '<p></p>'), data_atualizacao: p.data_atualizacao || ''})),
-      fluxo: {nodes: Array.isArray(data.fluxo?.nodes) ? data.fluxo.nodes : [], edges: Array.isArray(data.fluxo?.edges) ? data.fluxo.edges : []},
-      personagens: Array.isArray(data.personagens) ? data.personagens : [],
-      lugares: Array.isArray(data.lugares) ? data.lugares : [],
-      anotacoes: Array.isArray(data.anotacoes) ? data.anotacoes : [],
+      id: uid('info'),
+      titulo: tr('resources.default_page_title', {}, 'Página inicial'),
+      html: tr('resources.default_page_html', {}, '<p></p>'),
+      data_criacao: now,
+      data_atualizacao: now,
+    };
+  }
+  function normalizeInfoPages(value){
+    const raw = Array.isArray(value) ? value : [];
+    const pages = [];
+    const seen = new Set();
+    raw.forEach((page) => {
+      if (!page || typeof page !== 'object') return;
+      const id = String(page.id || uid('info'));
+      if (seen.has(id)) return;
+      seen.add(id);
+      pages.push({
+        id,
+        titulo: String(page.titulo || tr('resources.untitled', {}, 'Sem título')).slice(0, 90),
+        html: String(page.html || '<p></p>'),
+        data_criacao: page.data_criacao || '',
+        data_atualizacao: page.data_atualizacao || '',
+      });
+    });
+    if (!pages.length) pages.push(defaultInfoPage());
+    return pages;
+  }
+  function normalizeInfoTabs(value, legacyPages){
+    const raw = Array.isArray(value) ? value : [];
+    const looksLikeTabs = raw.some(tab => tab && typeof tab === 'object' && (Array.isArray(tab.paginas) || Array.isArray(tab.pages) || Array.isArray(tab.informacoes)));
+    const sourceTabs = looksLikeTabs ? raw : [{
+      id: 'informacoes_principal',
+      titulo: tr('resources.default_page_title', {}, 'Página inicial'),
+      paginas: normalizeInfoPages(legacyPages),
+    }];
+    const tabs = [];
+    const seen = new Set();
+    sourceTabs.forEach((tab) => {
+      if (!tab || typeof tab !== 'object' || tabs.length >= MAX_RESOURCE_PAGES) return;
+      const id = String(tab.id || uid('info_tab'));
+      if (seen.has(id)) return;
+      seen.add(id);
+      tabs.push({
+        id,
+        titulo: String(tab.titulo || tab.nome || defaultPageTitle('informacoes')).slice(0, 60),
+        paginas: normalizeInfoPages(tab.paginas || tab.informacoes || tab.pages),
+        data_criacao: tab.data_criacao || '',
+        data_atualizacao: tab.data_atualizacao || '',
+      });
+    });
+    if (!tabs.length) tabs.push({id: 'informacoes_principal', titulo: defaultPageTitle('informacoes'), paginas: [defaultInfoPage()], data_criacao:'', data_atualizacao:''});
+    return tabs.slice(0, MAX_RESOURCE_PAGES);
+  }
+  function flattenInfoTabs(tabs){
+    const flat = [];
+    (tabs || []).forEach(tab => {
+      (tab.paginas || []).forEach(page => {
+        flat.push({...page, aba_id: tab.id, aba_titulo: tab.titulo});
+      });
+    });
+    return flat;
+  }
+  function syncFlatInfo(){
+    state.informacoes = flattenInfoTabs(state.informacoes_abas || []);
+  }
+  function normalizeFlow(flow){
+    const src = flow && typeof flow === 'object' ? flow : {};
+    return {
+      nodes: Array.isArray(src.nodes) ? src.nodes : [],
+      edges: Array.isArray(src.edges) ? src.edges : [],
+    };
+  }
+  function normalizeFlowPages(value, legacyFlow){
+    const raw = Array.isArray(value) && value.length ? value : [{id:'fluxo_principal', titulo: defaultPageTitle('fluxo'), ...normalizeFlow(legacyFlow)}];
+    const pages = [];
+    const seen = new Set();
+    raw.forEach((page) => {
+      if (!page || typeof page !== 'object' || pages.length >= MAX_RESOURCE_PAGES) return;
+      const id = String(page.id || uid('fluxo'));
+      if (seen.has(id)) return;
+      seen.add(id);
+      const flow = normalizeFlow(page.fluxo || page);
+      pages.push({
+        id,
+        titulo: String(page.titulo || page.nome || defaultPageTitle('fluxo')).slice(0, 60),
+        nodes: flow.nodes,
+        edges: flow.edges,
+        data_criacao: page.data_criacao || '',
+        data_atualizacao: page.data_atualizacao || '',
+      });
+    });
+    if (!pages.length) pages.push({id:'fluxo_principal', titulo: defaultPageTitle('fluxo'), nodes:[], edges:[], data_criacao:'', data_atualizacao:''});
+    return pages;
+  }
+  function normalizeCatalogItems(value, tipo, pages){
+    const raw = Array.isArray(value) ? value : [];
+    const valid = new Set((pages || []).map(p => p.id));
+    const fallbackPage = pages?.[0]?.id || `${tipo}_principal`;
+    return raw.map((item) => {
+      const pageId = valid.has(String(item?.pagina_id || '')) ? String(item.pagina_id) : fallbackPage;
+      return {...item, pagina_id: pageId};
+    });
+  }
+  function normalizeState(data){
+    const informacoes_abas = normalizeInfoTabs(data.informacoes_abas || data.abas_informacoes, data.informacoes);
+    const informacoes = flattenInfoTabs(informacoes_abas);
+    const fluxos = normalizeFlowPages(data.fluxos, data.fluxo);
+    const personagens_paginas = normalizeResourcePages(data.personagens_paginas || data.paginas_personagens, 'personagens');
+    const lugares_paginas = normalizeResourcePages(data.lugares_paginas || data.paginas_lugares, 'lugares');
+    const anotacoes_paginas = normalizeResourcePages(data.anotacoes_paginas || data.paginas_anotacoes, 'anotacoes');
+    return {
+      informacoes_abas,
+      informacoes,
+      fluxos,
+      fluxo: normalizeFlow(data.fluxo || fluxos[0]),
+      personagens_paginas,
+      lugares_paginas,
+      anotacoes_paginas,
+      personagens: normalizeCatalogItems(data.personagens, 'personagens', personagens_paginas),
+      lugares: normalizeCatalogItems(data.lugares, 'lugares', lugares_paginas),
+      anotacoes: normalizeCatalogItems(data.anotacoes, 'anotacoes', anotacoes_paginas),
       personagens_projeto: Array.isArray(data.personagens_projeto) ? data.personagens_projeto : [],
       lugares_projeto: Array.isArray(data.lugares_projeto) ? data.lugares_projeto : [],
       anotacoes_projeto: Array.isArray(data.anotacoes_projeto) ? data.anotacoes_projeto : []
@@ -46,8 +222,21 @@
   }
   function absorbServer(data){
     state = normalizeState(data || state);
-    if (!state.informacoes.some(p => p.id === activeInfoId)) activeInfoId = state.informacoes[0]?.id || null;
-    renderInfoList();
+    if (!state.informacoes_abas.some(tab => tab.id === activeInfoTabId)) activeInfoTabId = state.informacoes_abas[0]?.id || null;
+    state.informacoes_abas.forEach(tab => { if (!activeInfoPageIds[tab.id]) activeInfoPageIds[tab.id] = tab.paginas?.[0]?.id || null; });
+    const activeInfoTab = state.informacoes_abas.find(tab => tab.id === activeInfoTabId) || state.informacoes_abas[0];
+    if (!activeInfoTab?.paginas?.some(page => page.id === activeInfoId)) {
+      const remembered = activeInfoPageIds[activeInfoTab?.id];
+      activeInfoId = activeInfoTab?.paginas?.some(page => page.id === remembered) ? remembered : (activeInfoTab?.paginas?.[0]?.id || null);
+    }
+    if (activeInfoTab?.id) activeInfoPageIds[activeInfoTab.id] = activeInfoId;
+    syncFlatInfo();
+    if (!state.fluxos.some(p => p.id === activeFlowId)) activeFlowId = state.fluxos[0]?.id || null;
+    CATALOG_TYPES.forEach((tipo) => {
+      const pages = state[catalogPagesKey(tipo)] || [];
+      if (!pages.some(p => p.id === activeCatalogPageIds[tipo])) activeCatalogPageIds[tipo] = pages[0]?.id || null;
+    });
+    renderAllPageTabs();
     loadActiveInfo();
     renderFlow();
     renderCatalogs();
@@ -69,21 +258,237 @@
   $$('[data-recursos-tab]').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.recursosTab)));
   $$('[data-recursos-tab-target]').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.recursosTabTarget)));
 
-  function currentInfo(){ return state.informacoes.find(p => p.id === activeInfoId) || state.informacoes[0]; }
+  function currentInfoTab(){ return state.informacoes_abas.find(tab => tab.id === activeInfoTabId) || state.informacoes_abas[0]; }
+  function currentInfoPages(){ return currentInfoTab()?.paginas || []; }
+  function ensureActiveInfoPage(){
+    const tab = currentInfoTab();
+    if (!tab) { activeInfoId = null; return null; }
+    const pages = tab.paginas || [];
+    if (!pages.some(page => page.id === activeInfoId)) {
+      const remembered = activeInfoPageIds[tab.id];
+      activeInfoId = pages.some(page => page.id === remembered) ? remembered : (pages[0]?.id || null);
+    }
+    activeInfoPageIds[tab.id] = activeInfoId;
+    return activeInfoId;
+  }
+  function currentInfo(){ const pages = currentInfoPages(); ensureActiveInfoPage(); return pages.find(p => p.id === activeInfoId) || pages[0]; }
+  function currentFlow(){ return state.fluxos.find(p => p.id === activeFlowId) || state.fluxos[0] || {nodes:[], edges:[], titulo: defaultPageTitle('fluxo')}; }
+  function currentCatalogItems(tipo){
+    const pageId = activeCatalogPageIds[tipo] || state[catalogPagesKey(tipo)]?.[0]?.id || '';
+    return (state[tipo] || []).filter(item => String(item.pagina_id || '') === String(pageId));
+  }
+  function projectCatalogItems(tipo){
+    return (state[tipo] || []).filter(item => item?.origem !== 'roteiro' && !item?.somente_leitura);
+  }
   function renderInfoList(){
+    renderResourcePageTabs('informacoes');
     const list = $('#listaPaginasInfo');
+    const pages = currentInfoPages();
+    ensureActiveInfoPage();
+    const activeId = activeInfoId || pages[0]?.id;
+    const sideAddButton = $('#btnNovaPaginaInfoLateral');
+    if (sideAddButton) sideAddButton.disabled = false;
     if (!list) return;
     list.innerHTML = '';
-    state.informacoes.forEach((page, idx) => {
+    pages.forEach((page, idx) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = `info-page-item${page.id === activeInfoId ? ' ativo' : ''}`;
+      btn.className = `info-page-item${page.id === activeId ? ' ativo' : ''}`;
       const titulo = page.titulo || `${tr('resources.pages', {}, 'Página')} ${idx + 1}`;
       btn.title = titulo;
       btn.innerHTML = `<strong>${escapeHtml(titulo)}</strong>`;
-      btn.addEventListener('click', () => { saveCurrentInfoToState(); activeInfoId = page.id; renderInfoList(); loadActiveInfo(); });
+      btn.addEventListener('click', () => switchInfoSidePage(page.id));
       list.appendChild(btn);
     });
+  }
+  function renderAllPageTabs(){
+    renderInfoList();
+    ['fluxo', ...CATALOG_TYPES].forEach(renderResourcePageTabs);
+  }
+  function renderResourcePageTabs(tipo){
+    const config = PAGE_TABS[tipo];
+    const container = $(config?.container || '');
+    const addButton = $(config?.add || '');
+    if (!container) return;
+    const pages = resourcePages(tipo);
+    const activeId = activeResourcePageId(tipo) || pages[0]?.id;
+    container.innerHTML = '';
+    pages.forEach((page, idx) => {
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = `resource-page-tab${page.id === activeId ? ' ativo' : ''}`;
+      tab.title = page.titulo || `${tr('resources.pages', {}, 'Página')} ${idx + 1}`;
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', page.id === activeId ? 'true' : 'false');
+      if (page.id === activeId) {
+        const input = document.createElement('input');
+        input.className = 'resource-page-tab-input';
+        input.value = page.titulo || tab.title;
+        input.maxLength = 60;
+        input.addEventListener('click', (ev) => ev.stopPropagation());
+        input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') input.blur(); });
+        input.addEventListener('input', () => { renameResourcePage(tipo, page.id, input.value, false); });
+        input.addEventListener('blur', () => renderResourcePageTabs(tipo));
+        tab.appendChild(input);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'resource-page-tab-title';
+        span.textContent = page.titulo || tab.title;
+        tab.appendChild(span);
+      }
+      if (pages.length > 1) {
+        const remove = document.createElement('span');
+        remove.className = 'resource-page-remove';
+        remove.textContent = '×';
+        remove.title = tr('resources.delete_page', {}, 'Excluir página');
+        remove.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); deleteResourcePage(tipo, page.id); });
+        tab.appendChild(remove);
+      }
+      tab.addEventListener('click', () => switchResourcePage(tipo, page.id));
+      container.appendChild(tab);
+    });
+    if (addButton) addButton.disabled = pages.length >= MAX_RESOURCE_PAGES;
+  }
+  function switchResourcePage(tipo, id){
+    if (activeResourcePageId(tipo) === id) return;
+    if (tipo === 'informacoes') {
+      saveCurrentInfoToState();
+      if (activeInfoTabId) activeInfoPageIds[activeInfoTabId] = activeInfoId;
+      clearSelectedFlowHandle();
+      activeInfoTabId = id;
+      const tab = currentInfoTab();
+      const remembered = activeInfoPageIds[id];
+      activeInfoId = tab?.paginas?.some(page => page.id === remembered) ? remembered : (tab?.paginas?.[0]?.id || null);
+      renderInfoList();
+      loadActiveInfo();
+      return;
+    }
+    clearSelectedFlowHandle();
+    setActiveResourcePageId(tipo, id);
+    renderResourcePageTabs(tipo);
+    if (tipo === 'fluxo') { renderFlow(); scheduleFlowSave(); }
+    if (CATALOG_TYPES.includes(tipo)) renderCatalogs();
+  }
+  function switchInfoSidePage(id){
+    if (activeInfoId === id) return;
+    saveCurrentInfoToState();
+    activeInfoId = id;
+    if (activeInfoTabId) activeInfoPageIds[activeInfoTabId] = id;
+    renderInfoList();
+    loadActiveInfo();
+  }
+  function renameResourcePage(tipo, id, rawTitle, rerender = true){
+    const title = String(rawTitle || '').trim() || tr('resources.untitled', {}, 'Sem título');
+    const page = resourcePages(tipo).find(p => p.id === id);
+    if (!page) return;
+    page.titulo = title.slice(0, 60);
+    page.data_atualizacao = new Date().toISOString();
+    if (rerender) renderResourcePageTabs(tipo);
+    if (tipo === 'informacoes') scheduleInfoSave({rerenderSidebar:false});
+    else if (tipo === 'fluxo') scheduleFlowSave();
+    else scheduleCatalogPagesSave(tipo);
+  }
+  function addResourcePage(tipo){
+    const pages = resourcePages(tipo);
+    if (pages.length >= MAX_RESOURCE_PAGES) return;
+    const page = {id: uid(tipo === 'informacoes' ? 'info' : tipo), titulo: tr('resources.new_page', {}, 'Nova página'), data_criacao: new Date().toISOString(), data_atualizacao: new Date().toISOString()};
+    if (tipo === 'informacoes') {
+      saveCurrentInfoToState();
+      const infoPage = {
+        id: uid('info'),
+        titulo: tr('resources.default_page_title', {}, 'Página inicial'),
+        html: tr('resources.new_page_html', {}, '<h2>Nova página</h2><p></p>'),
+        data_criacao: page.data_criacao,
+        data_atualizacao: page.data_atualizacao,
+      };
+      const tab = {...page, paginas: [infoPage]};
+      state.informacoes_abas.push(tab);
+      activeInfoTabId = tab.id;
+      activeInfoId = infoPage.id;
+      activeInfoPageIds[tab.id] = infoPage.id;
+      syncFlatInfo();
+      renderInfoList(); loadActiveInfo(); scheduleInfoSave({rerenderSidebar:false});
+      return;
+    }
+    if (tipo === 'fluxo') {
+      state.fluxos.push({...page, nodes: [], edges: []});
+      activeFlowId = page.id;
+      renderResourcePageTabs('fluxo'); renderFlow(); scheduleFlowSave();
+      return;
+    }
+    state[catalogPagesKey(tipo)].push(page);
+    activeCatalogPageIds[tipo] = page.id;
+    renderResourcePageTabs(tipo); renderCatalogs(); scheduleCatalogPagesSave(tipo);
+  }
+  function deleteResourcePage(tipo, id){
+    const pages = resourcePages(tipo);
+    if (pages.length <= 1) { alert(tr('resources.keep_one_page', {}, 'Mantenha pelo menos uma página.')); return; }
+    const page = pages.find(p => p.id === id);
+    const title = page?.titulo || tr('resources.untitled', {}, 'Sem título');
+    if (!confirm(tr('resources.delete_page_confirm', {title}, `Excluir a página "${title}"?`))) return;
+    if (tipo === 'informacoes') {
+      state.informacoes_abas = state.informacoes_abas.filter(tab => tab.id !== id);
+      delete activeInfoPageIds[id];
+      activeInfoTabId = state.informacoes_abas[0]?.id || null;
+      activeInfoId = state.informacoes_abas[0]?.paginas?.[0]?.id || null;
+      if (activeInfoTabId) activeInfoPageIds[activeInfoTabId] = activeInfoId;
+      syncFlatInfo();
+      renderInfoList(); loadActiveInfo(); scheduleInfoSave({rerenderSidebar:false});
+      return;
+    }
+    if (tipo === 'fluxo') {
+      state.fluxos = state.fluxos.filter(p => p.id !== id);
+      activeFlowId = state.fluxos[0]?.id || null;
+      renderResourcePageTabs('fluxo'); renderFlow(); scheduleFlowSave();
+      return;
+    }
+    state[catalogPagesKey(tipo)] = state[catalogPagesKey(tipo)].filter(p => p.id !== id);
+    state[tipo] = (state[tipo] || []).filter(item => String(item.pagina_id || '') !== String(id));
+    activeCatalogPageIds[tipo] = state[catalogPagesKey(tipo)][0]?.id || null;
+    renderResourcePageTabs(tipo); renderCatalogs(); scheduleCatalogPagesSave(tipo);
+  }
+  function addInfoSidePage(){
+    const tab = currentInfoTab();
+    if (!tab) return;
+    saveCurrentInfoToState();
+    const now = new Date().toISOString();
+    const page = {id: uid('info'), titulo: tr('resources.new_page', {}, 'Nova página'), html: tr('resources.new_page_html', {}, '<h2>Nova página</h2><p></p>'), data_criacao: now, data_atualizacao: now};
+    tab.paginas = Array.isArray(tab.paginas) ? tab.paginas : [];
+    tab.paginas.push(page);
+    tab.data_atualizacao = now;
+    activeInfoId = page.id;
+    activeInfoPageIds[tab.id] = page.id;
+    syncFlatInfo();
+    renderInfoList();
+    loadActiveInfo();
+    scheduleInfoSave();
+  }
+  function deleteInfoSidePage(id){
+    const tab = currentInfoTab();
+    const pages = tab?.paginas || [];
+    if (!tab || pages.length <= 1) { alert(tr('resources.keep_one_page', {}, 'Mantenha pelo menos uma página.')); return; }
+    const page = pages.find(p => p.id === id) || currentInfo();
+    const title = page?.titulo || tr('resources.untitled', {}, 'Sem título');
+    if (!confirm(tr('resources.delete_page_confirm', {title}, `Excluir a página "${title}"?`))) return;
+    tab.paginas = pages.filter(p => p.id !== page.id);
+    tab.data_atualizacao = new Date().toISOString();
+    activeInfoId = tab.paginas[0]?.id || null;
+    activeInfoPageIds[tab.id] = activeInfoId;
+    syncFlatInfo();
+    renderInfoList();
+    loadActiveInfo();
+    scheduleInfoSave();
+  }
+  function scheduleCatalogPagesSave(tipo){
+    clearTimeout(catalogPagesSaveTimers[tipo]);
+    setStatus(tr('resources.saving', {}, 'Salvando...'));
+    catalogPagesSaveTimers[tipo] = setTimeout(async () => {
+      try {
+        const data = await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/catalogo/${encodeURIComponent(tipo)}/paginas`, {paginas: state[catalogPagesKey(tipo)], items: projectCatalogItems(tipo)});
+        absorbServer(data);
+        setStatus(tr('resources.catalog_saved', {}, 'Catálogo salvo'));
+      } catch (err) { setStatus(err.message, 'erro'); }
+    }, 520);
   }
   function loadActiveInfo(){
     const page = currentInfo();
@@ -103,33 +508,30 @@
     page.html = editor?.innerHTML || '<p></p>';
     page.data_atualizacao = new Date().toISOString();
   }
-  function scheduleInfoSave(){
-    saveCurrentInfoToState();
-    renderInfoList();
+  function infoPayload(){
+    syncFlatInfo();
+    return {informacoes_abas: state.informacoes_abas, informacoes: state.informacoes};
+  }
+  function scheduleInfoSave(options = {}){
+    const {captureEditor = true, rerenderSidebar = true} = options;
+    if (captureEditor) saveCurrentInfoToState();
+    if (rerenderSidebar) renderInfoList();
     clearTimeout(infoSaveTimer);
     setStatus(tr('resources.info_saving', {}, 'Salvando informações...'));
     infoSaveTimer = setTimeout(async () => {
       try {
-        await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/informacoes`, {informacoes: state.informacoes});
+        await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/informacoes`, infoPayload());
         setStatus(tr('resources.info_saved', {}, 'Informações salvas'));
       } catch (err) { setStatus(err.message, 'erro'); }
     }, 620);
   }
-  $('#btnNovaPaginaInfo')?.addEventListener('click', () => {
-    saveCurrentInfoToState();
-    const page = {id: uid('info'), titulo: tr('resources.new_page', {}, 'Nova página'), html: tr('resources.new_page_html', {}, '<h2>Nova página</h2><p></p>'), data_atualizacao: new Date().toISOString()};
-    state.informacoes.push(page);
-    activeInfoId = page.id;
-    renderInfoList(); loadActiveInfo(); scheduleInfoSave();
-  });
-  $('#btnExcluirPaginaInfo')?.addEventListener('click', () => {
-    if (state.informacoes.length <= 1) { alert(tr('resources.keep_one_page', {}, 'Mantenha pelo menos uma página.')); return; }
-    const page = currentInfo();
-    if (!page || !confirm(tr('resources.delete_page_confirm', {title: page.titulo}, `Excluir a página "${page.titulo}"?`))) return;
-    state.informacoes = state.informacoes.filter(p => p.id !== page.id);
-    activeInfoId = state.informacoes[0]?.id || null;
-    renderInfoList(); loadActiveInfo(); scheduleInfoSave();
-  });
+  $('#btnNovaPaginaInfo')?.addEventListener('click', () => addResourcePage('informacoes'));
+  $('#btnNovaPaginaInfoLateral')?.addEventListener('click', () => addInfoSidePage());
+  $('#btnNovaPaginaFluxo')?.addEventListener('click', () => addResourcePage('fluxo'));
+  $('#btnNovaPaginaPersonagens')?.addEventListener('click', () => addResourcePage('personagens'));
+  $('#btnNovaPaginaLugares')?.addEventListener('click', () => addResourcePage('lugares'));
+  $('#btnNovaPaginaAnotacoes')?.addEventListener('click', () => addResourcePage('anotacoes'));
+  $('#btnExcluirPaginaInfo')?.addEventListener('click', () => deleteInfoSidePage(activeInfoId));
   $('#tituloPaginaInfo')?.addEventListener('input', scheduleInfoSave);
   $('#editorInfoPagina')?.addEventListener('input', scheduleInfoSave);
   $('#btnInserirImagemInfo')?.addEventListener('click', () => $('#inputImagemInfo')?.click());
@@ -157,10 +559,14 @@
   async function flushResourceAutosaves(){
     clearTimeout(infoSaveTimer);
     clearTimeout(flowSaveTimer);
+    Object.values(catalogPagesSaveTimers).forEach(clearTimeout);
     saveCurrentInfoToState();
     setStatus(tr('resources.saving', {}, 'Salvando...'));
-    await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/informacoes`, {informacoes: state.informacoes});
-    await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/fluxo`, {fluxo: state.fluxo});
+    await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/informacoes`, infoPayload());
+    await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/fluxo`, {fluxos: state.fluxos});
+    for (const tipo of CATALOG_TYPES) {
+      await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/catalogo/${encodeURIComponent(tipo)}/paginas`, {paginas: state[catalogPagesKey(tipo)], items: projectCatalogItems(tipo)});
+    }
   }
 
   async function salvarBlobComJanelaDoNavegador(blob, nomeArquivo){
@@ -327,7 +733,7 @@
     });
   }
 
-  function nodeById(id){ return state.fluxo.nodes.find(n => n.id === id); }
+  function nodeById(id){ return currentFlow().nodes.find(n => n.id === id); }
   function isSpacePanKey(ev){
     return ev?.code === 'Space' || ev?.key === ' ' || ev?.key === 'Spacebar';
   }
@@ -514,7 +920,7 @@
     const wrap = $('#fluxoNodes');
     if (!wrap) return;
     wrap.innerHTML = '';
-    state.fluxo.nodes.forEach(node => wrap.appendChild(createNodeElement(node)));
+    currentFlow().nodes.forEach(node => wrap.appendChild(createNodeElement(node)));
     requestAnimationFrame(renderFlowLines);
   }
   function sidePoint(node, side){
@@ -528,11 +934,11 @@
     const svg = $('#fluxoSvg');
     if (!svg) return;
     svg.innerHTML = '';
-    state.fluxo.nodes.forEach(node => {
+    currentFlow().nodes.forEach(node => {
       const el = $(`[data-node-id="${CSS.escape(node.id)}"]`);
       if (el) { node.width = el.offsetWidth || node.width || 240; node.height = el.offsetHeight || node.height || 150; }
     });
-    state.fluxo.edges.forEach(edge => {
+    currentFlow().edges.forEach(edge => {
       const a = nodeById(edge.from), b = nodeById(edge.to);
       if (!a || !b) return;
       const p1 = sidePoint(a, edge.fromSide || 'right');
@@ -551,7 +957,7 @@
     return (edge.from === nodeId && (edge.fromSide || 'right') === side) || (edge.to === nodeId && (edge.toSide || 'left') === side);
   }
   function handleHasEdge(nodeId, side){
-    return state.fluxo.edges.some(edge => edgeUsesHandle(edge, nodeId, side));
+    return currentFlow().edges.some(edge => edgeUsesHandle(edge, nodeId, side));
   }
   function clearSelectedFlowHandle(){
     selectedHandle?.handle?.classList.remove('ativo');
@@ -566,9 +972,9 @@
     });
   }
   function removeEdgesForHandle(nodeId, side){
-    const before = state.fluxo.edges.length;
-    state.fluxo.edges = state.fluxo.edges.filter(edge => !edgeUsesHandle(edge, nodeId, side));
-    return before - state.fluxo.edges.length;
+    const before = currentFlow().edges.length;
+    currentFlow().edges = currentFlow().edges.filter(edge => !edgeUsesHandle(edge, nodeId, side));
+    return before - currentFlow().edges.length;
   }
   function onHandleClick(nodeId, side, handle, event = null){
     if (event?.altKey) {
@@ -591,21 +997,21 @@
     }
     selectedHandle.handle?.classList.remove('ativo');
     if (selectedHandle.nodeId !== nodeId) {
-      const exists = state.fluxo.edges.some(e => e.from === selectedHandle.nodeId && e.to === nodeId && e.fromSide === selectedHandle.side && e.toSide === side);
-      if (!exists) state.fluxo.edges.push({id: uid('edge'), from: selectedHandle.nodeId, to: nodeId, fromSide: selectedHandle.side, toSide: side});
+      const exists = currentFlow().edges.some(e => e.from === selectedHandle.nodeId && e.to === nodeId && e.fromSide === selectedHandle.side && e.toSide === side);
+      if (!exists) currentFlow().edges.push({id: uid('edge'), from: selectedHandle.nodeId, to: nodeId, fromSide: selectedHandle.side, toSide: side});
       renderFlowLines(); scheduleFlowSave();
     }
     selectedHandle = null;
   }
   $('#btnLimparConexaoFluxo')?.addEventListener('click', () => {
-    const removed = state.fluxo.edges.length;
+    const removed = currentFlow().edges.length;
     clearSelectedFlowHandle();
     if (!removed) {
       updateFlowHandleStates();
       setStatus(tr('resources.no_connections_to_cancel', {}, 'Nenhuma ligação para cancelar'));
       return;
     }
-    state.fluxo.edges = [];
+    currentFlow().edges = [];
     renderFlowLines();
     scheduleFlowSave();
     setStatus(tr('resources.all_connections_cancelled', {}, 'Todas as ligações foram canceladas'));
@@ -613,13 +1019,13 @@
   $('#btnNovoNodeFluxo')?.addEventListener('click', () => {
     const wrap = $('#fluxoCanvasWrap');
     const node = {id: uid('node'), x: (wrap?.scrollLeft || 0) + 120, y: (wrap?.scrollTop || 0) + 120, width: 240, height: 150, titulo: tr('resources.new_balloon', {}, 'Novo balão'), texto: ''};
-    state.fluxo.nodes.push(node);
+    currentFlow().nodes.push(node);
     renderFlow(); scheduleFlowSave();
   });
   function deleteNode(id){
     if (!confirm(tr('resources.delete_balloon_confirm', {}, 'Excluir este balão e suas ligações?'))) return;
-    state.fluxo.nodes = state.fluxo.nodes.filter(n => n.id !== id);
-    state.fluxo.edges = state.fluxo.edges.filter(e => e.from !== id && e.to !== id);
+    currentFlow().nodes = currentFlow().nodes.filter(n => n.id !== id);
+    currentFlow().edges = currentFlow().edges.filter(e => e.from !== id && e.to !== id);
     renderFlow(); scheduleFlowSave();
   }
   function scheduleFlowSave(){
@@ -627,16 +1033,16 @@
     setStatus(tr('resources.flow_saving', {}, 'Salvando fluxo...'));
     flowSaveTimer = setTimeout(async () => {
       try {
-        await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/fluxo`, {fluxo: state.fluxo});
+        await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/fluxo`, {fluxos: state.fluxos});
         setStatus(tr('resources.flow_saved', {}, 'Fluxo salvo'));
       } catch (err) { setStatus(err.message, 'erro'); }
     }, 520);
   }
 
   function renderCatalogs(){
-    renderCatalogList('personagens', state.personagens, $('#listaPersonagensProjeto'), '👤');
-    renderCatalogList('lugares', state.lugares, $('#listaLugaresProjeto'), '📍');
-    renderCatalogList('anotacoes', state.anotacoes, $('#listaAnotacoesProjeto'), '📝');
+    renderCatalogList('personagens', currentCatalogItems('personagens'), $('#listaPersonagensProjeto'), '👤');
+    renderCatalogList('lugares', currentCatalogItems('lugares'), $('#listaLugaresProjeto'), '📍');
+    renderCatalogList('anotacoes', currentCatalogItems('anotacoes'), $('#listaAnotacoesProjeto'), '📝');
   }
   function renderCatalogList(tipo, items, container, emoji){
     if (!container) return;
@@ -718,7 +1124,7 @@
   $('#formCatalogoRecursos')?.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const tipo = $('#catalogoRecursosTipo').value;
-    const payload = {id: $('#catalogoRecursosId').value, nome: $('#catalogoRecursosNome').value.trim(), descricao: $('#catalogoRecursosDescricao').value.trim(), imagem: tipo === 'anotacoes' ? '' : imageCatalogoAtual};
+    const payload = {id: $('#catalogoRecursosId').value, pagina_id: activeCatalogPageIds[tipo], nome: $('#catalogoRecursosNome').value.trim(), descricao: $('#catalogoRecursosDescricao').value.trim(), imagem: tipo === 'anotacoes' ? '' : imageCatalogoAtual};
     if (!payload.nome) { $('#statusCatalogoRecursos').textContent = tipo === 'anotacoes' ? tr('resources.title_required', {}, 'Informe um título.') : tr('resources.name_required', {}, 'Informe um nome.'); return; }
     $('#statusCatalogoRecursos').textContent = tr('resources.saving', {}, 'Salvando...');
     try {
@@ -797,7 +1203,7 @@
   async function deleteCatalogItem(tipo, item){
     if (!confirm(tr('resources.delete_hide_confirm', {name: item.nome}, `Excluir/ocultar "${item.nome}" deste painel?`))) return false;
     try {
-      const data = await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/catalogo/${encodeURIComponent(tipo)}/excluir`, {id: item.id, nome: item.nome});
+      const data = await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/catalogo/${encodeURIComponent(tipo)}/excluir`, {id: item.id, nome: item.nome, pagina_id: item.pagina_id || activeCatalogPageIds[tipo]});
       absorbServer(data);
       setStatus(tr('resources.item_removed', {}, 'Item removido'));
       return true;
@@ -841,7 +1247,7 @@
   setupCatalogDetailImagePreview();
   setupFlowCanvasPanning();
 
-  renderInfoList();
+  renderAllPageTabs();
   loadActiveInfo();
   renderFlow();
   renderCatalogs();

@@ -940,6 +940,15 @@ class BancoEditorLocal:
                 row["key"]: row["value"]
                 for row in con.execute("SELECT key, value FROM project_resource_meta").fetchall()
             }
+            recursos_json = meta.get("recursos_json") or meta.get("recursos_payload")
+            if recursos_json:
+                try:
+                    dados_json = json.loads(recursos_json)
+                    if isinstance(dados_json, dict):
+                        dados_json.setdefault("data_atualizacao", meta.get("data_atualizacao", ""))
+                        return dados_json
+                except Exception as exc:
+                    logger.warning("Falha ao ler recursos_json do banco local: %s", exc)
             paginas = [
                 {
                     "id": row["id"],
@@ -1025,6 +1034,10 @@ class BancoEditorLocal:
             con.execute(
                 "INSERT INTO project_resource_meta(key, value) VALUES('data_atualizacao', ?)",
                 (str(dados.get("data_atualizacao") or ""),),
+            )
+            con.execute(
+                "INSERT INTO project_resource_meta(key, value) VALUES('recursos_json', ?)",
+                (json.dumps(dados, ensure_ascii=False, separators=(",", ":")),),
             )
             con.executemany(
                 """

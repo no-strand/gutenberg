@@ -91,3 +91,18 @@ body.biblioteca-processando .overlay-processamento-biblioteca{pointer-events:aut
   .overlay-processamento-biblioteca{padding:16px}
   .overlay-processamento-card{padding:22px 18px;border-radius:22px}
 }
+
+/* v1.0.1: cards da biblioteca sem herdar altura/posicionamento dos cards de projeto. */
+.grade-biblioteca{align-items:start;justify-content:start;grid-template-columns:repeat(auto-fill,minmax(180px,220px));}
+.grade-biblioteca .card-livro{display:block;height:auto;min-height:0;max-width:none;overflow:visible;padding:0;background:transparent;border:0;box-shadow:none;transform:none;}
+.grade-biblioteca .card-livro::after{display:none;content:none;}
+.grade-biblioteca .card-livro:hover{transform:translateY(-2px);background:transparent;box-shadow:none;border-color:transparent;}
+.grade-biblioteca .card-livro > *{position:static;z-index:auto;}
+.grade-biblioteca .card-livro > .botao-lixeira-livro{position:absolute;top:12px;right:12px;left:auto;z-index:6;}
+.grade-biblioteca .card-livro > .botao-status-lido{position:absolute;top:12px;left:12px;right:auto;z-index:6;}
+.grade-biblioteca .link-card-livro{position:relative;z-index:1;height:auto;}
+.grade-biblioteca .thumb-livro{min-height:0;width:100%;aspect-ratio:3/4;}
+.grade-biblioteca .thumb-livro .imagem-card-projeto{object-fit:cover;object-position:center top;}
+@media (max-width:1024px){.grade-biblioteca{grid-template-columns:repeat(auto-fill,minmax(170px,210px));}}
+@media (max-width:768px){.grade-biblioteca{grid-template-columns:repeat(2,minmax(0,1fr));justify-content:stretch}.grade-biblioteca .thumb-livro{min-height:0;}}
+@media (max-width:480px){.grade-biblioteca{grid-template-columns:1fr 1fr}.grade-biblioteca .thumb-livro{min-height:0;}}

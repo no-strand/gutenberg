@@ -28,81 +28,111 @@
   </nav>
 
   <section class="recursos-painel ativo" data-recursos-panel="informacoes">
-    <div class="info-layout">
-      <aside class="info-sidebar">
-        <div class="info-sidebar-topo">
-          <h2>{{ t('resources.pages') }}</h2>
-          <button type="button" class="botao-secundario botao-apenas-icone" id="btnNovaPaginaInfo" title="{{ t('resources.new_page') }}" aria-label="{{ t('resources.new_page') }}">+</button>
-        </div>
-        <div class="info-page-list" id="listaPaginasInfo"></div>
-      </aside>
-      <article class="info-editor-card">
-        <div class="info-editor-fixed-top">
-          <div class="info-format-toolbar" aria-label="{{ t('resources.info_formatting') }}">
-            <button type="button" class="botao-secundario info-format-btn" data-info-bloco="p" title="{{ t('resources.paragraph') }}">P</button>
-            <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h1" title="{{ t('resources.heading1') }}">H1</button>
-            <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h2" title="{{ t('resources.heading2') }}">H2</button>
-            <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h3" title="{{ t('resources.heading3') }}">H3</button>
-            <button type="button" class="botao-secundario info-format-btn" data-info-comando="bold" title="{{ t('editor.bold') }}"><strong>{{ t('editor.bold')[:1] }}</strong></button>
-            <button type="button" class="botao-secundario info-format-btn" data-info-comando="italic" title="{{ t('editor.italic') }}"><em>{{ t('editor.italic')[:1] }}</em></button>
-            <button type="button" class="botao-secundario info-format-btn" data-info-comando="underline" title="{{ t('editor.underline') }}"><u>{{ t('editor.underline')[:1] }}</u></button>
-            <button type="button" class="botao-secundario info-format-btn" data-info-comando="insertUnorderedList" title="{{ t('resources.list') }}">•</button>
+    <div class="resource-page-shell">
+      <div class="resource-page-bar">
+        <div class="resource-page-tabs" id="tabsPaginasInfo" role="tablist" aria-label="{{ t('resources.pages') }}"></div>
+        <button type="button" class="botao-secundario botao-apenas-icone resource-page-add" id="btnNovaPaginaInfo" title="{{ t('resources.new_page') }}" aria-label="{{ t('resources.new_page') }}">+</button>
+      </div>
+      <div class="info-layout">
+        <aside class="info-sidebar">
+          <div class="info-sidebar-topo">
+            <h2>{{ t('resources.pages') }}</h2>
+            <button type="button" class="botao-secundario botao-apenas-icone" id="btnNovaPaginaInfoLateral" title="{{ t('resources.new_page') }}" aria-label="{{ t('resources.new_page') }}">+</button>
           </div>
-          <div class="info-editor-toolbar">
-            <input id="tituloPaginaInfo" class="info-title-input" maxlength="90" placeholder="{{ t('resources.page_title_placeholder') }}">
-            <div class="info-editor-acoes">
-              <button type="button" class="botao-secundario botao-com-icone" id="btnInserirImagemInfo"><span>{{ t('resources.image') }}</span></button>
-              <button type="button" class="botao-perigo botao-com-icone" id="btnExcluirPaginaInfo"><span>{{ t('resources.delete_page') }}</span></button>
-              <input type="file" id="inputImagemInfo" accept="image/*" hidden>
+          <div class="info-page-list" id="listaPaginasInfo"></div>
+        </aside>
+        <article class="info-editor-card">
+          <div class="info-editor-fixed-top">
+            <div class="info-format-toolbar" aria-label="{{ t('resources.info_formatting') }}">
+              <button type="button" class="botao-secundario info-format-btn" data-info-bloco="p" title="{{ t('resources.paragraph') }}">P</button>
+              <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h1" title="{{ t('resources.heading1') }}">H1</button>
+              <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h2" title="{{ t('resources.heading2') }}">H2</button>
+              <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h3" title="{{ t('resources.heading3') }}">H3</button>
+              <button type="button" class="botao-secundario info-format-btn" data-info-comando="bold" title="{{ t('editor.bold') }}"><strong>{{ t('editor.bold')[:1] }}</strong></button>
+              <button type="button" class="botao-secundario info-format-btn" data-info-comando="italic" title="{{ t('editor.italic') }}"><em>{{ t('editor.italic')[:1] }}</em></button>
+              <button type="button" class="botao-secundario info-format-btn" data-info-comando="underline" title="{{ t('editor.underline') }}"><u>{{ t('editor.underline')[:1] }}</u></button>
+              <button type="button" class="botao-secundario info-format-btn" data-info-comando="insertUnorderedList" title="{{ t('resources.list') }}">•</button>
+            </div>
+            <div class="info-editor-toolbar">
+              <input id="tituloPaginaInfo" class="info-title-input" maxlength="90" placeholder="{{ t('resources.page_title_placeholder') }}">
+              <div class="info-editor-acoes">
+                <button type="button" class="botao-secundario botao-com-icone" id="btnInserirImagemInfo"><span>{{ t('resources.image') }}</span></button>
+                <button type="button" class="botao-perigo botao-com-icone" id="btnExcluirPaginaInfo"><span>{{ t('resources.delete_page') }}</span></button>
+                <input type="file" id="inputImagemInfo" accept="image/*" hidden>
+              </div>
             </div>
           </div>
-        </div>
-        <div id="editorInfoPagina" class="info-rich-editor" contenteditable="true" spellcheck="true"></div>
-      </article>
+          <div id="editorInfoPagina" class="info-rich-editor" contenteditable="true" spellcheck="true"></div>
+        </article>
+      </div>
     </div>
   </section>
 
   <section class="recursos-painel" data-recursos-panel="fluxo">
-    <div class="fluxo-toolbar">
-      <div>
-        <h2>{{ t('resources.flowchart') }}</h2>
-        <p>{{ t('resources.flow_desc') }}</p>
+    <div class="resource-page-shell">
+      <div class="resource-page-bar">
+        <div class="resource-page-tabs" id="tabsPaginasFluxo" role="tablist" aria-label="{{ t('resources.pages') }}"></div>
+        <button type="button" class="botao-secundario botao-apenas-icone resource-page-add" id="btnNovaPaginaFluxo" title="{{ t('resources.new_page') }}" aria-label="{{ t('resources.new_page') }}">+</button>
       </div>
-      <div class="fluxo-toolbar-acoes">
-        <button type="button" class="botao-primario botao-com-icone" id="btnNovoNodeFluxo"><span>{{ t('resources.add_balloon') }}</span></button>
-        <button type="button" class="botao-secundario botao-com-icone" id="btnLimparConexaoFluxo"><span>{{ t('resources.cancel_connection') }}</span></button>
+      <div class="fluxo-toolbar">
+        <div>
+          <h2>{{ t('resources.flowchart') }}</h2>
+          <p>{{ t('resources.flow_desc') }}</p>
+        </div>
+        <div class="fluxo-toolbar-acoes">
+          <button type="button" class="botao-primario botao-com-icone" id="btnNovoNodeFluxo"><span>{{ t('resources.add_balloon') }}</span></button>
+          <button type="button" class="botao-secundario botao-com-icone" id="btnLimparConexaoFluxo"><span>{{ t('resources.cancel_connection') }}</span></button>
+        </div>
       </div>
-    </div>
-    <div class="fluxo-canvas-wrap" id="fluxoCanvasWrap">
-      <div class="fluxo-canvas" id="fluxoCanvas">
-        <svg class="fluxo-svg" id="fluxoSvg"></svg>
-        <div class="fluxo-nodes" id="fluxoNodes"></div>
+      <div class="fluxo-canvas-wrap" id="fluxoCanvasWrap">
+        <div class="fluxo-canvas" id="fluxoCanvas">
+          <svg class="fluxo-svg" id="fluxoSvg"></svg>
+          <div class="fluxo-nodes" id="fluxoNodes"></div>
+        </div>
       </div>
     </div>
   </section>
 
   <section class="recursos-painel" data-recursos-panel="personagens">
-    <div class="catalogo-topbar">
-      <div><h2>{{ t('resources.characters') }}</h2><p>{{ t('resources.characters_desc') }}</p></div>
-      <button type="button" class="botao-primario botao-com-icone" data-novo-catalogo="personagens"><span class="icone-svg">{{ icon_svg('users')|safe }}</span><span>{{ t('resources.new_character') }}</span></button>
+    <div class="resource-page-shell">
+      <div class="resource-page-bar">
+        <div class="resource-page-tabs" id="tabsPaginasPersonagens" role="tablist" aria-label="{{ t('resources.pages') }}"></div>
+        <button type="button" class="botao-secundario botao-apenas-icone resource-page-add" id="btnNovaPaginaPersonagens" title="{{ t('resources.new_page') }}" aria-label="{{ t('resources.new_page') }}">+</button>
+      </div>
+      <div class="catalogo-topbar">
+        <div><h2>{{ t('resources.characters') }}</h2><p>{{ t('resources.characters_desc') }}</p></div>
+        <button type="button" class="botao-primario botao-com-icone" data-novo-catalogo="personagens"><span class="icone-svg">{{ icon_svg('users')|safe }}</span><span>{{ t('resources.new_character') }}</span></button>
+      </div>
+      <div id="listaPersonagensProjeto" class="recursos-cards-grid"></div>
     </div>
-    <div id="listaPersonagensProjeto" class="recursos-cards-grid"></div>
   </section>
 
   <section class="recursos-painel" data-recursos-panel="lugares">
-    <div class="catalogo-topbar">
-      <div><h2>{{ t('resources.places') }}</h2><p>{{ t('resources.places_desc') }}</p></div>
-      <button type="button" class="botao-primario botao-com-icone" data-novo-catalogo="lugares"><span class="icone-svg">{{ icon_svg('place')|safe }}</span><span>{{ t('resources.new_place') }}</span></button>
+    <div class="resource-page-shell">
+      <div class="resource-page-bar">
+        <div class="resource-page-tabs" id="tabsPaginasLugares" role="tablist" aria-label="{{ t('resources.pages') }}"></div>
+        <button type="button" class="botao-secundario botao-apenas-icone resource-page-add" id="btnNovaPaginaLugares" title="{{ t('resources.new_page') }}" aria-label="{{ t('resources.new_page') }}">+</button>
+      </div>
+      <div class="catalogo-topbar">
+        <div><h2>{{ t('resources.places') }}</h2><p>{{ t('resources.places_desc') }}</p></div>
+        <button type="button" class="botao-primario botao-com-icone" data-novo-catalogo="lugares"><span class="icone-svg">{{ icon_svg('place')|safe }}</span><span>{{ t('resources.new_place') }}</span></button>
+      </div>
+      <div id="listaLugaresProjeto" class="recursos-cards-grid"></div>
     </div>
-    <div id="listaLugaresProjeto" class="recursos-cards-grid"></div>
   </section>
 
   <section class="recursos-painel" data-recursos-panel="anotacoes">
-    <div class="catalogo-topbar">
-      <div><h2>{{ t('resources.notes') }}</h2><p>{{ t('resources.notes_desc') }}</p></div>
-      <button type="button" class="botao-primario botao-com-icone" data-novo-catalogo="anotacoes"><span class="icone-svg">{{ icon_svg('info')|safe }}</span><span>{{ t('resources.new_note') }}</span></button>
+    <div class="resource-page-shell">
+      <div class="resource-page-bar">
+        <div class="resource-page-tabs" id="tabsPaginasAnotacoes" role="tablist" aria-label="{{ t('resources.pages') }}"></div>
+        <button type="button" class="botao-secundario botao-apenas-icone resource-page-add" id="btnNovaPaginaAnotacoes" title="{{ t('resources.new_page') }}" aria-label="{{ t('resources.new_page') }}">+</button>
+      </div>
+      <div class="catalogo-topbar">
+        <div><h2>{{ t('resources.notes') }}</h2><p>{{ t('resources.notes_desc') }}</p></div>
+        <button type="button" class="botao-primario botao-com-icone" data-novo-catalogo="anotacoes"><span class="icone-svg">{{ icon_svg('info')|safe }}</span><span>{{ t('resources.new_note') }}</span></button>
+      </div>
+      <div id="listaAnotacoesProjeto" class="recursos-cards-grid"></div>
     </div>
-    <div id="listaAnotacoesProjeto" class="recursos-cards-grid"></div>
   </section>
 </section>
 

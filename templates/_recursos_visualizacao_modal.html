@@ -20,19 +20,44 @@
     </div>
     <div class="recursos-view-status" id="recursosViewStatus">{{ t('common.loading') }}</div>
     <section class="recursos-view-panel ativo" data-recursos-view-panel="informacoes">
-      <div class="recursos-view-info recursos-view-card-grid" id="recursosViewInformacoes"></div>
+      <div class="resource-page-shell recursos-view-page-shell">
+        <div class="resource-page-bar recursos-view-page-bar">
+          <div class="resource-page-tabs recursos-view-page-tabs" id="recursosViewTabsInformacoes" role="tablist" aria-label="{{ t('resources.pages') }}"></div>
+        </div>
+        <div class="recursos-view-info recursos-view-card-grid" id="recursosViewInformacoes"></div>
+      </div>
     </section>
     <section class="recursos-view-panel" data-recursos-view-panel="fluxo">
-      <div class="recursos-flow-view" id="recursosViewFluxo"></div>
+      <div class="resource-page-shell recursos-view-page-shell">
+        <div class="resource-page-bar recursos-view-page-bar">
+          <div class="resource-page-tabs recursos-view-page-tabs" id="recursosViewTabsFluxo" role="tablist" aria-label="{{ t('resources.pages') }}"></div>
+        </div>
+        <div class="recursos-flow-view" id="recursosViewFluxo"></div>
+      </div>
     </section>
     <section class="recursos-view-panel" data-recursos-view-panel="personagens">
-      <div class="recursos-cards-grid recursos-cards-grid-modal recursos-view-card-grid" id="recursosViewPersonagens"></div>
+      <div class="resource-page-shell recursos-view-page-shell">
+        <div class="resource-page-bar recursos-view-page-bar">
+          <div class="resource-page-tabs recursos-view-page-tabs" id="recursosViewTabsPersonagens" role="tablist" aria-label="{{ t('resources.pages') }}"></div>
+        </div>
+        <div class="recursos-cards-grid recursos-cards-grid-modal recursos-view-card-grid" id="recursosViewPersonagens"></div>
+      </div>
     </section>
     <section class="recursos-view-panel" data-recursos-view-panel="lugares">
-      <div class="recursos-cards-grid recursos-cards-grid-modal recursos-view-card-grid" id="recursosViewLugares"></div>
+      <div class="resource-page-shell recursos-view-page-shell">
+        <div class="resource-page-bar recursos-view-page-bar">
+          <div class="resource-page-tabs recursos-view-page-tabs" id="recursosViewTabsLugares" role="tablist" aria-label="{{ t('resources.pages') }}"></div>
+        </div>
+        <div class="recursos-cards-grid recursos-cards-grid-modal recursos-view-card-grid" id="recursosViewLugares"></div>
+      </div>
     </section>
     <section class="recursos-view-panel" data-recursos-view-panel="anotacoes">
-      <div class="recursos-cards-grid recursos-cards-grid-modal recursos-view-card-grid" id="recursosViewAnotacoes"></div>
+      <div class="resource-page-shell recursos-view-page-shell">
+        <div class="resource-page-bar recursos-view-page-bar">
+          <div class="resource-page-tabs recursos-view-page-tabs" id="recursosViewTabsAnotacoes" role="tablist" aria-label="{{ t('resources.pages') }}"></div>
+        </div>
+        <div class="recursos-cards-grid recursos-cards-grid-modal recursos-view-card-grid" id="recursosViewAnotacoes"></div>
+      </div>
     </section>
   </div>
 </div>
@@ -43,7 +68,7 @@
     <div class="modal-topo modal-topo-acoes">
       <div>
         <h2 id="recursosInfoDetalheTitulo">{{ t('resources.pages') }}</h2>
-        <p class="recursos-modal-subtitulo">{{ t('resources.info_saved_in_project') }}</p>
+        <p class="recursos-modal-subtitulo" id="recursosInfoDetalheSubtitulo">{{ t('resources.info_saved_in_project') }}</p>
       </div>
       <button class="botao-fechar" type="button" data-fechar-recursos-info-detalhe="true" aria-label="{{ t('common.close') }}">×</button>
     </div>
