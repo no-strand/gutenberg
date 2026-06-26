@@ -89,3 +89,16 @@
 .reader-range-wrap{flex:1 1 220px;min-width:190px;padding:4px 10px}
 .reader-range-wrap input[type="range"]{width:100%;height:30px;min-height:30px;padding:0;margin:0;background:transparent;color:inherit}
 @media (max-width:768px){.reader-font-wrap,.reader-range-wrap{width:100%;min-width:0}.reader-font-select{min-width:0;width:100%}}
+
+/* Links internos de recursos no modo leitura devem se comportar visualmente como texto comum. */
+.area-leitura a.editor-recurso-link,
+.area-leitura a.editor-recurso-link:visited,
+.area-leitura a.editor-recurso-link:hover,
+.area-leitura a.editor-recurso-link:active{
+  color:inherit !important;
+  text-decoration:none !important;
+  background:transparent !important;
+  cursor:text !important;
+  pointer-events:none !important;
+}
+

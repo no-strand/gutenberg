@@ -94,10 +94,15 @@
             <span><strong>{{ t('updates.latest_version') }}</strong> <span id="atualizacaoVersaoRemota">-</span></span>
           </div>
           <p class="atualizacao-descricao" id="atualizacaoDescricao"></p>
+          <div class="atualizacao-progresso-modal oculto" id="atualizacaoProgressoBox">
+            <div class="atualizacao-progresso-barra"><span id="atualizacaoProgressoBarra" style="width:0%"></span></div>
+            <small id="atualizacaoProgressoTexto">0%</small>
+          </div>
           <div class="atualizacao-notas oculto" id="atualizacaoNotas"></div>
         </div>
         <div class="atualizacao-acoes">
           <button class="botao-secundario" type="button" data-close-update-modal>{{ t('common.close') }}</button>
+          <button class="botao-secundario oculto" type="button" id="botaoCancelarAtualizacao">{{ t('updates.cancel') }}</button>
           <button class="botao-primario" type="button" id="botaoIniciarAtualizacao" disabled>{{ t('updates.update_now') }}</button>
         </div>
       </div>

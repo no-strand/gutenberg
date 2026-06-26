@@ -205,6 +205,16 @@ function montarCssOverride() {
     }
     [class*="recuo-a-direita"] { text-indent: var(--epubplus-indent-maior) !important; }
     [class*="recuo-a-esquerda"] { text-indent: 0 !important; }
+    a.editor-recurso-link,
+    a.editor-recurso-link:visited,
+    a.editor-recurso-link:hover,
+    a.editor-recurso-link:active {
+      color: inherit !important;
+      text-decoration: none !important;
+      background: transparent !important;
+      cursor: text !important;
+      pointer-events: none !important;
+    }
   `;
 }
 

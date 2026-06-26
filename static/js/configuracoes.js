@@ -60,8 +60,13 @@ document.addEventListener('DOMContentLoaded', atualizarPreview);
   const versaoRemota = document.getElementById('atualizacaoVersaoRemota');
   const descricao = document.getElementById('atualizacaoDescricao');
   const notas = document.getElementById('atualizacaoNotas');
+  const progressoBox = document.getElementById('atualizacaoProgressoBox');
+  const progressoBarra = document.getElementById('atualizacaoProgressoBarra');
+  const progressoTexto = document.getElementById('atualizacaoProgressoTexto');
   const botaoAtualizar = document.getElementById('botaoIniciarAtualizacao');
+  const botaoCancelar = document.getElementById('botaoCancelarAtualizacao');
   let ultimaVerificacao = null;
+  let statusTimer = null;
 
   const tr = (key, vars = {}) => (window.t ? window.t(key, vars) : key);
 
@@ -80,10 +85,35 @@ document.addEventListener('DOMContentLoaded', atualizarPreview);
     document.body.style.overflow = '';
   }
 
+  function textoProgresso(estado) {
+    const baixado = estado?.bytes_baixados_formatado || '';
+    const total = estado?.bytes_total_formatado || '';
+    if (baixado && total) return `${baixado} / ${total}`;
+    if (total) return `${estado?.progresso || 0}% • ${total}`;
+    return `${estado?.progresso || 0}%`;
+  }
+
+  function exibirProgresso(estado) {
+    const ativo = Boolean(estado && (estado.ativo || estado.concluido || estado.etapa === 'erro' || estado.etapa === 'cancelado'));
+    progressoBox?.classList.toggle('oculto', !ativo);
+    if (!ativo) {
+      if (progressoBarra) progressoBarra.style.width = '0%';
+      if (progressoTexto) progressoTexto.textContent = '';
+      botaoCancelar?.classList.add('oculto');
+      return;
+    }
+    const progresso = Math.max(0, Math.min(100, Number(estado.progresso || 0)));
+    if (progressoBarra) progressoBarra.style.width = `${progresso}%`;
+    if (progressoTexto) progressoTexto.textContent = textoProgresso(estado);
+    botaoCancelar?.classList.toggle('oculto', !estado.ativo);
+    if (botaoCancelar) botaoCancelar.disabled = Boolean(estado.cancelando);
+  }
+
   function definirEstadoCarregando() {
     if (status) status.textContent = tr('updates.checking');
     info?.classList.add('oculto');
     notas?.classList.add('oculto');
+    exibirProgresso(null);
     if (botaoAtualizar) {
       botaoAtualizar.disabled = true;
       botaoAtualizar.dataset.podeAtualizar = '0';
@@ -93,6 +123,7 @@ document.addEventListener('DOMContentLoaded', atualizarPreview);
   function exibirResultado(dados) {
     ultimaVerificacao = dados || null;
     info?.classList.remove('oculto');
+    exibirProgresso(null);
     if (versaoAtual) versaoAtual.textContent = dados?.versao_atual || '-';
     if (versaoRemota) versaoRemota.textContent = dados?.versao_remota || '-';
 
@@ -131,6 +162,60 @@ document.addEventListener('DOMContentLoaded', atualizarPreview);
     if (botaoAtualizar) botaoAtualizar.disabled = true;
   }
 
+  function aplicarEstadoAtualizacao(estado) {
+    if (!estado || (!estado.ativo && !estado.concluido && !estado.cancelado && estado.etapa !== 'erro')) return;
+    info?.classList.remove('oculto');
+    if (versaoRemota && estado.versao) versaoRemota.textContent = estado.versao;
+    if (descricao) descricao.textContent = estado.instalador || '';
+    exibirProgresso(estado);
+    if (botaoAtualizar) botaoAtualizar.disabled = true;
+
+    if (estado.ativo) {
+      if (status) status.textContent = estado.mensagem || tr('updates.downloading');
+      iniciarPollingStatus();
+      return;
+    }
+    if (estado.etapa === 'cancelado') {
+      if (status) status.textContent = estado.mensagem || tr('updates.cancelled');
+      if (botaoAtualizar) botaoAtualizar.disabled = !ultimaVerificacao?.pode_atualizar;
+      pararPollingStatus();
+      return;
+    }
+    if (estado.etapa === 'erro') {
+      if (status) status.textContent = estado.erro || estado.mensagem || tr('updates.error');
+      if (botaoAtualizar) botaoAtualizar.disabled = !ultimaVerificacao?.pode_atualizar;
+      pararPollingStatus();
+      return;
+    }
+    if (estado.concluido) {
+      if (status) status.textContent = estado.mensagem || tr('updates.started');
+      pararPollingStatus();
+    }
+  }
+
+  async function atualizarStatusAgora() {
+    try {
+      const resposta = await fetch('/api/atualizacao/status', { cache: 'no-store' });
+      const dados = await resposta.json().catch(() => ({}));
+      aplicarEstadoAtualizacao(dados.estado);
+      if (window.GutenbergAtualizacoes?.atualizarStatusAgora) window.GutenbergAtualizacoes.atualizarStatusAgora();
+      return dados.estado;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function iniciarPollingStatus() {
+    if (statusTimer) return;
+    statusTimer = setInterval(atualizarStatusAgora, 900);
+  }
+
+  function pararPollingStatus() {
+    if (!statusTimer) return;
+    clearInterval(statusTimer);
+    statusTimer = null;
+  }
+
   async function verificarAtualizacao() {
     abrirModalAtualizacao();
     definirEstadoCarregando();
@@ -138,6 +223,7 @@ document.addEventListener('DOMContentLoaded', atualizarPreview);
       const resposta = await fetch('/api/atualizacao/verificar?manual=1', { cache: 'no-store' });
       const dados = await resposta.json().catch(() => ({}));
       exibirResultado(dados);
+      await atualizarStatusAgora();
     } catch (erro) {
       exibirResultado({ ok: false, erro: tr('updates.error'), detalhe: String(erro?.message || erro || '') });
     }
@@ -155,8 +241,11 @@ document.addEventListener('DOMContentLoaded', atualizarPreview);
         if (botaoAtualizar) botaoAtualizar.disabled = !ultimaVerificacao?.pode_atualizar;
         return;
       }
-      if (status) status.textContent = dados.mensagem || tr('updates.started');
-      if (descricao) descricao.textContent = tr('updates.started');
+      aplicarEstadoAtualizacao(dados.estado || { ativo: true, mensagem: dados.mensagem || tr('updates.downloading') });
+      iniciarPollingStatus();
+      if (window.GutenbergAtualizacoes?.renderizarPopup) {
+        window.GutenbergAtualizacoes.renderizarPopup({ ...ultimaVerificacao, ...dados, estado: dados.estado });
+      }
     } catch (erro) {
       if (status) status.textContent = tr('updates.error');
       if (descricao) descricao.textContent = String(erro?.message || erro || '');
@@ -164,8 +253,18 @@ document.addEventListener('DOMContentLoaded', atualizarPreview);
     }
   }
 
+  async function cancelarAtualizacaoModal() {
+    botaoCancelar.disabled = true;
+    if (status) status.textContent = tr('updates.canceling');
+    try {
+      await fetch('/api/atualizacao/cancelar', { method: 'POST', cache: 'no-store' });
+    } catch (_) {}
+    await atualizarStatusAgora();
+  }
+
   botaoAbrir?.addEventListener('click', verificarAtualizacao);
   botaoAtualizar?.addEventListener('click', iniciarAtualizacao);
+  botaoCancelar?.addEventListener('click', cancelarAtualizacaoModal);
   modal?.querySelectorAll('[data-close-update-modal]').forEach((elemento) => {
     elemento.addEventListener('click', fecharModalAtualizacao);
   });
@@ -176,4 +275,5 @@ document.addEventListener('DOMContentLoaded', atualizarPreview);
       fecharModalAtualizacao();
     }
   });
+  atualizarStatusAgora();
 })();

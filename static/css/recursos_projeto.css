@@ -463,7 +463,7 @@
 .fluxo-canvas-wrap.space-panning input,
 .fluxo-canvas-wrap.space-panning textarea{user-select:none;}
 
-/* v1.0.1: abas internas de páginas para cada grupo de recursos. */
+/* v1.0.2: abas internas de páginas para cada grupo de recursos. */
 .resource-page-shell{display:flex;flex-direction:column;gap:16px;min-height:0;}
 .resource-page-bar{display:flex;align-items:flex-end;gap:10px;min-width:0;border-bottom:1px solid rgba(255,255,255,.14);padding:0 8px;background:linear-gradient(180deg,rgba(10,16,32,.24),rgba(10,16,32,.10));}
 .resource-page-tabs{display:flex;align-items:flex-end;gap:6px;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;flex:1 1 auto;}
@@ -485,7 +485,7 @@
 @media(max-width:1050px){.info-layout{grid-template-columns:1fr}.info-sidebar{min-height:auto}.info-page-list{max-height:220px}}
 @media(max-width:720px){.resource-page-bar{align-items:flex-end;padding:0}.resource-page-add{width:42px;height:42px;min-width:42px}.resource-page-tab{height:42px;max-width:190px}.resource-page-tab-input{width:min(145px,50vw)}.info-editor-toolbar{grid-template-columns:1fr}.info-editor-acoes{justify-content:stretch}.info-editor-acoes>*{flex:1 1 auto}}
 
-/* v1.0.1: abas de páginas também no modal de visualização dos editores. */
+/* v1.0.2: abas de páginas também no modal de visualização dos editores. */
 .modal-recursos-visualizacao .recursos-view-page-shell{
   gap:14px;
 }

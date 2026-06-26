@@ -92,7 +92,7 @@ body.biblioteca-processando .overlay-processamento-biblioteca{pointer-events:aut
   .overlay-processamento-card{padding:22px 18px;border-radius:22px}
 }
 
-/* v1.0.1: cards da biblioteca sem herdar altura/posicionamento dos cards de projeto. */
+/* v1.0.2: cards da biblioteca sem herdar altura/posicionamento dos cards de projeto. */
 .grade-biblioteca{align-items:start;justify-content:start;grid-template-columns:repeat(auto-fill,minmax(180px,220px));}
 .grade-biblioteca .card-livro{display:block;height:auto;min-height:0;max-width:none;overflow:visible;padding:0;background:transparent;border:0;box-shadow:none;transform:none;}
 .grade-biblioteca .card-livro::after{display:none;content:none;}

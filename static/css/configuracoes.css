@@ -65,3 +65,5 @@
 .atualizacao-acoes{display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
 .atualizacao-acoes .botao-secundario,.atualizacao-acoes .botao-primario{min-height:46px;padding:0 16px}
 @media (max-width:560px){.atualizacao-versoes{grid-template-columns:1fr}.atualizacao-acoes{justify-content:stretch}.atualizacao-acoes .botao-secundario,.atualizacao-acoes .botao-primario{width:100%}}
+
+.atualizacao-progresso-modal{display:grid;gap:6px;padding:10px 0}.atualizacao-progresso-modal.oculto,.atualizacao-acoes .oculto{display:none}.atualizacao-progresso-modal small{color:#AAB2BF;font-size:.86rem}.atualizacao-acoes #botaoCancelarAtualizacao{border-color:rgba(248,113,113,.36);color:#fecaca}

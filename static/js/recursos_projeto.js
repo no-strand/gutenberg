@@ -569,13 +569,16 @@
     }
   }
 
-  async function salvarBlobComJanelaDoNavegador(blob, nomeArquivo){
+  async function salvarBlobComJanelaDoNavegador(blob, nomeArquivo, opcoes = {}){
     if (typeof window.showSaveFilePicker !== 'function' || !window.isSecureContext) return false;
+    const extensao = opcoes.extensao || '.gutr';
+    const mime = opcoes.mime || 'application/octet-stream';
+    const descricao = opcoes.descricao || 'Gutenberg Resources';
     try {
       const handle = await window.showSaveFilePicker({
-        id: 'gutenberg-recursos',
+        id: opcoes.id || 'gutenberg-recursos',
         suggestedName: nomeArquivo,
-        types: [{ description: 'Gutenberg Resources', accept: { 'application/octet-stream': ['.gutr'] } }],
+        types: [{ description: descricao, accept: { [mime]: [extensao] } }],
       });
       const writable = await handle.createWritable();
       await writable.write(blob);
@@ -588,10 +591,10 @@
     }
   }
 
-  async function baixarBlobComFallback(blob, nomeArquivo){
-    const picker = await salvarBlobComJanelaDoNavegador(blob, nomeArquivo);
+  async function baixarBlobComFallback(blob, nomeArquivo, opcoes = {}){
+    const picker = await salvarBlobComJanelaDoNavegador(blob, nomeArquivo, opcoes);
     if (picker === true) return {ok:true};
-    if (picker === 'cancelado') return {ok:false, cancelado:true};
+    if (picker === 'cancelado' && !opcoes.fallbackAoCancelar) return {ok:false, cancelado:true};
     const dl = document.createElement('a');
     dl.href = URL.createObjectURL(blob);
     dl.download = nomeArquivo;
@@ -634,6 +637,41 @@
     } catch (err) {
       setStatus(err.message || tr('resources.export_error', {}, 'Não foi possível salvar os recursos.'), 'erro');
       alert(err.message || tr('resources.export_error', {}, 'Não foi possível salvar os recursos.'));
+    }
+  }
+
+  async function exportarRecursosPdf(){
+    try {
+      await flushResourceAutosaves();
+      setStatus(tr('resources.export_pdf_preparing', {}, 'Preparando PDF de recursos...'));
+      const isDesktopSave = Boolean(window.pywebview?.api?.saveExportedFile);
+      const url = `/projetos/${encodeURIComponent(slug)}/recursos/exportar-pdf${isDesktopSave ? '?desktop_save=1' : ''}`;
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        let mensagem = tr('resources.export_pdf_error', {}, 'Não foi possível exportar os recursos em PDF.');
+        try { const erro = await resp.json(); mensagem = erro.erro || erro.mensagem || mensagem; } catch (_) {}
+        throw new Error(mensagem);
+      }
+      if (isDesktopSave) {
+        const dados = await resp.json();
+        if (!dados?.ok || !dados?.arquivo) throw new Error(dados?.erro || tr('resources.export_pdf_error', {}, 'Não foi possível exportar os recursos em PDF.'));
+        const resultado = await window.pywebview.api.saveExportedFile(dados.arquivo, dados.nome, dados.pasta_inicial);
+        if (!resultado?.ok) {
+          if (resultado?.cancelado) { setStatus(tr('js.export_cancelled', {}, 'Exportação cancelada')); return; }
+          throw new Error(resultado?.erro || tr('resources.export_pdf_error', {}, 'Não foi possível exportar os recursos em PDF.'));
+        }
+      } else {
+        const blob = await resp.blob();
+        const dispo = resp.headers.get('Content-Disposition') || '';
+        const m = dispo.match(/filename\*?=(?:UTF-8''|\")?([^";]+)/i);
+        const nomeArquivo = m ? decodeURIComponent(m[1].replace(/"/g,'')) : `${slug || 'projeto'}_recursos.pdf`;
+        const download = await baixarBlobComFallback(blob, nomeArquivo, {id:'gutenberg-recursos-pdf', extensao:'.pdf', mime:'application/pdf', descricao:'PDF', fallbackAoCancelar:true});
+        if (download?.cancelado) { setStatus(tr('js.export_cancelled', {}, 'Exportação cancelada')); return; }
+      }
+      setStatus(tr('resources.export_pdf_success', {}, 'Recursos exportados em PDF'));
+    } catch (err) {
+      setStatus(err.message || tr('resources.export_pdf_error', {}, 'Não foi possível exportar os recursos em PDF.'), 'erro');
+      alert(err.message || tr('resources.export_pdf_error', {}, 'Não foi possível exportar os recursos em PDF.'));
     }
   }
 
@@ -1227,6 +1265,7 @@
     if (removed) closeModal($('#modalDetalheCatalogoRecursos'));
   });
   $('#btnSalvarRecursosGutr')?.addEventListener('click', salvarRecursosGutr);
+  $('#btnExportarRecursosPdf')?.addEventListener('click', exportarRecursosPdf);
   $('#btnImportarRecursosGutr')?.addEventListener('click', iniciarImportacaoRecursosGutr);
   $('#inputGutrImportacao')?.addEventListener('change', async (ev) => {
     const arquivo = ev.target?.files?.[0];

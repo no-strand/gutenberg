@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from .manipulador_capitulos import listar_capitulos, ler_capitulo
 from .manipulador_projetos import caminho_capa_projeto, normalizar_idioma_projeto, obter_projeto
@@ -164,6 +164,14 @@ p.recuo-a-direita, li.recuo-a-direita, blockquote.recuo-a-direita {{ text-indent
 span.fonte-serif {{ font-family: Georgia, 'Times New Roman', serif; }}
 span.fonte-sans {{ font-family: Arial, Helvetica, sans-serif; }}
 span.fonte-mono {{ font-family: Consolas, 'Courier New', monospace; }}
+a.editor-recurso-link,
+a.editor-recurso-link:visited,
+a.editor-recurso-link:hover,
+a.editor-recurso-link:active {{
+  color: inherit !important;
+  text-decoration: none !important;
+  background: transparent !important;
+}}
 .cover-page {{
   margin: 0;
   padding: 0;
@@ -362,6 +370,15 @@ def _normalizar_conteudo_html(conteudo: str) -> str:
             if atributo.lower().startswith("on"):
                 del tag.attrs[atributo]
 
+    # Links internos de recursos existem apenas para uso dentro dos editores.
+    # Em HTML/EPUB exportado eles devem virar texto normal, sem href.
+    for tag in list(soup.find_all("a")):
+        classes = tag.get("class") or []
+        if isinstance(classes, str):
+            classes = classes.split()
+        if "editor-recurso-link" in classes or tag.has_attr("data-recurso-tipo") or tag.has_attr("data-recurso-nome"):
+            tag.unwrap()
+
     @registrar_etapa
     def estilos_para_classes(classes: list[str]) -> str:
         """
@@ -405,7 +422,8 @@ def _normalizar_conteudo_html(conteudo: str) -> str:
         return '; '.join(estilos)
 
     for tag in soup.find_all(True):
-        classes = [c for c in tag.get('class', []) if c in CLASSES_ESTILO or c == 'editor-separador-decorativo']
+        classes_originais = tag.get('class', []) or []
+        classes = [c for c in classes_originais if c in CLASSES_ESTILO or c == 'editor-separador-decorativo']
         if tag.name == 'span':
             if not classes:
                 classes = ['justificar', 'recuo-a-direita']

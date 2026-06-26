@@ -578,11 +578,37 @@ class Bridge:
             pasta_inicial = _normalizar_pasta_dialogo(pasta_preferida, obter_pasta_exportacao())
 
             nome_sugerido = (suggested_name or origem.name or "arquivo").strip() or origem.name
-            destino = window.create_file_dialog(
-                webview.FileDialog.SAVE,
-                directory=str(pasta_inicial),
-                save_filename=nome_sugerido,
-            )
+            sufixo = origem.suffix.lower()
+            tipos_arquivo = None
+            if sufixo == ".pdf":
+                tipos_arquivo = ("PDF (*.pdf)", "Todos os arquivos (*.*)")
+            elif sufixo == ".gutr":
+                tipos_arquivo = ("Recursos Gutenberg (*.gutr)", "Todos os arquivos (*.*)")
+            elif sufixo == ".gut":
+                tipos_arquivo = ("Projeto Gutenberg (*.gut)", "Todos os arquivos (*.*)")
+            elif sufixo == ".docx":
+                tipos_arquivo = ("Documento Word (*.docx)", "Todos os arquivos (*.*)")
+            elif sufixo == ".txt":
+                tipos_arquivo = ("Texto (*.txt)", "Todos os arquivos (*.*)")
+
+            kwargs_dialogo = {
+                "directory": str(pasta_inicial),
+                "save_filename": nome_sugerido,
+            }
+            if tipos_arquivo:
+                kwargs_dialogo["file_types"] = tipos_arquivo
+
+            try:
+                destino = window.create_file_dialog(
+                    webview.FileDialog.SAVE,
+                    **kwargs_dialogo,
+                )
+            except TypeError:
+                kwargs_dialogo.pop("file_types", None)
+                destino = window.create_file_dialog(
+                    webview.FileDialog.SAVE,
+                    **kwargs_dialogo,
+                )
             if not destino:
                 return {"ok": False, "cancelado": True}
 
@@ -592,6 +618,8 @@ class Bridge:
                 return {"ok": False, "cancelado": True}
 
             destino_path = Path(str(destino)).expanduser()
+            if origem.suffix and not destino_path.suffix:
+                destino_path = destino_path.with_suffix(origem.suffix)
             destino_path.parent.mkdir(parents=True, exist_ok=True)
 
             if destino_path.resolve() != origem.resolve():

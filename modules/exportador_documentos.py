@@ -94,6 +94,18 @@ ROTEIRO_ESPACOS_DEPOIS_PT = {
 
 
 @registrar_etapa
+def _remover_links_recursos_exportacao(soup: BeautifulSoup) -> BeautifulSoup:
+    """Remove links internos de recursos, preservando somente o conteúdo textual/inline."""
+    for tag in list(soup.find_all("a")):
+        classes = tag.get("class") or []
+        if isinstance(classes, str):
+            classes = classes.split()
+        if "editor-recurso-link" in classes or tag.has_attr("data-recurso-tipo") or tag.has_attr("data-recurso-nome"):
+            tag.unwrap()
+    return soup
+
+
+@registrar_etapa
 def _fragmento_html(html_fragmento: str) -> BeautifulSoup:
     """
     Executa uma etapa específica do fluxo do módulo, encapsulando detalhes para manter o restante do código mais claro.
@@ -113,7 +125,8 @@ def _fragmento_html(html_fragmento: str) -> BeautifulSoup:
         Mantém a lógica centralizada e evita que detalhes de implementação vazem
         para quem apenas precisa acionar este comportamento.
     """
-    return BeautifulSoup(f"<div>{html_fragmento or '<p><br></p>'}</div>", "html.parser")
+    soup = BeautifulSoup(f"<div>{html_fragmento or '<p><br></p>'}</div>", "html.parser")
+    return _remover_links_recursos_exportacao(soup)
 
 
 @registrar_etapa

@@ -66,9 +66,37 @@ TODOS_TOKENS_SO = tuple(
 )
 TODOS_TOKENS_ARQ = tuple(token for aliases in ARQUITETURAS_ALIASES.values() for token in aliases)
 
+_ESTADO_PADRAO_ATUALIZACAO: dict[str, Any] = {
+    "ativo": False,
+    "cancelando": False,
+    "cancelado": False,
+    "concluido": False,
+    "erro": "",
+    "etapa": "idle",
+    "mensagem": "",
+    "progresso": 0,
+    "bytes_baixados": 0,
+    "bytes_total": 0,
+    "bytes_total_formatado": "",
+    "bytes_baixados_formatado": "",
+    "versao": "",
+    "instalador": "",
+    "caminho": "",
+    "atualizado_em": "",
+}
+_ESTADO_ATUALIZACAO: dict[str, Any] = dict(_ESTADO_PADRAO_ATUALIZACAO)
+_ULTIMA_VERIFICACAO_ATUALIZACAO: dict[str, Any] = {}
+_ESTADO_LOCK = threading.RLock()
+_CANCELAR_ATUALIZACAO = threading.Event()
+_THREAD_ATUALIZACAO: threading.Thread | None = None
+
 
 class AtualizacaoErro(RuntimeError):
     """Erro esperado durante o fluxo de atualização."""
+
+
+class AtualizacaoCancelada(AtualizacaoErro):
+    """Sinaliza cancelamento solicitado pelo usuário."""
 
 
 @registrar_etapa
@@ -118,6 +146,75 @@ def _formatar_tamanho(bytes_total: int | None) -> str:
     if indice == 0:
         return f"{int(valor)} {unidades[indice]}"
     return f"{valor:.1f} {unidades[indice]}"
+
+
+@registrar_etapa
+def _agora_estado() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _estado_publico() -> dict[str, Any]:
+    estado = dict(_ESTADO_ATUALIZACAO)
+    estado["bytes_total_formatado"] = _formatar_tamanho(int(estado.get("bytes_total") or 0)) if estado.get("bytes_total") else ""
+    estado["bytes_baixados_formatado"] = _formatar_tamanho(int(estado.get("bytes_baixados") or 0)) if estado.get("bytes_baixados") else ""
+    try:
+        estado["progresso"] = max(0, min(100, int(round(float(estado.get("progresso") or 0)))))
+    except Exception:
+        estado["progresso"] = 0
+    return estado
+
+
+@registrar_etapa
+def estado_atualizacao() -> dict[str, Any]:
+    """Retorna o estado atual do fluxo de atualização."""
+    with _ESTADO_LOCK:
+        return _estado_publico()
+
+
+@registrar_etapa
+def ultima_verificacao_atualizacao() -> dict[str, Any]:
+    """Retorna a última verificação de atualização conhecida nesta sessão."""
+    with _ESTADO_LOCK:
+        return dict(_ULTIMA_VERIFICACAO_ATUALIZACAO)
+
+
+def _salvar_ultima_verificacao_atualizacao(dados: dict[str, Any]) -> dict[str, Any]:
+    with _ESTADO_LOCK:
+        _ULTIMA_VERIFICACAO_ATUALIZACAO.clear()
+        _ULTIMA_VERIFICACAO_ATUALIZACAO.update(dados or {})
+        _ULTIMA_VERIFICACAO_ATUALIZACAO["verificado_em"] = _agora_estado()
+        return dict(_ULTIMA_VERIFICACAO_ATUALIZACAO)
+
+
+def _atualizar_estado_atualizacao(**valores: Any) -> dict[str, Any]:
+    with _ESTADO_LOCK:
+        _ESTADO_ATUALIZACAO.update(valores)
+        _ESTADO_ATUALIZACAO["atualizado_em"] = _agora_estado()
+        return _estado_publico()
+
+
+def _reiniciar_estado_atualizacao(**valores: Any) -> dict[str, Any]:
+    with _ESTADO_LOCK:
+        _ESTADO_ATUALIZACAO.clear()
+        _ESTADO_ATUALIZACAO.update(_ESTADO_PADRAO_ATUALIZACAO)
+        _ESTADO_ATUALIZACAO.update(valores)
+        _ESTADO_ATUALIZACAO["atualizado_em"] = _agora_estado()
+        return _estado_publico()
+
+
+@registrar_etapa
+def cancelar_atualizacao() -> dict[str, Any]:
+    """Solicita cancelamento do download de atualização em andamento."""
+    with _ESTADO_LOCK:
+        if not _ESTADO_ATUALIZACAO.get("ativo"):
+            return {**_estado_publico(), "ok": False, "erro": "Não há atualização em andamento."}
+        if _ESTADO_ATUALIZACAO.get("etapa") in {"abrindo", "concluido"}:
+            return {**_estado_publico(), "ok": False, "erro": "A atualização já está sendo finalizada."}
+        _CANCELAR_ATUALIZACAO.set()
+        _ESTADO_ATUALIZACAO["cancelando"] = True
+        _ESTADO_ATUALIZACAO["mensagem"] = "Cancelando atualização..."
+        _ESTADO_ATUALIZACAO["atualizado_em"] = _agora_estado()
+        return {**_estado_publico(), "ok": True}
 
 
 @registrar_etapa
@@ -382,11 +479,15 @@ def _mensagem_sem_pacote(plataforma: dict[str, Any]) -> str:
 @registrar_etapa
 def verificar_atualizacao(automatico: bool = False) -> dict[str, Any]:
     """Verifica se existe uma versão mais recente disponível no GitHub."""
+
+    def concluir(dados: dict[str, Any]) -> dict[str, Any]:
+        return _salvar_ultima_verificacao_atualizacao(dados)
+
     plataforma = detectar_plataforma_atual()
     try:
         release = consultar_release_mais_recente()
         if release.get("_indisponivel"):
-            return {
+            return concluir({
                 "ok": False,
                 "atualizacao_indisponivel": True,
                 "silencioso": bool(automatico),
@@ -396,7 +497,7 @@ def verificar_atualizacao(automatico: bool = False) -> dict[str, Any]:
                 "versao_atual": APP_VERSAO,
                 "pagina_releases": GITHUB_HTML_RELEASES,
                 "plataforma": plataforma,
-            }
+            })
         assets = list(release.get("assets") or [])
         tag = str(release.get("tag_name") or "").strip()
         instalador = _selecionar_asset_instalador(assets, plataforma)
@@ -422,7 +523,7 @@ def verificar_atualizacao(automatico: bool = False) -> dict[str, Any]:
             }
 
         aviso = "" if instalador else _mensagem_sem_pacote(plataforma)
-        return {
+        return concluir({
             "ok": True,
             "repositorio": f"{GITHUB_OWNER}/{GITHUB_REPO}",
             "pagina_releases": str(release.get("html_url") or GITHUB_HTML_RELEASES),
@@ -437,19 +538,19 @@ def verificar_atualizacao(automatico: bool = False) -> dict[str, Any]:
             "instalador": dados_instalador,
             "pode_atualizar": bool(ha_atualizacao and dados_instalador and dados_instalador.get("url")),
             "aviso": aviso,
-        }
+        })
     except AtualizacaoErro as exc:
-        return {
+        return concluir({
             "ok": False,
             "silencioso": bool(automatico),
             "erro": str(exc),
             "versao_atual": APP_VERSAO,
             "pagina_releases": GITHUB_HTML_RELEASES,
             "plataforma": plataforma,
-        }
+        })
     except requests.RequestException as exc:
         logger.warning("Falha de rede ao verificar atualização", exc_info=True)
-        return {
+        return concluir({
             "ok": False,
             "silencioso": bool(automatico),
             "erro": "Não foi possível conectar ao GitHub para verificar atualizações.",
@@ -457,10 +558,10 @@ def verificar_atualizacao(automatico: bool = False) -> dict[str, Any]:
             "versao_atual": APP_VERSAO,
             "pagina_releases": GITHUB_HTML_RELEASES,
             "plataforma": plataforma,
-        }
+        })
     except Exception as exc:
         logger.exception("Falha inesperada ao verificar atualização")
-        return {
+        return concluir({
             "ok": False,
             "silencioso": bool(automatico),
             "erro": "Não foi possível verificar atualizações no momento.",
@@ -468,7 +569,7 @@ def verificar_atualizacao(automatico: bool = False) -> dict[str, Any]:
             "versao_atual": APP_VERSAO,
             "pagina_releases": GITHUB_HTML_RELEASES,
             "plataforma": plataforma,
-        }
+        })
 
 
 @registrar_etapa
@@ -479,7 +580,13 @@ def _nome_arquivo_seguro(nome: str) -> str:
 
 
 @registrar_etapa
-def baixar_instalador(info_instalador: dict[str, Any], versao: str) -> Path:
+def baixar_instalador(
+    info_instalador: dict[str, Any],
+    versao: str,
+    *,
+    progresso_callback: Any | None = None,
+    cancelar_evento: threading.Event | None = None,
+) -> Path:
     """Baixa o pacote de atualização da release para a pasta local."""
     url = str(info_instalador.get("url") or "").strip()
     if not url:
@@ -492,16 +599,47 @@ def baixar_instalador(info_instalador: dict[str, Any], versao: str) -> Path:
     parcial = destino.with_name(destino.name + ".download")
 
     logger.info("Baixando atualização | url=%s | destino=%s", url, destino)
-    with requests.get(url, headers={"User-Agent": USER_AGENT}, stream=True, timeout=TIMEOUT_CONEXAO) as resposta:
-        resposta.raise_for_status()
-        with parcial.open("wb") as arquivo:
-            for bloco in resposta.iter_content(chunk_size=1024 * 1024):
-                if bloco:
-                    arquivo.write(bloco)
-    parcial.replace(destino)
+    bytes_total_info = int(info_instalador.get("tamanho") or 0)
+    bytes_baixados = 0
+
+    try:
+        with requests.get(url, headers={"User-Agent": USER_AGENT}, stream=True, timeout=TIMEOUT_CONEXAO) as resposta:
+            resposta.raise_for_status()
+            try:
+                bytes_total = int(resposta.headers.get("Content-Length") or bytes_total_info or 0)
+            except Exception:
+                bytes_total = bytes_total_info
+            if progresso_callback:
+                progresso_callback(bytes_baixados, bytes_total, "download")
+            with parcial.open("wb") as arquivo:
+                for bloco in resposta.iter_content(chunk_size=256 * 1024):
+                    if cancelar_evento is not None and cancelar_evento.is_set():
+                        raise AtualizacaoCancelada("Atualização cancelada pelo usuário.")
+                    if bloco:
+                        arquivo.write(bloco)
+                        bytes_baixados += len(bloco)
+                        if progresso_callback:
+                            progresso_callback(bytes_baixados, bytes_total, "download")
+        if cancelar_evento is not None and cancelar_evento.is_set():
+            raise AtualizacaoCancelada("Atualização cancelada pelo usuário.")
+        parcial.replace(destino)
+    except AtualizacaoCancelada:
+        try:
+            parcial.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise
+    except Exception:
+        try:
+            parcial.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise
 
     hash_esperado = str(info_instalador.get("sha256") or "").strip().lower()
     if hash_esperado:
+        if progresso_callback:
+            progresso_callback(bytes_baixados, bytes_total_info or bytes_baixados, "verificando")
         hash_obtido = _calcular_sha256(destino)
         if hash_obtido != hash_esperado:
             try:
@@ -614,9 +752,91 @@ def _encerrar_aplicacao_apos_resposta(delay: float = 1.2) -> None:
     threading.Thread(target=encerrar, daemon=True).start()
 
 
+def _worker_atualizacao(dados: dict[str, Any]) -> None:
+    """Executa download e abertura do instalador em segundo plano."""
+    try:
+        instalador_info = dados.get("instalador") or {}
+        versao = str(dados.get("versao_remota") or "latest")
+        total_inicial = int(instalador_info.get("tamanho") or 0)
+
+        def atualizar_progresso(bytes_baixados: int, bytes_total: int, etapa: str) -> None:
+            total = int(bytes_total or total_inicial or 0)
+            percentual = int(round((bytes_baixados / total) * 100)) if total else 0
+            mensagem = "Verificando integridade..." if etapa == "verificando" else "Baixando atualização..."
+            _atualizar_estado_atualizacao(
+                etapa=etapa,
+                mensagem=mensagem,
+                bytes_baixados=int(bytes_baixados or 0),
+                bytes_total=total,
+                progresso=max(0, min(100, percentual)),
+                cancelando=_CANCELAR_ATUALIZACAO.is_set(),
+            )
+
+        caminho_pacote = baixar_instalador(
+            instalador_info,
+            versao,
+            progresso_callback=atualizar_progresso,
+            cancelar_evento=_CANCELAR_ATUALIZACAO,
+        )
+        if _CANCELAR_ATUALIZACAO.is_set():
+            raise AtualizacaoCancelada("Atualização cancelada pelo usuário.")
+        _atualizar_estado_atualizacao(
+            etapa="abrindo",
+            mensagem="Abrindo pacote de atualização...",
+            progresso=100,
+            caminho=str(caminho_pacote),
+            bytes_baixados=int(_ESTADO_ATUALIZACAO.get("bytes_total") or _ESTADO_ATUALIZACAO.get("bytes_baixados") or 0),
+        )
+        mensagem = _iniciar_pacote_atualizacao(caminho_pacote, dados.get("plataforma") or detectar_plataforma_atual())
+        _atualizar_estado_atualizacao(
+            ativo=False,
+            concluido=True,
+            etapa="concluido",
+            mensagem=mensagem,
+            progresso=100,
+            caminho=str(caminho_pacote),
+        )
+    except AtualizacaoCancelada as exc:
+        logger.info("Atualização cancelada pelo usuário")
+        _atualizar_estado_atualizacao(
+            ativo=False,
+            cancelando=False,
+            cancelado=True,
+            concluido=False,
+            etapa="cancelado",
+            erro="",
+            mensagem=str(exc),
+        )
+    except AtualizacaoErro as exc:
+        logger.warning("Falha esperada ao iniciar atualização", exc_info=True)
+        _atualizar_estado_atualizacao(
+            ativo=False,
+            cancelando=False,
+            concluido=False,
+            etapa="erro",
+            erro=str(exc),
+            mensagem=str(exc),
+        )
+    except Exception as exc:
+        logger.exception("Falha inesperada ao iniciar atualização")
+        _atualizar_estado_atualizacao(
+            ativo=False,
+            cancelando=False,
+            concluido=False,
+            etapa="erro",
+            erro="Não foi possível iniciar a atualização automaticamente.",
+            mensagem="Não foi possível iniciar a atualização automaticamente.",
+        )
+
+
 @registrar_etapa
 def iniciar_atualizacao() -> dict[str, Any]:
     """Baixa o pacote da release mais recente e dispara o processo de atualização."""
+    global _THREAD_ATUALIZACAO
+    with _ESTADO_LOCK:
+        if _ESTADO_ATUALIZACAO.get("ativo"):
+            return {"ok": True, "em_andamento": True, "estado": _estado_publico()}
+
     dados = verificar_atualizacao()
     if not dados.get("ok"):
         return dados
@@ -625,19 +845,30 @@ def iniciar_atualizacao() -> dict[str, Any]:
     if not dados.get("pode_atualizar") or not dados.get("instalador"):
         return {**dados, "ok": False, "erro": dados.get("aviso") or "A release não possui pacote compatível para atualização automática."}
 
-    try:
-        caminho_pacote = baixar_instalador(dados["instalador"], str(dados.get("versao_remota") or "latest"))
-        mensagem = _iniciar_pacote_atualizacao(caminho_pacote, dados.get("plataforma") or detectar_plataforma_atual())
-        return {
-            **dados,
-            "ok": True,
-            "atualizacao_iniciada": True,
-            "instalador_baixado": str(caminho_pacote),
-            "mensagem": mensagem,
-        }
-    except AtualizacaoErro as exc:
-        logger.warning("Falha esperada ao iniciar atualização", exc_info=True)
-        return {**dados, "ok": False, "erro": str(exc)}
-    except Exception as exc:
-        logger.exception("Falha inesperada ao iniciar atualização")
-        return {**dados, "ok": False, "erro": "Não foi possível iniciar a atualização automaticamente.", "detalhe": str(exc)}
+    instalador = dados.get("instalador") or {}
+    _CANCELAR_ATUALIZACAO.clear()
+    estado = _reiniciar_estado_atualizacao(
+        ativo=True,
+        cancelando=False,
+        cancelado=False,
+        concluido=False,
+        erro="",
+        etapa="iniciando",
+        mensagem="Iniciando download da atualização...",
+        progresso=0,
+        bytes_baixados=0,
+        bytes_total=int(instalador.get("tamanho") or 0),
+        versao=str(dados.get("versao_remota") or ""),
+        instalador=str(instalador.get("nome") or ""),
+        caminho="",
+    )
+    _THREAD_ATUALIZACAO = threading.Thread(target=_worker_atualizacao, args=(dados,), daemon=True)
+    _THREAD_ATUALIZACAO.start()
+    return {
+        **dados,
+        "ok": True,
+        "em_andamento": True,
+        "atualizacao_iniciada": True,
+        "mensagem": "Download da atualização iniciado.",
+        "estado": estado,
+    }

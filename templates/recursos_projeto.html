@@ -11,6 +11,7 @@
       <button type="button" id="btnImportarRecursosGutr" class="botao-secundario botao-com-icone" title="{{ t('resources.import_resources') }}" aria-label="{{ t('resources.import_resources') }}"><span class="icone-svg">{{ icon_svg('open')|safe }}</span><span>{{ t('resources.import_resources') }}</span></button>
       <input type="file" id="inputGutrImportacao" accept=".gutr" hidden>
       <button type="button" id="btnSalvarRecursosGutr" class="botao-secundario botao-com-icone" title="{{ t('resources.save_resources') }}" aria-label="{{ t('resources.save_resources') }}"><span class="icone-svg">{{ icon_svg('save')|safe }}</span><span>{{ t('resources.save_resources') }}</span></button>
+      <button type="button" id="btnExportarRecursosPdf" class="botao-secundario botao-com-icone" title="{{ t('resources.export_pdf') }}" aria-label="{{ t('resources.export_pdf') }}"><span class="icone-svg">{{ icon_svg('export')|safe }}</span><span>{{ t('resources.export_pdf') }}</span></button>
       <span class="status-chip" id="recursosStatus">{{ t('resources.ready') }}</span>
     </div>
     <h1 class="limite-2linhas-projeto" title="{{ projeto.titulo }}">{{ projeto.titulo }}</h1>

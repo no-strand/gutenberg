@@ -24,6 +24,7 @@ from .exportador_documentos import (
     exportar_roteiro_pdf,
 )
 from .exportador_html import exportar_projeto_epub, exportar_projeto_xhtml
+from .exportador_recursos_pdf import exportar_recursos_pdf
 from .exportador_gut import (
     exportar_gut_capitulos,
     exportar_gut_roteiro,
@@ -87,7 +88,7 @@ from .manipulador_recursos_projeto import (
     salvar_paginas_catalogo_projeto,
 )
 from .i18n import carregar_locale, idioma_projeto_rotulo, normalizar_idioma_app, t
-from .atualizador import verificar_atualizacao, iniciar_atualizacao
+from .atualizador import verificar_atualizacao, iniciar_atualizacao, estado_atualizacao, cancelar_atualizacao, ultima_verificacao_atualizacao
 from .utilidades import (
     EXPORTS_PADRAO,
     formatar_data_br,
@@ -1496,6 +1497,20 @@ def criar_app() -> Flask:
         status = 200 if dados.get("ok") else 400
         return jsonify(dados), status
 
+    @app.get("/api/atualizacao/status")
+    @registrar_etapa
+    def api_status_atualizacao():
+        """Retorna progresso e estado atual da atualização automática."""
+        return jsonify({"ok": True, "estado": estado_atualizacao(), "ultima_verificacao": ultima_verificacao_atualizacao()})
+
+    @app.post("/api/atualizacao/cancelar")
+    @registrar_etapa
+    def api_cancelar_atualizacao():
+        """Solicita cancelamento do download de atualização em andamento."""
+        dados = cancelar_atualizacao()
+        status = 200 if dados.get("ok") else 400
+        return jsonify(dados), status
+
     @app.get("/documentation/<path:arquivo>")
     @registrar_etapa
     def pagina_documentacao_arquivos(arquivo: str):
@@ -1824,6 +1839,20 @@ def criar_app() -> Flask:
         """Salva todos os recursos do projeto atual em um arquivo .gutr."""
         try:
             arquivo = exportar_gutr_recursos(slug)
+            return _resposta_arquivo_exportado(arquivo)
+        except FileNotFoundError as exc:
+            return _resposta_erro_json(str(exc), 404)
+        except ValueError as exc:
+            return _resposta_erro_json(str(exc), 400)
+        except Exception as exc:
+            return _resposta_erro_json(str(exc), 500)
+
+    @app.get("/projetos/<slug>/recursos/exportar-pdf")
+    @registrar_etapa
+    def rota_exportar_recursos_pdf(slug: str):
+        """Exporta os recursos do projeto atual em PDF."""
+        try:
+            arquivo = exportar_recursos_pdf(slug)
             return _resposta_arquivo_exportado(arquivo)
         except FileNotFoundError as exc:
             return _resposta_erro_json(str(exc), 404)
