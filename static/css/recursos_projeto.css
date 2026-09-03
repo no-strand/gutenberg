@@ -463,7 +463,7 @@
 .fluxo-canvas-wrap.space-panning input,
 .fluxo-canvas-wrap.space-panning textarea{user-select:none;}
 
-/* v1.0.2: abas internas de páginas para cada grupo de recursos. */
+/* v1.0.3: abas internas de páginas para cada grupo de recursos. */
 .resource-page-shell{display:flex;flex-direction:column;gap:16px;min-height:0;}
 .resource-page-bar{display:flex;align-items:flex-end;gap:10px;min-width:0;border-bottom:1px solid rgba(255,255,255,.14);padding:0 8px;background:linear-gradient(180deg,rgba(10,16,32,.24),rgba(10,16,32,.10));}
 .resource-page-tabs{display:flex;align-items:flex-end;gap:6px;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;flex:1 1 auto;}
@@ -485,7 +485,7 @@
 @media(max-width:1050px){.info-layout{grid-template-columns:1fr}.info-sidebar{min-height:auto}.info-page-list{max-height:220px}}
 @media(max-width:720px){.resource-page-bar{align-items:flex-end;padding:0}.resource-page-add{width:42px;height:42px;min-width:42px}.resource-page-tab{height:42px;max-width:190px}.resource-page-tab-input{width:min(145px,50vw)}.info-editor-toolbar{grid-template-columns:1fr}.info-editor-acoes{justify-content:stretch}.info-editor-acoes>*{flex:1 1 auto}}
 
-/* v1.0.2: abas de páginas também no modal de visualização dos editores. */
+/* v1.0.3: abas de páginas também no modal de visualização dos editores. */
 .modal-recursos-visualizacao .recursos-view-page-shell{
   gap:14px;
 }
@@ -509,3 +509,25 @@
 @media(max-width:720px){
   .modal-recursos-visualizacao .recursos-view-page-tab .resource-page-tab-title{max-width:150px;}
 }
+
+/* Assistente de geração de recursos com IA */
+.recursos-ai-btn{white-space:nowrap}.recursos-ai-btn .icone-svg{display:inline-flex;align-items:center;justify-content:center}.recursos-ai-btn .icone-svg svg{width:1.05em;height:1.05em;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.modal-ia-recursos{box-sizing:border-box;width:min(900px,calc(100vw - 32px));max-width:900px;max-height:88vh;overflow-y:auto;overflow-x:hidden;min-width:0}
+.modal-ia-recursos .modal-topo>div{min-width:0}
+.modal-ia-recursos .modal-topo p{margin:.3rem 0 0;color:rgba(226,232,240,.62);font-size:.82rem}
+.ia-recursos-alvos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
+.ia-recurso-alvo{display:flex;flex-direction:column;gap:5px;padding:12px;border:1px solid rgba(148,163,184,.2);border-radius:12px;background:rgba(15,23,42,.38);cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+.ia-recurso-alvo:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.48)}
+.ia-recurso-alvo.ativo{border-color:rgba(96,165,250,.78);background:rgba(30,64,175,.16);box-shadow:0 0 0 1px rgba(96,165,250,.18) inset}
+.ia-recurso-alvo input{position:absolute;opacity:0;pointer-events:none}
+.ia-recurso-alvo strong{font-size:.9rem}
+.ia-recurso-alvo span{font-size:.72rem;line-height:1.35;color:rgba(226,232,240,.58)}
+.ia-recursos-prompt{display:flex;flex-direction:column;gap:6px;font-weight:600}
+.ia-recursos-prompt textarea{width:100%;min-height:120px;resize:vertical}
+.ia-recursos-preview-wrap{margin-top:14px;border:1px solid rgba(148,163,184,.18);border-radius:12px;background:rgba(2,6,23,.3);overflow:hidden}
+.ia-recursos-preview-title{padding:8px 12px;border-bottom:1px solid rgba(148,163,184,.14);font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:rgba(226,232,240,.62)}
+.ia-recursos-preview{min-height:90px;max-height:280px;overflow:auto;padding:14px 16px;line-height:1.6}
+.ia-recursos-preview:empty::before{content:'A prévia aparecerá aqui depois da geração.';color:rgba(226,232,240,.4);font-size:.82rem}
+.ia-recursos-footer{gap:8px;align-items:center;flex-wrap:wrap;min-width:0}.ia-recursos-footer button{min-width:0}.ia-recursos-preview{overflow-wrap:anywhere;word-break:break-word}.ia-recursos-prompt,.ia-recursos-preview-wrap{min-width:0}
+.ia-recursos-footer .status-form{margin-right:auto}
+@media (max-width:760px){.ia-recursos-alvos{grid-template-columns:repeat(2,minmax(0,1fr))}.recursos-ai-btn span:last-child{display:none}.modal-ia-recursos{width:calc(100vw - 20px);max-height:90vh}.ia-recursos-footer{align-items:stretch}.ia-recursos-footer .status-form{width:100%;margin-right:0}.ia-recursos-footer button{flex:1 1 100%}}

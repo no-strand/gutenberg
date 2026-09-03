@@ -19,7 +19,7 @@ const botoesColecao = [...document.querySelectorAll('[data-colecao-filtro]')];
 const overlayProcessandoBiblioteca = document.getElementById('overlayProcessandoBiblioteca');
 const mensagemOverlayBiblioteca = document.getElementById('mensagemOverlayBiblioteca');
 
-let filtroAtual = 'lendo';
+let filtroAtual = 'todos';
 let colecaoAtual = '';
 
 

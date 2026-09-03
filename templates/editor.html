@@ -73,6 +73,7 @@
     <button type="button" class="botao-branco texto-preto" data-span-classe="fonte-mono" title="{{ t('editor.font_mono_short') }} (Ctrl+Alt+M)" aria-label="{{ t('editor.font_mono_short') }} (Ctrl+Alt+M)">{{ t('editor.font_mono_short') }}</button>
     <button type="button" class="botao-branco" id="btnInserirImagem" title="{{ t('editor.insert_image') }} (Ctrl+Alt+I)" aria-label="{{ t('editor.insert_image') }} (Ctrl+Alt+I)"><img src="{{ url_for('static', filename='img/editor_icons/inserir_imagem.png') }}" alt="{{ t('editor.insert_image') }}"></button>
     <button type="button" class="botao-branco" id="btnLimparEdicao" title="{{ t('editor.clear_formatting') }} (Ctrl+Alt+L)" aria-label="{{ t('editor.clear_formatting') }} (Ctrl+Alt+L)"><img src="{{ url_for('static', filename='img/editor_icons/limpar-edicao.png') }}" alt="{{ t('editor.clear_formatting') }}"></button>
+    <button type="button" class="botao-branco botao-apenas-icone" id="btnAbrirIAEditor" title="{{ t('editor.ai_generate') }} (Ctrl+Alt+G)" aria-label="{{ t('editor.ai_generate') }} (Ctrl+Alt+G)"><span class="icone-svg">{{ icon_svg('ai')|safe }}</span></button>
     <button type="button" class="botao-branco botao-apenas-icone" id="btnAbrirRevisaoOrtografica" title="{{ t('editor.review') }} (Ctrl+Alt+R)" aria-label="{{ t('editor.review') }} (Ctrl+Alt+R)"><img src="{{ url_for('static', filename='img/revisar_epub.png') }}" alt="{{ t('editor.review') }}"></button>
     <input type="file" id="inputImagemEditor" accept="image/*" hidden>
   </div>
@@ -129,11 +130,30 @@
   </div>
 </div>
 
+<div class="modal oculto" id="modalIAEditor">
+  <div class="modal-overlay" data-fechar-ia-editor="true"></div>
+  <div class="modal-conteudo modal-ia-editor" data-modal-card="true">
+    <div class="modal-topo modal-topo-acoes">
+      <div><h2 id="tituloModalIAEditor">{{ t('editor.ai_title') }}</h2><p id="subtituloModalIAEditor" class="revisao-subtitulo">{{ t('editor.ai_subtitle_text') }}</p></div>
+      <button type="button" class="botao-fechar" data-fechar-ia-editor="true">×</button>
+    </div>
+    <label class="ia-editor-pedido">{{ t('editor.ai_prompt_label') }}<textarea id="iaEditorPrompt" rows="7" maxlength="8000" placeholder="{{ t('editor.ai_prompt_placeholder') }}"></textarea></label>
+    <fieldset class="ia-editor-insercao" aria-labelledby="iaEditorModoTitulo">
+      <legend id="iaEditorModoTitulo">{{ t('editor.ai_insert_mode') }}</legend>
+      <label class="ia-editor-opcao"><input type="radio" name="iaEditorModoInsercao" value="cursor" checked><span class="ia-editor-opcao-conteudo"><strong>{{ t('editor.ai_insert_cursor') }}</strong><small>{{ t('editor.ai_insert_cursor_help') }}</small></span></label>
+      <label class="ia-editor-opcao"><input type="radio" name="iaEditorModoInsercao" value="replace"><span class="ia-editor-opcao-conteudo"><strong>{{ t('editor.ai_replace_selection') }}</strong><small>{{ t('editor.ai_replace_selection_help') }}</small></span></label>
+      <label class="ia-editor-opcao"><input type="radio" name="iaEditorModoInsercao" value="end"><span class="ia-editor-opcao-conteudo"><strong>{{ t('editor.ai_insert_end') }}</strong><small>{{ t('editor.ai_insert_end_help') }}</small></span></label>
+    </fieldset>
+    <div class="ia-editor-preview-wrap"><h3>{{ t('editor.ai_preview') }}</h3><div id="iaEditorPreview" class="ia-editor-preview"></div></div>
+    <div class="revisao-rodape"><span id="iaEditorStatus" class="status-form"></span><div class="revisao-acoes"><button type="button" class="botao-secundario" data-fechar-ia-editor="true">{{ t('common.cancel') }}</button><button type="button" class="botao-secundario" id="btnGerarIAEditor">{{ t('editor.ai_generate') }}</button><button type="button" class="botao-primario" id="btnInserirIAEditor" disabled>{{ t('editor.ai_insert') }}</button></div></div>
+  </div>
+</div>
 {% include '_recursos_visualizacao_modal.html' %}
 {% endblock %}
 {% block scripts %}
 <script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|tojson }}, numero: {{ numero|tojson }}, idioma: {{ projeto.idioma|tojson }}, catalogoPersonagens: {{ (recursos_editor.personagens if recursos_editor is defined else [])|tojson }}, catalogoLocais: {{ (recursos_editor.locais if recursos_editor is defined else [])|tojson }}, catalogoAnotacoes: {{ (recursos_editor.anotacoes if recursos_editor is defined else [])|tojson }}};</script>
 <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ia_editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/recursos_visualizacao.js') }}"></script>
 {% endblock %}
 

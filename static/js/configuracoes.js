@@ -277,3 +277,199 @@ document.addEventListener('DOMContentLoaded', atualizarPreview);
   });
   atualizarStatusAgora();
 })();
+
+(function configurarModelosTts() {
+  const botaoAbrir = document.getElementById('botaoBaixarModelosTts');
+  const textoBotao = document.getElementById('textoBotaoBaixarModelosTts');
+  const statusCard = document.getElementById('ttsModelosStatus');
+  const pastaCard = document.getElementById('ttsModelosPasta');
+  const modal = document.getElementById('modalModelosTts');
+  const statusModal = document.getElementById('ttsDownloadStatus');
+  const arquivoModal = document.getElementById('ttsDownloadArquivo');
+  const contadorModal = document.getElementById('ttsDownloadContador');
+  const barra = document.getElementById('ttsDownloadBarra');
+  const percentualEl = document.getElementById('ttsDownloadPercentual');
+  const bytesEl = document.getElementById('ttsDownloadBytes');
+  const erroEl = document.getElementById('ttsDownloadErro');
+  const botaoCancelar = document.getElementById('botaoCancelarModelosTts');
+  let timer = null;
+  let iniciando = false;
+
+  if (!botaoAbrir || !modal) return;
+
+  const tr = (key, vars = {}) => (window.t ? window.t(key, vars) : key);
+
+  function formatarBytes(valor) {
+    let n = Number(valor || 0);
+    if (!Number.isFinite(n) || n <= 0) return '0 MB';
+    const unidades = ['B', 'KB', 'MB', 'GB'];
+    let i = 0;
+    while (n >= 1024 && i < unidades.length - 1) { n /= 1024; i += 1; }
+    const casas = i >= 2 ? 1 : 0;
+    return `${n.toFixed(casas)} ${unidades[i]}`;
+  }
+
+  function abrirModal() {
+    modal.classList.remove('oculto');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharModal() {
+    modal.classList.add('oculto');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  function atualizarCard(estado) {
+    if (!estado) return;
+    if (pastaCard && estado.pasta) {
+      pastaCard.textContent = `${tr('tts_models.folder')}: ${estado.pasta}`;
+      pastaCard.dataset.path = estado.pasta;
+      pastaCard.title = tr('tts_models.open_folder_title');
+    }
+    if (statusCard) {
+      statusCard.classList.remove('instalado', 'ausente', 'baixando', 'erro');
+      if (estado.ativo) {
+        statusCard.classList.add('baixando');
+        statusCard.textContent = tr('tts_models.downloading');
+      } else if (estado.instalado) {
+        statusCard.classList.add('instalado');
+        statusCard.textContent = tr('tts_models.installed');
+      } else if (estado.etapa === 'erro') {
+        statusCard.classList.add('erro');
+        statusCard.textContent = tr('tts_models.error');
+      } else {
+        statusCard.classList.add('ausente');
+        statusCard.textContent = tr('tts_models.not_installed');
+      }
+    }
+    if (textoBotao) {
+      textoBotao.textContent = estado.ativo
+        ? tr('tts_models.view_download')
+        : (estado.instalado ? tr('tts_models.download_again') : tr('tts_models.download'));
+    }
+  }
+
+  async function abrirPastaModelos(evento) {
+    evento?.preventDefault();
+    if (!pastaCard) return;
+    try {
+      const resposta = await fetch('/api/tts/modelos/abrir-pasta', { method: 'POST' });
+      const dados = await resposta.json().catch(() => ({}));
+      if (!resposta.ok || !dados.ok) throw new Error(dados.erro || tr('tts_models.open_folder_error'));
+    } catch (erro) {
+      window.alert(String(erro?.message || erro || tr('tts_models.open_folder_error')));
+    }
+  }
+
+  pastaCard?.addEventListener('click', abrirPastaModelos);
+
+  function atualizarModal(estado) {
+    if (!estado) return;
+    atualizarCard(estado);
+    const pct = Math.max(0, Math.min(100, Number(estado.percentual || 0)));
+    if (barra) barra.style.width = `${pct}%`;
+    if (percentualEl) percentualEl.textContent = `${pct.toFixed(pct % 1 ? 1 : 0)}%`;
+
+    const recebido = Number(estado.bytes_recebidos || 0);
+    const total = Number(estado.bytes_total || 0);
+    if (bytesEl) bytesEl.textContent = total > 0
+      ? `${formatarBytes(recebido)} / ${formatarBytes(total)}`
+      : formatarBytes(recebido);
+
+    if (arquivoModal) arquivoModal.textContent = estado.arquivo_atual || (estado.concluido ? tr('tts_models.completed') : tr('tts_models.waiting'));
+    if (contadorModal) contadorModal.textContent = estado.arquivo_indice
+      ? `${tr('tts_models.file')} ${estado.arquivo_indice} ${tr('tts_models.of')} ${estado.arquivo_total_itens || 2}`
+      : '-';
+    if (statusModal) statusModal.textContent = estado.erro || estado.mensagem || (estado.instalado ? tr('tts_models.installed') : tr('tts_models.ready'));
+
+    if (erroEl) {
+      const erro = estado.etapa === 'erro' ? (estado.erro || estado.mensagem || tr('tts_models.error')) : '';
+      erroEl.textContent = erro;
+      erroEl.classList.toggle('oculto', !erro);
+    }
+    if (botaoCancelar) {
+      botaoCancelar.classList.toggle('oculto', !estado.ativo);
+      botaoCancelar.disabled = false;
+    }
+
+    if (estado.ativo) iniciarPolling();
+    else pararPolling();
+  }
+
+  async function buscarStatus() {
+    try {
+      const resposta = await fetch('/api/tts/modelos/status', { cache: 'no-store' });
+      const dados = await resposta.json().catch(() => ({}));
+      if (dados.estado) atualizarModal(dados.estado);
+      return dados.estado || null;
+    } catch (erro) {
+      if (statusModal) statusModal.textContent = tr('tts_models.status_error');
+      return null;
+    }
+  }
+
+  function iniciarPolling() {
+    if (timer) return;
+    timer = setInterval(buscarStatus, 650);
+  }
+
+  function pararPolling() {
+    if (!timer) return;
+    clearInterval(timer);
+    timer = null;
+  }
+
+  async function iniciarDownload() {
+    if (iniciando) return;
+    iniciando = true;
+    abrirModal();
+    if (statusModal) statusModal.textContent = tr('tts_models.starting');
+    if (erroEl) erroEl.classList.add('oculto');
+    try {
+      const atual = await buscarStatus();
+      if (atual?.ativo) {
+        iniciarPolling();
+        return;
+      }
+      const resposta = await fetch('/api/tts/modelos/baixar', { method: 'POST', cache: 'no-store' });
+      const dados = await resposta.json().catch(() => ({}));
+      if (!resposta.ok || !dados.ok) {
+        throw new Error(dados.erro || tr('tts_models.start_error'));
+      }
+      atualizarModal(dados.estado);
+      iniciarPolling();
+    } catch (erro) {
+      if (statusModal) statusModal.textContent = tr('tts_models.error');
+      if (erroEl) {
+        erroEl.textContent = String(erro?.message || erro || tr('tts_models.error'));
+        erroEl.classList.remove('oculto');
+      }
+    } finally {
+      iniciando = false;
+    }
+  }
+
+  async function cancelarDownload() {
+    if (!botaoCancelar) return;
+    botaoCancelar.disabled = true;
+    if (statusModal) statusModal.textContent = tr('tts_models.canceling');
+    try {
+      await fetch('/api/tts/modelos/cancelar', { method: 'POST', cache: 'no-store' });
+    } catch (_) {}
+    await buscarStatus();
+  }
+
+  botaoAbrir.addEventListener('click', iniciarDownload);
+  botaoCancelar?.addEventListener('click', cancelarDownload);
+  modal.querySelectorAll('[data-close-tts-model-modal]').forEach((el) => el.addEventListener('click', fecharModal));
+  modal.querySelector('[data-modal-card="true"]')?.addEventListener('click', (event) => event.stopPropagation());
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !modal.classList.contains('oculto')) {
+      event.preventDefault();
+      fecharModal();
+    }
+  });
+  buscarStatus();
+})();

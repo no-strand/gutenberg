@@ -33,6 +33,28 @@
         </button>
       </div>
     </label>
+    <label>{{ t('settings.tts_language') }}
+      <select name="idioma_tts" id="cfgIdiomaTts">
+        <option value="pt_BR" {% if config.idioma_tts|default('pt_BR') == 'pt_BR' %}selected{% endif %}>{{ t('language.pt_BR') }}</option>
+        <option value="en_US" {% if config.idioma_tts|default('pt_BR') == 'en_US' %}selected{% endif %}>{{ t('language.en_US') }}</option>
+      </select>
+    </label>
+    <div class="coluna-inteira tts-modelos-card" id="ttsModelosCard" data-instalado="{{ 'true' if tts_modelos.instalado else 'false' }}">
+      <div class="tts-modelos-info">
+        <div class="tts-modelos-titulo-linha">
+          <strong>{{ t('tts_models.title') }}</strong>
+          <span class="tts-modelos-status {{ 'instalado' if tts_modelos.instalado else 'ausente' }}" id="ttsModelosStatus">
+            {{ t('tts_models.installed') if tts_modelos.instalado else t('tts_models.not_installed') }}
+          </span>
+        </div>
+        <p>{{ t('tts_models.description') }}</p>
+        <a href="#" class="tts-modelos-pasta-link" id="ttsModelosPasta" title="{{ t('tts_models.open_folder_title') }}">{{ t('tts_models.folder') }}: {{ tts_modelos.pasta }}</a>
+      </div>
+      <button class="botao-secundario botao-com-icone botao-documentacao" type="button" id="botaoBaixarModelosTts">
+        <span class="icone-svg">{{ icon_svg('export')|safe }}</span>
+        <span id="textoBotaoBaixarModelosTts">{{ t('tts_models.download_again') if tts_modelos.instalado else t('tts_models.download') }}</span>
+      </button>
+    </div>
     <label class="coluna-inteira">{{ t('settings.export_folder') }}<input type="text" name="caminho_exportacao" value="{{ config.caminho_exportacao }}"></label>
     <label class="coluna-inteira">{{ t('settings.library_folder') }}<input type="text" name="caminho_biblioteca" value="{{ config.caminho_biblioteca }}"></label>
     <label class="coluna-inteira">{{ t('settings.gemini_key') }}<input type="password" name="gemini_api_key" value="{{ config.gemini_api_key or '' }}" autocomplete="off" spellcheck="false"></label>
@@ -104,6 +126,39 @@
           <button class="botao-secundario" type="button" data-close-update-modal>{{ t('common.close') }}</button>
           <button class="botao-secundario oculto" type="button" id="botaoCancelarAtualizacao">{{ t('updates.cancel') }}</button>
           <button class="botao-primario" type="button" id="botaoIniciarAtualizacao" disabled>{{ t('updates.update_now') }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal oculto" id="modalModelosTts" aria-hidden="true">
+    <div class="modal-overlay" data-close-tts-model-modal></div>
+    <div class="modal-conteudo pequeno tts-download-modal-card" role="dialog" aria-modal="true" aria-labelledby="modalModelosTtsTitulo" data-modal-card="true">
+      <div class="modal-topo">
+        <h2 id="modalModelosTtsTitulo">{{ t('tts_models.modal_title') }}</h2>
+        <button class="botao-fechar" type="button" aria-label="{{ t('modal.close') }}" data-close-tts-model-modal>&times;</button>
+      </div>
+      <div class="tts-download-modal-body">
+        <div class="tts-download-status" id="ttsDownloadStatus">{{ t('tts_models.ready') }}</div>
+        <div class="tts-download-arquivo">
+          <span id="ttsDownloadArquivo">{{ t('tts_models.waiting') }}</span>
+          <small id="ttsDownloadContador">-</small>
+        </div>
+        <div class="tts-download-progresso">
+          <div class="tts-download-progresso-barra"><span id="ttsDownloadBarra" style="width:0%"></span></div>
+          <div class="tts-download-progresso-detalhes">
+            <strong id="ttsDownloadPercentual">0%</strong>
+            <span id="ttsDownloadBytes">0 MB</span>
+          </div>
+        </div>
+        <div class="tts-download-lista">
+          <span><strong>kokoro-v1.0.onnx</strong><small>{{ t('tts_models.model_file_desc') }}</small></span>
+          <span><strong>voices-v1.0.bin</strong><small>{{ t('tts_models.voices_file_desc') }}</small></span>
+        </div>
+        <p class="tts-download-erro oculto" id="ttsDownloadErro"></p>
+        <div class="tts-download-acoes">
+          <button class="botao-secundario" type="button" data-close-tts-model-modal>{{ t('common.close') }}</button>
+          <button class="botao-secundario tts-download-cancelar oculto" type="button" id="botaoCancelarModelosTts">{{ t('common.cancel') }}</button>
         </div>
       </div>
     </div>

@@ -23,11 +23,13 @@ F = TypeVar("F", bound=Callable[..., Any])
 NOME_APP = "gutenberg"
 PASTA_LOGS_ENV = "GUTENBERG_LOG_DIR"
 ARQUIVO_LOG_ERROS = "errors.log"
+ARQUIVO_LOG_TTS = "tts_debug.txt"
 FORMATO_LOG = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 FORMATO_DATA = "%Y-%m-%d %H:%M:%S"
 _MAX_BYTES = 5 * 1024 * 1024
 _BACKUP_COUNT = 7
 _CONFIGURADO = False
+_TTS_CONFIGURADO = False
 def _known_folder_documentos_windows() -> Path | None:
     """Obtém a pasta Documentos oficial do Windows, incluindo redirecionamento para OneDrive."""
     if os.name != "nt":
@@ -143,6 +145,46 @@ def configurar_logging(nivel: int = logging.DEBUG) -> Path:
     )
     return pasta_logs
 
+
+
+def obter_caminho_log_tts() -> Path:
+    """Retorna o arquivo de diagnóstico detalhado do TTS local."""
+    return obter_pasta_logs() / ARQUIVO_LOG_TTS
+
+
+def obter_logger_tts(nome: str = "gutenberg.tts") -> logging.Logger:
+    """Obtém um logger DEBUG dedicado ao TTS, persistido em ``tts_debug.txt``.
+
+    O logger fica separado do ``errors.log`` porque este diagnóstico precisa
+    registrar também eventos INFO/DEBUG (resolução dos modelos, carregamento
+    de DLLs, geração do WAV e reprodução no WebView). O arquivo é rotativo e
+    fica na mesma pasta de logs do Gutenberg, que é gravável mesmo quando o
+    aplicativo está instalado em Program Files.
+    """
+    global _TTS_CONFIGURADO
+    configurar_logging()
+
+    base = logging.getLogger("gutenberg.tts")
+    base.setLevel(logging.DEBUG)
+    base.propagate = False
+
+    if not _TTS_CONFIGURADO:
+        for handler in list(base.handlers):
+            if getattr(handler, "_gutenberg_tts_handler", False):
+                base.removeHandler(handler)
+                handler.close()
+
+        handler = _criar_handler_arquivo(obter_caminho_log_tts(), logging.DEBUG)
+        handler._gutenberg_tts_handler = True  # type: ignore[attr-defined]
+        base.addHandler(handler)
+        _TTS_CONFIGURADO = True
+        base.info("=" * 72)
+        base.info("Nova sessão de diagnóstico TTS")
+        base.info("Arquivo de log: %s", obter_caminho_log_tts())
+
+    logger = logging.getLogger(nome)
+    logger.setLevel(logging.DEBUG)
+    return logger
 
 def obter_logger(nome: str) -> logging.Logger:
     """Obtém um logger padronizado para o módulo informado."""

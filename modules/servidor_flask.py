@@ -1,13 +1,17 @@
 """Aplicação Flask principal."""
 from __future__ import annotations
 
+from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile, mkdtemp
 import os
+import json
 import math
 import logging
 import re
 import time
+import subprocess
+import sys
 from collections import Counter
 
 from bs4 import BeautifulSoup
@@ -87,7 +91,7 @@ from .manipulador_recursos_projeto import (
     salvar_item_catalogo_projeto,
     salvar_paginas_catalogo_projeto,
 )
-from .i18n import carregar_locale, idioma_projeto_rotulo, normalizar_idioma_app, t
+from .i18n import carregar_locale, idioma_projeto_rotulo, normalizar_idioma_app, obter_idioma_app, t
 from .atualizador import verificar_atualizacao, iniciar_atualizacao, estado_atualizacao, cancelar_atualizacao, ultima_verificacao_atualizacao
 from .utilidades import (
     EXPORTS_PADRAO,
@@ -100,9 +104,17 @@ from .utilidades import (
     salvar_configuracoes,
     RAIZ_RECURSOS,
     APP_VERSAO,
+    PASTA_MODELOS_TTS,
 )
-from .logging_config import obter_logger, registrar_etapa
+from .logging_config import obter_logger, obter_logger_tts, obter_caminho_log_tts, registrar_etapa
+from .tts_kokoro import sintetizar_wav
+from .tts_modelos import (
+    cancelar_download_modelos_tts,
+    iniciar_download_modelos_tts,
+    status_modelos_tts,
+)
 logger = obter_logger(__name__)
+tts_logger = obter_logger_tts("gutenberg.tts.api")
 
 
 LIMITE_TITULO_PROJETO = 70
@@ -121,7 +133,7 @@ LIMITE_GENERO = 60
 LIMITE_CATALOGO_NOME = 60
 LIMITE_CATALOGO_DESCRICAO = 4000
 MAX_NUMERACAO_CENA = 9999
-GEMINI_REVISAO_MODELO = "gemini-2.5-flash-lite"
+GEMINI_REVISAO_MODELO = "gemini-3.5-flash-lite"
 GEMINI_REVISAO_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_REVISAO_MODELO}:generateContent"
 
 
@@ -641,8 +653,6 @@ def _corrigir_texto_com_gemini(texto: str, chave_api: str, idioma: str = "pt-BR"
     corpo = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 0.1,
-            "topP": 0.8,
             "maxOutputTokens": 8192,
         },
     }
@@ -975,6 +985,8 @@ def icon_svg(nome: str) -> str:
         "edit": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>',
         "read": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H11v18H5.5A2.5 2.5 0 0 0 3 18.5z"/><path d="M21 5.5A2.5 2.5 0 0 0 18.5 3H13v18h5.5a2.5 2.5 0 0 1 2.5-2.5z"/></svg>',
         "continue": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>',
+        "tts": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h3l4 4V6l-4 4H5z"/><path d="M16 9.5a4 4 0 0 1 0 5"/><path d="M18.5 7a7 7 0 0 1 0 10"/></svg>',
+        "ai": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.4 4.6L18 9l-4.6 1.4L12 15l-1.4-4.6L6 9l4.6-1.4L12 3z"/><path d="m19 14 .7 2.3L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14z"/><path d="M5 14v4M3 16h4"/></svg>',
         "export": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>',
         "back": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>',
         "config": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-.4-1 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1-.4 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 .4 1 1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.26.3.47.65.6 1a1.7 1.7 0 0 0 1 .4H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1 .4c-.3.13-.65.34-1 .6z"/></svg>',
@@ -1435,7 +1447,7 @@ def criar_app() -> Flask:
             Mantém a lógica centralizada e evita que detalhes de implementação vazem
             para quem apenas precisa acionar este comportamento.
         """
-        return render_template("configuracoes.html", config=obter_configuracoes())
+        return render_template("configuracoes.html", config=obter_configuracoes(), tts_modelos=status_modelos_tts())
 
     @app.post("/configuracoes/salvar")
     @registrar_etapa
@@ -1467,8 +1479,9 @@ def criar_app() -> Flask:
             "h3_px": int(request.form.get("h3_px") or 18),
             "largura_leitura_px": int(request.form.get("largura_leitura_px") or 860),
             "leitor_tema": config_atual.get("leitor_tema", "tema-claro"),
-            "leitor_fonte": config_atual.get("leitor_fonte", "fonte-serif"),
+            "leitor_fonte": config_atual.get("leitor_fonte", "literata"),
             "leitor_tamanho_fonte_px": int(config_atual.get("leitor_tamanho_fonte_px") or config_atual.get("tamanho_fonte_px") or 20),
+            "leitor_largura_percentual": max(30, min(90, int(config_atual.get("leitor_largura_percentual") or 90))),
             "leitor_modo_confortavel": bool(config_atual.get("leitor_modo_confortavel", False)),
             "leitor_modo_ampliado": bool(config_atual.get("leitor_modo_ampliado", False)),
             "caminho_exportacao": request.form.get("caminho_exportacao", str(EXPORTS_PADRAO)).strip() or str(EXPORTS_PADRAO),
@@ -1477,9 +1490,28 @@ def criar_app() -> Flask:
             "efeito_editor": request.form.get("efeito_editor") == "on",
             "gemini_api_key": request.form.get("gemini_api_key", config_atual.get("gemini_api_key", "")).strip(),
             "idioma_app": normalizar_idioma_app(request.form.get("idioma_app", config_atual.get("idioma_app", "pt_BR"))),
+            "idioma_tts": "en_US" if str(request.form.get("idioma_tts", config_atual.get("idioma_tts", "pt_BR"))).strip().lower().replace("-", "_") == "en_us" else "pt_BR",
+            "leitor_tts_velocidade": max(0.75, min(1.25, round(float(config_atual.get("leitor_tts_velocidade") or 1.0) * 20) / 20)),
         }
+        dados["ultima_area_app"] = "biblioteca" if str(config_atual.get("ultima_area_app") or "editor") == "biblioteca" else "editor"
         salvar_configuracoes(dados)
         return redirect(url_for("pagina_configuracoes"))
+
+
+    @app.post("/api/app/ultima-area")
+    @registrar_etapa
+    def api_salvar_ultima_area_app():
+        """Persiste qual utilidade principal (Editor ou Biblioteca) foi usada por último."""
+        payload = request.get_json(silent=True) or {}
+        area = str(payload.get("area") or "").strip().lower()
+        if area not in {"editor", "biblioteca"}:
+            return jsonify({"ok": False, "erro": "Área inválida."}), 400
+
+        config = obter_configuracoes()
+        if config.get("ultima_area_app") != area:
+            config["ultima_area_app"] = area
+            salvar_configuracoes(config)
+        return jsonify({"ok": True, "area": area})
 
 
     @app.get("/api/atualizacao/verificar")
@@ -1534,6 +1566,204 @@ def criar_app() -> Flask:
         """
         pasta_documentacao = (RAIZ_RECURSOS / "documentation").resolve()
         return send_from_directory(pasta_documentacao, arquivo)
+
+    @app.post("/api/ia/editor")
+    @registrar_etapa
+    def api_ia_editor():
+        """Gera conteúdo para os editores usando o Gemini e as regras nativas do editor."""
+        dados = request.get_json(silent=True) or {}
+        modo = str(dados.get("modo") or "epub").strip().lower()
+        if modo not in {"epub", "roteiro"}:
+            return jsonify({"erro": "Modo de editor inválido."}), 400
+        prompt_usuario = str(dados.get("prompt") or "").strip()
+        if not prompt_usuario:
+            return jsonify({"erro": "Escreva o que você deseja gerar."}), 400
+        if len(prompt_usuario) > 8000:
+            return jsonify({"erro": "O pedido é muito longo. Reduza para até 8.000 caracteres."}), 400
+        config = obter_configuracoes()
+        chave_api = str(config.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY") or "").strip()
+        if not chave_api:
+            return jsonify({"erro": t("backend.set_api_key")}), 400
+        idioma = normalizar_idioma_projeto(dados.get("idioma") or "pt-BR")
+        contexto = str(dados.get("contexto") or "")[:24000]
+        recursos = str(dados.get("recursos") or "")[:12000]
+        if modo == "roteiro":
+            regras = (
+                "Você está escrevendo para o editor de ROTEIRO do Gutenberg. "
+                "A resposta será convertida diretamente em blocos reais do editor. "
+                "Para a geração, produza um objeto JSON com a chave 'blocos', contendo uma lista de objetos com 'tipo' e 'texto'. "
+                "Os únicos TIPOS permitidos são: scene_heading, action, character, dialogue, parenthetical, shot, transition, comment, music, neutral. "
+                "Use os tipos corretos como um roteirista humano usaria. Uma fala deve normalmente ser character + dialogue, "
+                "e parenthetical só quando necessário. Cabeçalhos de cena devem usar scene_heading. "
+                "Não crie classes ou atributos extras. Pode usar <br>, <strong>, <em> e <u> dentro do conteúdo quando fizer sentido, "
+                "mas prefira texto simples. Respeite personagens, locais e anotações fornecidos nos recursos; não invente nomes para substituir recursos existentes. "
+                "Escreva exatamente o conteúdo pedido pelo usuário, sem prefácio ou pós-texto. "
+            )
+        else:
+            regras = (
+                "Você está escrevendo para o editor de EPUB/texto do Gutenberg. "
+                "A resposta deve ser SOMENTE HTML seguro, sem markdown, sem cercas de código e sem explicações. "
+                "Use apenas <p>, <h1>, <h2>, <h3>, <blockquote>, <ul>, <ol>, <li>, <br>, <strong>, <em>, <u>, <span> e <hr>. "
+                "Organize o texto em parágrafos e títulos apropriados. Use formatação apenas quando ela tiver função editorial. "
+                "Não crie scripts, links, imagens, estilos inline, classes ou atributos estranhos. "
+                "Respeite o idioma do projeto e escreva exatamente o que o usuário pediu, sem prefácio ou pós-texto. "
+            )
+        idioma_label = "inglês" if idioma == "en_US" else "português brasileiro"
+        prompt = (
+            regras + f"O idioma do projeto é {idioma_label}.\n\n"
+            "RECURSOS/CONTEXTO DO PROJETO:\n" + (recursos or "Nenhum recurso adicional informado.") + "\n\n"
+            "CONTEÚDO ATUAL DO EDITOR (use apenas como contexto, não o repita automaticamente):\n" +
+            (contexto or "Editor vazio.") + "\n\n"
+            "PEDIDO DO USUÁRIO:\n" + prompt_usuario
+        )
+        # Para roteiro usamos saída estruturada: isso evita que o modelo misture
+        # markdown/HTML e torna a conversão para os blocos reais do editor determinística.
+        if modo == "roteiro":
+            corpo = {
+                "contents": [{"parts": [{"text": prompt + "\n\nIMPORTANTE: retorne os blocos exclusivamente no JSON solicitado pela API."}]}],
+                "generationConfig": {
+                    "maxOutputTokens": 12000,
+                    "responseMimeType": "application/json",
+                    "responseJsonSchema": {
+                        "type": "object",
+                        "properties": {
+                            "blocos": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "tipo": {
+                                            "type": "string",
+                                            "enum": ["scene_heading", "action", "character", "dialogue", "parenthetical", "shot", "transition", "comment", "music", "neutral"]
+                                        },
+                                        "texto": {"type": "string"}
+                                    },
+                                    "required": ["tipo", "texto"]
+                                }
+                            }
+                        },
+                        "required": ["blocos"]
+                    }
+                },
+            }
+        else:
+            corpo = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "maxOutputTokens": 12000,
+                },
+            }
+        try:
+            resposta = requests.post(
+                GEMINI_REVISAO_URL,
+                headers={"Content-Type": "application/json", "x-goog-api-key": chave_api},
+                json=corpo,
+                timeout=120,
+            )
+            if not resposta.ok:
+                try:
+                    detalhe = (resposta.json().get("error") or {}).get("message") or resposta.text
+                except Exception:
+                    detalhe = resposta.text
+                raise RuntimeError(t("backend.gemini_failed", detail=detalhe or resposta.status_code))
+            payload_gemini = resposta.json()
+            html_gerado = _extrair_texto_gemini(payload_gemini).strip()
+            html_gerado = re.sub(r"^```(?:html|json)?\s*", "", html_gerado, flags=re.I)
+            html_gerado = re.sub(r"\s*```$", "", html_gerado)
+            # O BeautifulSoup precisa existir também no caminho EPUB.
+            # Antes ele só era criado no fallback do roteiro, causando:
+            # "cannot access local variable 'soup' where it is not associated with a value".
+            soup = BeautifulSoup(html_gerado, "html.parser")
+            if modo == "roteiro":
+                # Primeiro caminho: JSON estruturado. O fallback HTML permanece para
+                # compatibilidade com respostas antigas/contas que não aceitem o schema.
+                blocos_json = []
+                try:
+                    objeto = json.loads(html_gerado)
+                    blocos_json = objeto.get("blocos") if isinstance(objeto, dict) else []
+                except (TypeError, ValueError):
+                    blocos_json = []
+                tipos = {"scene_heading", "action", "character", "dialogue", "parenthetical", "shot", "transition", "comment", "music", "neutral"}
+                if isinstance(blocos_json, list):
+                    normalizados = []
+                    for item in blocos_json:
+                        if not isinstance(item, dict):
+                            continue
+                        tipo = str(item.get("tipo") or "action")
+                        texto = str(item.get("texto") or "").strip()
+                        if tipo not in tipos or not texto:
+                            continue
+                        normalizados.append((tipo, texto))
+                    if normalizados:
+                        tags = []
+                        for tipo, texto in normalizados:
+                            div = BeautifulSoup("<div></div>", "html.parser").div
+                            div["class"] = ["roteiro-bloco"]
+                            div["data-block-type"] = tipo
+                            # O conteúdo do bloco é texto puro; preservamos quebras de linha
+                            # como <br> para não fundir diálogos/ações.
+                            partes = texto.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+                            for i, parte in enumerate(partes):
+                                if i:
+                                    div.append(BeautifulSoup("<br/>", "html.parser").br)
+                                div.append(parte)
+                            tags.append(str(div))
+                        html_final = "".join(tags)
+                        return jsonify({"ok": True, "html": html_final, "modelo": GEMINI_REVISAO_MODELO, "modo": modo})
+                permitidos = {"div", "br", "strong", "em", "u"}
+                tipos = {"scene_heading", "action", "character", "dialogue", "parenthetical", "shot", "transition", "comment", "music", "neutral"}
+                for tag in list(soup.find_all(True)):
+                    if tag.name not in permitidos:
+                        tag.unwrap()
+                        continue
+                    for attr in list(tag.attrs):
+                        if tag.name == "div" and attr == "class":
+                            classes = tag.get("class") or []
+                            if "roteiro-bloco" not in classes:
+                                tag["class"] = ["roteiro-bloco"]
+                            else:
+                                tag["class"] = ["roteiro-bloco"]
+                        elif tag.name == "div" and attr == "data-block-type":
+                            if tag.get("data-block-type") not in tipos:
+                                tag["data-block-type"] = "action"
+                        else:
+                            del tag.attrs[attr]
+                # Se o modelo devolveu apenas texto solto, converte cada parágrafo em bloco de ação.
+                divs = soup.find_all("div", class_="roteiro-bloco")
+                if not divs:
+                    texto = soup.get_text(" ", strip=True)
+                    if texto:
+                        novo = soup.new_tag("div", attrs={"class": "roteiro-bloco", "data-block-type": "action"})
+                        novo.string = texto
+                        soup.clear()
+                        soup.append(novo)
+                else:
+                    for div in divs:
+                        div["class"] = ["roteiro-bloco"]
+                        div["data-block-type"] = div.get("data-block-type") if div.get("data-block-type") in tipos else "action"
+                        if not div.get_text(strip=True):
+                            div.append(soup.new_tag("br"))
+            else:
+                permitidos = {"p", "h1", "h2", "h3", "blockquote", "ul", "ol", "li", "br", "strong", "em", "u", "span", "hr"}
+                for tag in list(soup.find_all(True)):
+                    if tag.name not in permitidos:
+                        tag.unwrap()
+                        continue
+                    for attr in list(tag.attrs):
+                        if tag.name == "span" and attr == "class":
+                            classes = [c for c in (tag.get("class") or []) if c in {"fonte-sans", "fonte-serif", "fonte-mono"}]
+                            if classes:
+                                tag["class"] = classes
+                            else:
+                                del tag.attrs[attr]
+                        else:
+                            del tag.attrs[attr]
+            html_final = "".join(str(x) for x in soup.contents).strip()
+            if not html_final:
+                raise RuntimeError(t("backend.gemini_empty"))
+            return jsonify({"ok": True, "html": html_final, "modelo": GEMINI_REVISAO_MODELO, "modo": modo})
+        except Exception as exc:
+            return jsonify({"erro": str(exc)}), 502
 
     @app.post("/api/revisao/gemini")
     @registrar_etapa
@@ -2183,6 +2413,119 @@ def criar_app() -> Flask:
         livro = marcar_livro_como_lido(slug, bool(dados.get("lido", False)))
         return jsonify({"ok": True, "progresso_percentual": livro.get("progresso_percentual", 0), "foi_lido": livro.get("foi_lido", False)})
 
+    @app.post("/api/tts/log")
+    def api_tts_log_cliente():
+        """Recebe eventos do player TTS do WebView e grava no mesmo log do Kokoro."""
+        dados = request.get_json(silent=True) or {}
+        evento = re.sub(r"[^a-zA-Z0-9_.:-]", "_", str(dados.get("event") or "evento"))[:80]
+        detalhes = dados.get("details")
+        if not isinstance(detalhes, dict):
+            detalhes = {"value": str(detalhes)[:500]} if detalhes is not None else {}
+
+        # Não aceitamos texto do livro neste endpoint. O JavaScript envia apenas
+        # metadados técnicos; ainda assim limitamos tamanho e profundidade para
+        # evitar que um erro do cliente faça o arquivo de diagnóstico crescer sem controle.
+        seguros = {}
+        for chave, valor in list(detalhes.items())[:30]:
+            chave_segura = re.sub(r"[^a-zA-Z0-9_.:-]", "_", str(chave))[:80]
+            if isinstance(valor, (bool, int, float)) or valor is None:
+                seguros[chave_segura] = valor
+            else:
+                seguros[chave_segura] = str(valor)[:500]
+
+        tts_logger.info(
+            "CLIENT | event=%s | details=%s",
+            evento,
+            json.dumps(seguros, ensure_ascii=False, separators=(",", ":")),
+        )
+        return ("", 204)
+
+    @app.get("/api/tts/modelos/status")
+    def api_tts_modelos_status():
+        """Retorna instalação e progresso atual dos modelos externos do TTS."""
+        return jsonify({"ok": True, "estado": status_modelos_tts()})
+
+    @app.post("/api/tts/modelos/abrir-pasta")
+    def api_tts_modelos_abrir_pasta():
+        """Abre a pasta persistente dos modelos TTS no gerenciador de arquivos do sistema."""
+        try:
+            PASTA_MODELOS_TTS.mkdir(parents=True, exist_ok=True)
+            caminho = str(PASTA_MODELOS_TTS.resolve())
+            if os.name == "nt":
+                os.startfile(caminho)  # type: ignore[attr-defined]
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", caminho], close_fds=True)
+            else:
+                subprocess.Popen(["xdg-open", caminho], close_fds=True)
+            return jsonify({"ok": True, "pasta": caminho})
+        except Exception as exc:
+            logger.exception("Falha ao abrir a pasta dos modelos TTS: %s", exc)
+            return jsonify({"ok": False, "erro": str(exc)}), 500
+
+    @app.post("/api/tts/modelos/baixar")
+    def api_tts_modelos_baixar():
+        """Inicia o download do modelo Kokoro e do pacote de vozes."""
+        dados = iniciar_download_modelos_tts()
+        return jsonify(dados), (200 if dados.get("ok") else 400)
+
+    @app.post("/api/tts/modelos/cancelar")
+    def api_tts_modelos_cancelar():
+        """Solicita o cancelamento do download de modelos em andamento."""
+        return jsonify(cancelar_download_modelos_tts())
+
+    @app.post("/api/tts/kokoro")
+    @registrar_etapa
+    def api_tts_kokoro():
+        """Gera um pequeno trecho de áudio usando o modelo Kokoro local."""
+        inicio = time.perf_counter()
+        dados = request.get_json(silent=True) or {}
+        texto = str(dados.get("text") or "").strip()
+        idioma = str(obter_configuracoes().get("idioma_tts") or "pt_BR").strip()
+        fallback = "pt_BR"
+        try:
+            velocidade = max(0.75, min(1.25, round(float(dados.get("speed") or 1.0) * 20) / 20))
+        except (TypeError, ValueError):
+            velocidade = 1.0
+
+        tts_logger.info(
+            "HTTP TTS recebido | chars=%d | idioma=%s | velocidade=%.2f | content_type=%s | content_length=%s | log=%s",
+            len(texto),
+            idioma,
+            velocidade,
+            request.content_type,
+            request.content_length,
+            obter_caminho_log_tts(),
+        )
+
+        if not texto:
+            tts_logger.warning("HTTP TTS recusado | motivo=texto_vazio")
+            return jsonify({"ok": False, "erro": "Texto vazio."}), 400
+        if len(texto) > 1400:
+            tts_logger.warning("HTTP TTS recusado | motivo=trecho_grande | chars=%d", len(texto))
+            return jsonify({"ok": False, "erro": "Trecho muito grande."}), 400
+        try:
+            audio = sintetizar_wav(texto, idioma, fallback, velocidade)
+        except FileNotFoundError as exc:
+            tts_logger.exception("HTTP TTS falhou: modelo nao encontrado")
+            return jsonify({"ok": False, "erro": str(exc), "log": str(obter_caminho_log_tts())}), 503
+        except RuntimeError as exc:
+            tts_logger.exception("HTTP TTS falhou: runtime Kokoro")
+            return jsonify({"ok": False, "erro": str(exc), "log": str(obter_caminho_log_tts())}), 503
+        except Exception as exc:
+            tts_logger.exception("HTTP TTS falhou: erro inesperado")
+            logger.exception("Erro inesperado no TTS Kokoro")
+            return jsonify({"ok": False, "erro": str(exc), "log": str(obter_caminho_log_tts())}), 500
+
+        tts_logger.info(
+            "HTTP TTS sucesso | bytes=%d | assinatura=%s | duracao_ms=%.2f",
+            len(audio),
+            audio[:12].hex(),
+            (time.perf_counter() - inicio) * 1000,
+        )
+        resposta = send_file(BytesIO(audio), mimetype="audio/wav", download_name="tts.wav")
+        resposta.headers["X-Gutenberg-TTS-Bytes"] = str(len(audio))
+        return resposta
+
     @app.post("/api/configuracoes/leitor")
     @registrar_etapa
     def rota_salvar_preferencias_leitor():
@@ -2205,8 +2548,11 @@ def criar_app() -> Flask:
         config_atual = obter_configuracoes()
         atualizacoes = {
             "leitor_tema": (dados.get("tema") or config_atual.get("leitor_tema") or "tema-claro"),
-            "leitor_fonte": (dados.get("fonte") or config_atual.get("leitor_fonte") or "fonte-serif"),
+            "leitor_fonte": (dados.get("fonte") or config_atual.get("leitor_fonte") or "literata"),
             "leitor_tamanho_fonte_px": int(dados.get("tamanho") or config_atual.get("leitor_tamanho_fonte_px") or config_atual.get("tamanho_fonte_px") or 20),
+            "leitor_largura_percentual": max(30, min(90, int(dados.get("largura") or config_atual.get("leitor_largura_percentual") or 90))),
+            "idioma_tts": "en_US" if str(dados.get("ttsLanguage") or config_atual.get("idioma_tts", "pt_BR")).strip().lower().replace("-", "_") == "en_us" else "pt_BR",
+            "leitor_tts_velocidade": max(0.75, min(1.25, round(float(dados.get("ttsSpeed") or config_atual.get("leitor_tts_velocidade") or 1.0) * 20) / 20)),
             "leitor_modo_confortavel": False,
             "leitor_modo_ampliado": True,
             "caminho_exportacao": str(config_atual.get("caminho_exportacao") or EXPORTS_PADRAO),
@@ -2478,8 +2824,20 @@ def criar_app() -> Flask:
             numero=numero,
             capitulo_anterior=capitulo_anterior,
             proximo_capitulo=proximo_capitulo,
+            conteudo_url=url_for("conteudo_capitulo_leitor", slug=slug, numero=numero),
             posicao_inicial=posicao_inicial,
         )
+
+    @app.get("/projetos/<slug>/capitulos/<int:numero>/conteudo-leitor")
+    @registrar_etapa
+    def conteudo_capitulo_leitor(slug: str, numero: int):
+        """Entrega o HTML do capítulo em um documento isolado para o leitor unificado."""
+        projeto = obter_projeto(slug)
+        if projeto.get("tipo") == "roteiro":
+            abort(404)
+        capitulo = ler_capitulo(obter_pasta_projeto(slug), numero)
+        html = str((capitulo.get("paragrafos") or ["<p><br></p>"])[0] or "<p><br></p>")
+        return html, 200, {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store"}
 
     @app.post("/api/projetos/<slug>/capitulos/<int:numero>/posicao")
     @registrar_etapa

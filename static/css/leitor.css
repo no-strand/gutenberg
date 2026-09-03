@@ -102,3 +102,333 @@
   pointer-events:none !important;
 }
 
+
+
+/* Redesign do leitor: mesma linguagem visual para capítulos do editor e EPUB da biblioteca. */
+.topo-leitor{
+  position:sticky;
+  top:12px;
+  z-index:40;
+  padding:12px 16px;
+  margin:0 auto 12px;
+  width:min(1180px,100%);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:18px;
+  background:rgba(12,18,34,.82);
+  box-shadow:0 14px 34px rgba(2,6,23,.20), inset 0 1px 0 rgba(255,255,255,.06);
+  backdrop-filter:blur(18px) saturate(125%);
+  -webkit-backdrop-filter:blur(18px) saturate(125%);
+}
+.leitor-grid{min-height:48px}
+.titulo-centro-wrap{min-width:0;padding:0 12px}
+.titulo-centro-leitor{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:clamp(1.05rem,1.55vw,1.38rem);
+  font-weight:800;
+  letter-spacing:-.02em;
+}
+.topo-leitor-acoes-compactas{gap:7px}
+.topo-leitor-acoes-compactas .botao-secundario{
+  min-height:38px;
+  padding:8px 11px;
+  border-radius:11px;
+}
+.indicador-progresso-leitura-topo{
+  min-width:58px;
+  height:38px;
+  padding:0 11px;
+  border-radius:11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.10);
+  font-variant-numeric:tabular-nums;
+  font-weight:800;
+}
+
+.painel-preferencias{
+  width:min(1180px,100%);
+  margin:0 auto 14px;
+  padding:10px;
+  gap:8px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:16px;
+  background:rgba(15,23,42,.62);
+  box-shadow:0 10px 26px rgba(2,6,23,.15);
+  backdrop-filter:blur(16px);
+}
+.reader-control-wrap{
+  min-height:42px;
+  height:42px;
+  border-radius:11px;
+  background:rgba(255,255,255,.055);
+  border:1px solid rgba(255,255,255,.09);
+  box-shadow:none;
+}
+.reader-font-wrap{padding:4px 8px;min-width:165px}
+.reader-font-select{height:32px;min-width:150px;border-radius:8px;background:rgba(2,6,23,.55);font-size:.82rem}
+.reader-size-wrap{
+  padding:4px 7px 4px 10px;
+  min-width:172px;
+  gap:8px;
+  justify-content:space-between;
+}
+.reader-control-label{
+  width:auto !important;
+  min-width:auto !important;
+  margin:0 !important;
+  font-size:.72rem;
+  line-height:1;
+  color:rgba(226,232,240,.66);
+  font-weight:800;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}
+.reader-size-control{display:flex;align-items:center;gap:4px}
+.reader-size-btn{
+  width:32px;
+  height:32px;
+  padding:0;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:8px;
+  background:rgba(255,255,255,.07);
+  color:#f8fafc;
+  font-weight:800;
+  cursor:pointer;
+  transition:transform .15s ease,background .15s ease,border-color .15s ease;
+}
+.reader-size-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(125,211,252,.34);transform:translateY(-1px)}
+.reader-size-control input[type="number"]{
+  width:48px;
+  height:32px;
+  padding:0 4px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:8px;
+  background:rgba(2,6,23,.55);
+  color:#f8fafc;
+  text-align:center;
+  font-weight:800;
+  outline:none;
+}
+.reader-size-control input[type="number"]:focus{border-color:rgba(125,211,252,.46);box-shadow:0 0 0 3px rgba(56,189,248,.10)}
+.reader-range-wrap,.label-range-leitor{display:none !important}
+.painel-preferencias .navegacao-capitulos-painel{margin-left:auto}
+.botao-navegacao{
+  min-width:42px;
+  height:42px;
+  border-radius:11px;
+  font-size:1.15rem;
+  font-weight:800;
+}
+
+.area-leitura{
+  width:min(var(--cfg-largura-leitura),1180px);
+  margin:0 auto 30px;
+  padding:clamp(42px,6vw,76px) clamp(24px,7vw,92px);
+  border:1px solid rgba(15,23,42,.08);
+  border-radius:26px;
+  background:#fff;
+  box-shadow:0 24px 65px rgba(2,6,23,.20);
+}
+.area-leitura-estendida{min-height:calc(100vh - 205px)}
+.area-leitura-epub{
+  width:min(1180px,100%);
+  padding:0;
+  overflow:hidden;
+  background:transparent;
+  border-color:rgba(255,255,255,.09);
+}
+.area-leitura-epub .epub-frame{
+  width:100%;
+  min-height:72vh;
+  border:0;
+  border-radius:26px;
+  background:#fff;
+  box-shadow:0 24px 65px rgba(2,6,23,.20);
+}
+.modal-leitor-conteudo{
+  width:min(620px,calc(100vw - 32px));
+  max-height:min(78vh,760px);
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:22px;
+  background:rgba(12,18,34,.96);
+  box-shadow:0 28px 90px rgba(0,0,0,.42);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+}
+.modal-leitor-topo{
+  padding:18px 20px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.arvore-capitulos{padding:10px}
+.item-capitulo-sumario{
+  border-radius:11px;
+  margin:3px 0;
+  transition:background .15s ease,transform .15s ease;
+}
+.item-capitulo-sumario:hover{background:rgba(255,255,255,.06);transform:translateX(2px)}
+.item-capitulo-sumario.ativo{background:rgba(125,211,252,.11)}
+
+@media (max-width:768px){
+  .topo-leitor{position:relative;top:auto;margin-bottom:10px;border-radius:16px}
+  .titulo-centro-wrap{padding:4px 0}
+  .painel-preferencias{align-items:stretch}
+  .reader-font-wrap,.reader-size-wrap{width:100%;min-width:0}
+  .reader-size-wrap{justify-content:space-between}
+  .painel-preferencias .navegacao-capitulos-painel{margin-left:0}
+  .area-leitura{width:100%;padding:34px 22px;border-radius:20px}
+  .area-leitura-epub{padding:0}
+  .area-leitura-epub .epub-frame{min-height:78vh;border-radius:20px}
+}
+@media (max-width:480px){
+  .topo-leitor-acoes-compactas .botao-secundario span:not(.icone-svg),
+  .topo-leitor-acoes-compactas .botao-com-icone > span:not(.icone-svg){display:none}
+  .indicador-progresso-leitura-topo{min-width:54px}
+  .area-leitura{padding:28px 17px}
+  .area-leitura-epub{padding:0}
+}
+
+/* Configurações do leitor: painel compacto ancorado à direita da barra principal. */
+.leitor-config-anchor{position:relative;display:inline-flex;align-items:center;z-index:60}
+.leitor-config-btn{width:42px;height:42px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:11px}
+.leitor-config-btn .icone-svg svg{width:20px;height:20px}
+.leitor-config-popover{position:absolute;top:calc(100% + 10px);right:0;width:min(440px,calc(100vw - 28px));padding:14px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(12,18,34,.97);box-shadow:0 24px 70px rgba(0,0,0,.42);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:100}
+.leitor-config-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.leitor-config-header div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.leitor-config-header strong{font-size:.94rem}
+.leitor-config-header span{font-size:.72rem;color:rgba(226,232,240,.58)}
+.leitor-config-header .botao-fechar-sumario{width:32px;height:32px;flex:0 0 32px}
+.leitor-config-grid{display:grid;grid-template-columns:1fr;gap:11px;padding-top:13px}
+.leitor-config-field{display:flex!important;flex-direction:column!important;gap:6px!important;min-width:0!important;width:100%!important;font-size:.76rem!important;color:rgba(226,232,240,.72)}
+.leitor-config-field > span{font-weight:800;letter-spacing:.02em}
+.leitor-config-field select,.leitor-config-field input[type="number"]{box-sizing:border-box}
+.leitor-config-field .theme-select,.leitor-config-field .reader-font-select,.leitor-config-field .reader-tts-language-select{width:100%;min-width:0;height:38px;border-radius:9px}
+.leitor-config-field .reader-tts-language-select{width:320px;min-width:320px;max-width:100%;box-sizing:border-box;padding:0 42px 0 18px;}
+.reader-tts-speed-control{width:100%;display:flex;flex-direction:column;gap:3px}.reader-tts-speed-control input[type="range"]{width:100%;height:30px;margin:0;accent-color:currentColor;cursor:pointer}
+.leitor-config-field .reader-size-control{width:100%;justify-content:flex-start}
+.leitor-config-field .reader-size-control input[type="number"]{flex:1;width:auto;min-width:0}
+.navegacao-capitulos-inferior{width:min(var(--cfg-largura-leitura),1180px);margin:0 auto 34px;display:flex;justify-content:center;align-items:center;gap:8px}
+.navegacao-capitulos-inferior .botao-navegacao{min-width:46px;height:42px}
+
+/* A área de texto deve ficar reta, sem cantos arredondados. */
+.area-leitura{border-radius:0}
+.area-leitura-epub .epub-frame{border-radius:0}
+
+@media (max-width:768px){
+  .leitor-config-popover{position:fixed;top:70px;right:14px;width:min(440px,calc(100vw - 28px))}
+  .navegacao-capitulos-inferior{width:100%;margin-bottom:24px}
+  .area-leitura{border-radius:0}
+  .area-leitura-epub .epub-frame{border-radius:0}
+}
+
+/* Leitura em voz alta (Kokoro) */
+.tts-leitor-btn { margin-left: auto; }
+.tts-leitor-btn .icone-svg { display:inline-flex; align-items:center; justify-content:center; }
+.tts-leitor-btn .icone-svg svg { width: 1.15em; height: 1.15em; }
+.tts-loading-spinner {
+  width: 1.05em;
+  height: 1.05em;
+  box-sizing: border-box;
+  display: inline-block;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: tts-loading-spin .72s linear infinite;
+}
+@keyframes tts-loading-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .tts-loading-spinner { animation-duration: 1.6s; }
+}
+.tts-trecho { transition: background-color .12s ease, box-shadow .12s ease; border-radius: 2px; }
+.tts-atual { background: rgba(255,193,7,.42) !important; box-shadow: 0 0 0 3px rgba(255,193,7,.16); }
+
+/* Navegação de capítulos também no topo do leitor EPUB. */
+.navegacao-capitulos-superior {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  width: min(100% - 40px, 2200px);
+  margin: 10px auto 12px;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+.navegacao-capitulos-superior .botao-navegacao {
+  min-width: 46px;
+}
+.navegacao-capitulos-inferior {
+  margin-top: 12px;
+}
+.modo-ampliado {
+  max-width: min(99vw, 2200px);
+}
+.area-leitura-epub {
+  width: min(99vw, 2200px);
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 768px) {
+  .navegacao-capitulos-superior {
+    width: 100%;
+    padding: 0 14px;
+  }
+}
+
+/* Ajuste final do leitor: o conteúdo fica centralizado e ocupa uma proporção
+   maior da janela, sem ultrapassar a área útil da página. */
+.pagina-shell.pagina-leitor {
+  width: min(92vw, 1520px);
+  margin-left: auto;
+  margin-right: auto;
+}
+.pagina-leitor .topo-leitor,
+.pagina-leitor .navegacao-capitulos-superior,
+.pagina-leitor .area-leitura-epub,
+.pagina-leitor .navegacao-capitulos-inferior {
+  width: 100%;
+  max-width: none;
+  margin-left: auto;
+  margin-right: auto;
+}
+.pagina-leitor .navegacao-capitulos-superior {
+  padding-left: 0;
+  padding-right: 0;
+}
+.pagina-leitor .area-leitura-epub {
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .pagina-shell.pagina-leitor {
+    width: calc(100% - 20px);
+  }
+}
+
+/* TTS: indicador discreto em azul, somente depois que o áudio ficou pronto. */
+.tts-trecho.tts-pronto{
+  cursor:pointer;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  text-decoration-color: #1976d2;
+}
+.tts-trecho.tts-pronto:hover,.tts-trecho.tts-pronto:focus-visible{
+  text-decoration-thickness: 2px;
+  text-decoration-color: #1565c0;
+  outline:none;
+}
+
+/* Largura ajustável do texto: 30% a 90% da viewport, com limite físico de 1180px. */
+.area-leitura:not(.area-leitura-epub){width:min(var(--leitor-largura-vw,90vw),1180px);}
+.area-leitura-epub{width:min(var(--leitor-largura-vw,90vw),1180px);}
+.reader-width-control{display:flex;flex-direction:column;gap:3px;width:100%;}
+.reader-width-control input[type="range"]{width:100%;height:30px;margin:0;accent-color:currentColor;cursor:pointer;}
+.reader-width-scale{display:flex;justify-content:space-between;font-size:.68rem;color:rgba(226,232,240,.48);}
+.leitor-width-field strong{font-size:.78rem;color:rgba(226,232,240,.95);}
+
+/* Compatibilidade do seletor TTS (mantém a mesma largura nos dois leitores). */
+.reader-tts-language-select{width:320px;min-width:320px;max-width:100%;}

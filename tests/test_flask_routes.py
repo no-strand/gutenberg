@@ -4,7 +4,7 @@ import io
 import unittest
 from pathlib import Path
 
-from modules import manipulador_capitulos, manipulador_projetos, servidor_flask
+from modules import manipulador_capitulos, manipulador_projetos, servidor_flask, utilidades
 from tests.test_support import IsolatedProjectTestCase
 
 
@@ -37,6 +37,19 @@ class FlaskRoutesTests(IsolatedProjectTestCase):
         self.app = servidor_flask.criar_app()
         self.app.config.update(TESTING=True)
         self.client = self.app.test_client()
+
+    def test_persistir_ultima_area_principal(self):
+        resposta = self.client.post("/api/app/ultima-area", json={"area": "biblioteca"})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(resposta.get_json()["ok"])
+        self.assertEqual(utilidades.obter_configuracoes().get("ultima_area_app"), "biblioteca")
+
+        resposta = self.client.post("/api/app/ultima-area", json={"area": "editor"})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(utilidades.obter_configuracoes().get("ultima_area_app"), "editor")
+
+        resposta = self.client.post("/api/app/ultima-area", json={"area": "qualquer"})
+        self.assertEqual(resposta.status_code, 400)
 
     def test_criar_projeto_livro_e_capitulo_salvar(self):
         """

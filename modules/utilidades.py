@@ -16,7 +16,7 @@ from .logging_config import obter_logger, registrar_etapa
 logger = obter_logger(__name__)
 
 APP_NOME = "Gutenberg"
-APP_VERSAO = "1.0.2"
+APP_VERSAO = "1.0.3"
 RAIZ_PROJETO = Path(__file__).resolve().parent.parent
 RAIZ_RECURSOS = Path(getattr(sys, "_MEIPASS", RAIZ_PROJETO))
 
@@ -160,6 +160,14 @@ def _pasta_documentos_windows() -> Path:
 
 PASTA_APP = _pasta_appdata_windows()
 PASTA_DOCUMENTOS_APP = _pasta_documentos_windows()
+
+# Modelos TTS são dados grandes e mutáveis; ficam fora do bundle/instalação.
+# No Windows usamos LocalAppData para evitar _MEIPASS/_internal e permissões
+# de Program Files. Em outros ambientes, usamos a pasta persistente do app.
+_localappdata = os.environ.get("LOCALAPPDATA")
+PASTA_DADOS_LOCAIS = (Path(_localappdata) / APP_NOME) if _localappdata else PASTA_APP
+PASTA_MODELOS_TTS = PASTA_DADOS_LOCAIS / "models"
+
 PASTA_PROJETOS = PASTA_DOCUMENTOS_APP / "projects"
 EXPORTS_PADRAO = PASTA_DOCUMENTOS_APP / "exports"
 BIBLIOTECA_PADRAO = PASTA_DOCUMENTOS_APP / "library"
@@ -370,8 +378,10 @@ def configuracao_padrao() -> dict:
         "h3_px": 18,
         "largura_leitura_px": 860,
         "leitor_tema": "tema-claro",
-        "leitor_fonte": "fonte-serif",
+        "leitor_fonte": "literata",
         "leitor_tamanho_fonte_px": 20,
+        "leitor_largura_percentual": 90,
+        "leitor_tts_velocidade": 1.0,
         "leitor_modo_confortavel": False,
         "leitor_modo_ampliado": True,
         "caminho_exportacao": str(EXPORTS_PADRAO),
@@ -380,6 +390,8 @@ def configuracao_padrao() -> dict:
         "efeito_editor": True,
         "gemini_api_key": "",
         "idioma_app": "pt_BR",
+        "idioma_tts": "pt_BR",
+        "ultima_area_app": "editor",
     }
 
 

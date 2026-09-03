@@ -67,3 +67,21 @@
 @media (max-width:560px){.atualizacao-versoes{grid-template-columns:1fr}.atualizacao-acoes{justify-content:stretch}.atualizacao-acoes .botao-secundario,.atualizacao-acoes .botao-primario{width:100%}}
 
 .atualizacao-progresso-modal{display:grid;gap:6px;padding:10px 0}.atualizacao-progresso-modal.oculto,.atualizacao-acoes .oculto{display:none}.atualizacao-progresso-modal small{color:#AAB2BF;font-size:.86rem}.atualizacao-acoes #botaoCancelarAtualizacao{border-color:rgba(248,113,113,.36);color:#fecaca}
+
+/* Modelos externos do TTS */
+.tts-modelos-card{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(230,234,240,.08)}
+.tts-modelos-info{display:grid;gap:7px;min-width:0}.tts-modelos-info p{margin:0;color:#AAB2BF;line-height:1.5}.tts-modelos-info small{color:#8f9aaa;overflow-wrap:anywhere}
+.tts-modelos-pasta-link{display:inline-block;width:fit-content;max-width:100%;color:#93c5fd;font-size:.82rem;text-decoration:underline;text-decoration-color:rgba(147,197,253,.48);text-underline-offset:3px;overflow-wrap:anywhere;word-break:break-word;cursor:pointer}.tts-modelos-pasta-link:hover{color:#bfdbfe;text-decoration-color:currentColor}.tts-modelos-pasta-link:focus-visible{outline:2px solid rgba(147,197,253,.75);outline-offset:3px;border-radius:4px}
+.tts-modelos-titulo-linha{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:#fff;font-size:1rem}
+.tts-modelos-status{display:inline-flex;align-items:center;min-height:28px;padding:4px 10px;border-radius:999px;font-size:.82rem;font-weight:700;border:1px solid rgba(230,234,240,.12)}
+.tts-modelos-status.instalado{background:rgba(16,185,129,.14);border-color:rgba(52,211,153,.26);color:#a7f3d0}.tts-modelos-status.ausente{background:rgba(245,158,11,.12);border-color:rgba(251,191,36,.24);color:#fde68a}.tts-modelos-status.baixando{background:rgba(59,130,246,.14);border-color:rgba(96,165,250,.28);color:#bfdbfe}.tts-modelos-status.erro{background:rgba(239,68,68,.13);border-color:rgba(248,113,113,.28);color:#fecaca}
+.tts-modelos-card #botaoBaixarModelosTts{flex:0 0 auto;min-width:210px;justify-content:center}
+.tts-download-modal-card{width:min(590px,calc(100% - 24px))!important}.tts-download-modal-body{display:grid;gap:16px}
+.tts-download-status{padding:14px 16px;border-radius:16px;background:rgba(230,234,240,.06);border:1px solid rgba(230,234,240,.1);color:#E6EAF0;line-height:1.5}
+.tts-download-arquivo{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#dbe4ef}.tts-download-arquivo small{color:#AAB2BF;white-space:nowrap}
+.tts-download-progresso{display:grid;gap:8px}.tts-download-progresso-barra{height:11px;border-radius:999px;background:rgba(230,234,240,.12);overflow:hidden;border:1px solid rgba(230,234,240,.08)}.tts-download-progresso-barra span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,rgba(17,197,234,.95),rgba(187,27,155,.92));transition:width .2s ease}
+.tts-download-progresso-detalhes{display:flex;justify-content:space-between;gap:12px;color:#AAB2BF;font-size:.9rem}.tts-download-progresso-detalhes strong{color:#E6EAF0}
+.tts-download-lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tts-download-lista>span{display:grid;gap:4px;padding:12px 14px;border-radius:14px;background:rgba(9,14,24,.28);border:1px solid rgba(230,234,240,.08)}.tts-download-lista strong{color:#E6EAF0;font-size:.92rem;overflow-wrap:anywhere}.tts-download-lista small{color:#AAB2BF;line-height:1.35}
+.tts-download-erro{margin:0;padding:12px 14px;border-radius:14px;background:rgba(239,68,68,.12);border:1px solid rgba(248,113,113,.24);color:#fecaca;line-height:1.45}.tts-download-erro.oculto{display:none}
+.tts-download-acoes{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.tts-download-acoes .botao-secundario{min-height:44px;padding:0 16px}.tts-download-cancelar{border-color:rgba(248,113,113,.36)!important;color:#fecaca!important}.tts-download-cancelar.oculto{display:none}
+@media (max-width:700px){.tts-modelos-card{align-items:stretch;flex-direction:column}.tts-modelos-card #botaoBaixarModelosTts{width:100%;min-width:0}.tts-download-lista{grid-template-columns:1fr}}

@@ -581,7 +581,7 @@ def _parsear_epub_extraido(pasta_extraida: Path) -> dict[str, Any]:
 
     titulo = 'Livro sem título'
     autor = ''
-    idioma = 'pt-BR'
+    idioma = ''
     if metadata_el is not None:
         titulo_el = metadata_el.find('dc:title', NAMESPACES)
         autor_el = metadata_el.find('dc:creator', NAMESPACES)
@@ -678,6 +678,7 @@ def _parsear_epub_extraido(pasta_extraida: Path) -> dict[str, Any]:
         'titulo': titulo,
         'autor': autor,
         'idioma': idioma,
+        'idioma_metadado': bool(idioma),
         'opf_path': opf_rel,
         'cover_path': _detectar_capa(opf_rel, manifest, metadata_el, guide_el),
         'capitulos': capitulos,
@@ -807,6 +808,7 @@ def adicionar_livro_epub(caminho_origem: Path) -> dict[str, Any]:
         'titulo': dados['titulo'] or caminho_origem.stem,
         'autor': dados['autor'],
         'idioma': dados['idioma'],
+        'idioma_metadado': bool(dados.get('idioma_metadado')),
         'data_adicao': agora_iso(),
         'cover_path': dados['cover_path'],
         'opf_path': dados['opf_path'],

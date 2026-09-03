@@ -244,3 +244,24 @@
 /* v4: modal de edição pelo link do catálogo mais compacto e redimensionável */
 #catalogoLivroDescricao{min-height:170px;height:180px;line-height:1.45;resize:vertical;}
 @media(max-width:720px){#catalogoLivroDescricao{min-height:150px;height:160px}}
+
+
+/* Assistente IA dos editores */
+.modal-ia-editor{width:min(920px,calc(100% - 24px));max-height:min(88vh,900px);overflow:auto}
+.ia-editor-pedido{display:flex;flex-direction:column;gap:7px;font-weight:800;margin:4px 0 14px}
+.ia-editor-pedido textarea{width:100%;min-height:150px;resize:vertical;border:1px solid rgba(15,23,42,.16);border-radius:12px;padding:12px 14px;font:inherit;line-height:1.5;box-sizing:border-box;background:#fff;color:#172033}
+.ia-editor-opcoes{display:flex;justify-content:flex-end;margin-bottom:14px}.ia-editor-opcoes label{display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:700}.ia-editor-opcoes select{border:1px solid rgba(15,23,42,.16);border-radius:9px;padding:7px 9px;background:#fff}
+.ia-editor-preview-wrap h3{margin:0 0 8px;font-size:.9rem}.ia-editor-preview{min-height:120px;max-height:330px;overflow:auto;border:1px solid rgba(15,23,42,.12);border-radius:12px;padding:16px;background:#f8fafc;color:#172033;line-height:1.55}.ia-editor-preview .roteiro-bloco{margin:.35em 0}.ia-editor-preview h1,.ia-editor-preview h2,.ia-editor-preview h3{margin-top:.8em}.ia-editor-preview p{margin:.65em 0}
+
+/* Seletor de inserção da IA: opções visíveis e fáceis de distinguir. */
+.ia-editor-insercao{border:0;margin:0 0 18px;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ia-editor-insercao legend{grid-column:1 / -1;padding:0;margin:0 0 2px;font-size:.95rem;font-weight:800;color:#fafafa}
+.ia-editor-opcao{position:relative;display:block;cursor:pointer;margin:0}
+.ia-editor-opcao input{position:absolute;opacity:0;pointer-events:none}
+.ia-editor-opcao-conteudo{min-height:78px;display:flex;flex-direction:column;justify-content:center;gap:5px;padding:12px 14px;border:2px solid rgba(15,23,42,.14);border-radius:13px;background:#fff;color:#172033;box-sizing:border-box;transition:border-color .15s,box-shadow .15s,background .15s,transform .15s}
+.ia-editor-opcao-conteudo strong{font-size:.9rem;line-height:1.2}
+.ia-editor-opcao-conteudo small{font-size:.75rem;line-height:1.3;font-weight:500;color:#64748b}
+.ia-editor-opcao:hover .ia-editor-opcao-conteudo{border-color:rgba(37,99,235,.42);background:#f8fbff;transform:translateY(-1px)}
+.ia-editor-opcao input:checked + .ia-editor-opcao-conteudo{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.ia-editor-opcao input:focus-visible + .ia-editor-opcao-conteudo{outline:3px solid rgba(59,130,246,.35);outline-offset:2px}
+@media(max-width:720px){.ia-editor-insercao{grid-template-columns:1fr}.ia-editor-opcao-conteudo{min-height:64px}}

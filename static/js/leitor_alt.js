@@ -1,5 +1,5 @@
 /**
- * Controla o leitor alternativo baseado em iframe para conteúdos estruturados, como EPUB.
+ * Controla o leitor unificado baseado em iframe para capítulos do editor e livros da biblioteca.
  */
 
 const areaLeitura = document.getElementById('areaLeitura');
@@ -7,9 +7,15 @@ const epubFrame = document.getElementById('epubFrame');
 const controleTema = document.getElementById('controleTema');
 const controleFonte = document.getElementById('controleFonte');
 const controleTamanho = document.getElementById('controleTamanho');
+const controleLargura = document.getElementById('controleLargura');
+const controleIdiomaTts = document.getElementById('controleIdiomaTts');
+const controleVelocidadeTts = document.getElementById('controleVelocidadeTts');
 const botaoAbrirSumario = document.getElementById('abrirSumario');
 const modalSumario = document.getElementById('modalSumario');
-const chave = `leitor_pref_${window.LEITOR_CONFIG?.slug || 'biblioteca'}`;
+const botaoAbrirConfiguracoes = document.getElementById('abrirConfiguracoesLeitor');
+const painelConfiguracoes = document.getElementById('configuracoesLeitor');
+const botaoFecharConfiguracoes = document.getElementById('fecharConfiguracoesLeitor');
+const chave = `leitor_pref_${window.LEITOR_CONFIG?.slug || 'global'}`;
 let timeoutPersistencia = null;
 let timeoutSalvarPosicao = null;
 let restaurouPosicao = false;
@@ -22,6 +28,9 @@ let timeoutRestauracao = null;
 
 
 const TEMAS_LEITOR = ['light','dark','serpia','dark-blue','terminal-calm','warm-brown','sunset-mode','frost','pastel-pink','code-like'];
+const LARGURA_MIN_PERCENTUAL = 30;
+const LARGURA_MAX_PERCENTUAL = 90;
+const LARGURA_MAX_PX = 1180;
 
 /** Normalizartema. Usada pelo fluxo principal da aplicação. */
 function normalizarTema(valor) {
@@ -53,12 +62,57 @@ function rolarViewportParaAreaLeitura() {
 }
 
 
+function calcularMaximoPercentualLargura() {
+  const viewport = Math.max(1, Number(window.innerWidth || document.documentElement?.clientWidth || 0));
+  const percentualAteLimiteFisico = Math.ceil((LARGURA_MAX_PX / viewport) * 100);
+  return Math.max(LARGURA_MIN_PERCENTUAL, Math.min(LARGURA_MAX_PERCENTUAL, percentualAteLimiteFisico));
+}
+
+function normalizarLarguraLeitura(valor) {
+  const numero = Number(valor);
+  const maximo = calcularMaximoPercentualLargura();
+  if (!Number.isFinite(numero)) return maximo;
+  return Math.max(LARGURA_MIN_PERCENTUAL, Math.min(maximo, Math.round(numero)));
+}
+
+function atualizarLimitesControleLargura() {
+  if (!controleLargura) return;
+  const maximo = calcularMaximoPercentualLargura();
+  controleLargura.min = String(LARGURA_MIN_PERCENTUAL);
+  controleLargura.max = String(maximo);
+  controleLargura.value = String(normalizarLarguraLeitura(controleLargura.value));
+  const indicadorMaximo = document.getElementById('valorMaxLarguraLeitura');
+  if (indicadorMaximo) indicadorMaximo.textContent = `${maximo}%`;
+}
+
+function normalizarVelocidadeTts(valor) {
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return 1;
+  return Math.max(0.75, Math.min(1.25, Math.round(numero * 20) / 20));
+}
+
+function normalizarTamanhoFonte(valor) {
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return 20;
+  return Math.max(16, Math.min(32, Math.round(numero)));
+}
+
+/** Ajustar tamanho da fonte pelos botões compactos. */
+function ajustarTamanhoFonte(delta) {
+  if (!controleTamanho) return;
+  controleTamanho.value = normalizarTamanhoFonte(Number(controleTamanho.value || 20) + delta);
+  aplicarPreferenciasNoIframe();
+}
+
 /** Obterpreferencias. Usada pelo fluxo principal da aplicação. */
 function obterPreferencias() {
   return {
     tema: controleTema?.value || 'light',
-    fonte: controleFonte?.value || 'fonte-serif',
-    tamanho: controleTamanho?.value || '20',
+    fonte: normalizarFonteLeitor(controleFonte?.value || 'literata'),
+    tamanho: String(normalizarTamanhoFonte(controleTamanho?.value || 20)),
+    largura: String(normalizarLarguraLeitura(controleLargura?.value || calcularMaximoPercentualLargura())),
+    ttsLanguage: ['pt_BR', 'en_US'].includes(controleIdiomaTts?.value) ? controleIdiomaTts.value : 'pt_BR',
+    ttsSpeed: normalizarVelocidadeTts(controleVelocidadeTts?.value || window.LEITOR_CONFIG?.ttsSpeed || 1),
     conforto: false,
     ampliado: true,
   };
@@ -88,8 +142,11 @@ function carregarPreferencias() {
     const dados = JSON.parse(localStorage.getItem(chave) || '{}');
     if (dados.tema && controleTema) controleTema.value = normalizarTema(dados.tema);
     else if (controleTema) controleTema.value = normalizarTema(controleTema.value);
-    if (dados.fonte && controleFonte) controleFonte.value = dados.fonte;
-    if (dados.tamanho && controleTamanho) controleTamanho.value = dados.tamanho;
+    if (controleFonte) controleFonte.value = normalizarFonteLeitor(dados.fonte || controleFonte.value || 'literata');
+    if (dados.tamanho && controleTamanho) controleTamanho.value = normalizarTamanhoFonte(dados.tamanho);
+    if (dados.largura && controleLargura) controleLargura.value = normalizarLarguraLeitura(dados.largura);
+    if (dados.ttsLanguage && controleIdiomaTts && ['pt_BR', 'en_US'].includes(dados.ttsLanguage)) controleIdiomaTts.value = dados.ttsLanguage;
+    if (dados.ttsSpeed && controleVelocidadeTts) controleVelocidadeTts.value = normalizarVelocidadeTts(dados.ttsSpeed);
   } catch (_) {}
 }
 
@@ -103,11 +160,40 @@ function obterJanelaIframe() {
   return epubFrame?.contentWindow || null;
 }
 
+const FONTES_LEITOR = {
+  'atkinson-hyperlegible': "'Atkinson Hyperlegible', Arial, sans-serif",
+  'inter': "Inter, Arial, sans-serif",
+  'source-sans-3': "'Source Sans 3', Arial, sans-serif",
+  'noto-sans': "'Noto Sans', Arial, sans-serif",
+  'ibm-plex-sans': "'IBM Plex Sans', Arial, sans-serif",
+  'arial': "Arial, Helvetica, sans-serif",
+  'roboto': "Roboto, Arial, sans-serif",
+  'literata': "Literata, Georgia, serif",
+  'source-serif-4': "'Source Serif 4', Georgia, serif",
+  'noto-serif': "'Noto Serif', Georgia, serif",
+  'georgia': "Georgia, 'Times New Roman', serif",
+  'times-new-roman': "'Times New Roman', Times, serif",
+  'ibm-plex-mono': "'IBM Plex Mono', Consolas, monospace",
+  'jetbrains-mono': "'JetBrains Mono', Consolas, monospace",
+  'source-code-pro': "'Source Code Pro', Consolas, monospace",
+  'consolas': "Consolas, 'Courier New', monospace",
+  'courier-new': "'Courier New', Courier, monospace",
+};
+
+const FONTES_LEITOR_LEGADAS = {
+  'fonte-serif': 'literata',
+  'fonte-sans': 'inter',
+  'fonte-mono': 'ibm-plex-mono',
+};
+
+function normalizarFonteLeitor(valor) {
+  const fonte = FONTES_LEITOR_LEGADAS[valor] || valor;
+  return Object.prototype.hasOwnProperty.call(FONTES_LEITOR, fonte) ? fonte : 'literata';
+}
+
 /** Fonteparacss. Usada pelo fluxo principal da aplicação. */
 function fonteParaCss(valor) {
-  if (valor === 'fonte-sans') return "Inter, Arial, Helvetica, sans-serif";
-  if (valor === 'fonte-mono') return "Consolas, 'Courier New', monospace";
-  return "Georgia, 'Times New Roman', serif";
+  return FONTES_LEITOR[normalizarFonteLeitor(valor)];
 }
 
 /** Temaatual. Usada pelo fluxo principal da aplicação. */
@@ -130,15 +216,17 @@ function temaAtual() {
 
 /** Larguraleitura. Usada pelo fluxo principal da aplicação. */
 function larguraLeitura() {
-  const larguraBase = Number(window.LEITOR_CONFIG?.overrides?.largura || 860);
-  return Math.max(larguraBase + 260, window.innerWidth - 80);
+  const percentual = normalizarLarguraLeitura(controleLargura?.value || calcularMaximoPercentualLargura());
+  // A largura acompanha a viewport até um limite físico fixo, evitando que
+  // linhas fiquem excessivamente longas em monitores muito grandes.
+  return Math.min((window.innerWidth * percentual) / 100, 1180);
 }
 
 /** Montarcssoverride. Usada pelo fluxo principal da aplicação. */
 function montarCssOverride() {
   const cfg = window.LEITOR_CONFIG?.overrides || {};
   const tema = temaAtual();
-  const tamanhoFonte = Number(controleTamanho?.value || 20);
+  const tamanhoFonte = normalizarTamanhoFonte(controleTamanho?.value || 20);
   const fonte = fonteParaCss(controleFonte?.value);
   const largura = larguraLeitura();
   const padding = 'min(2vw, 18px)';
@@ -151,6 +239,7 @@ function montarCssOverride() {
   const h3 = Number(cfg.h3 || tamanhoFonte);
 
   return `
+    @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;700&family=Inter:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Literata:wght@400;700&family=Noto+Sans:wght@400;700&family=Noto+Serif:wght@400;700&family=Roboto:wght@400;700&family=Source+Code+Pro:wght@400;700&family=Source+Sans+3:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap');
     :root {
       color-scheme: light;
       --epubplus-font: ${tamanhoFonte}px;
@@ -262,9 +351,20 @@ function aplicarPreferenciasNoIframe() {
   if (!epubFrame) return;
   areaLeitura?.classList.remove(...TEMAS_LEITOR);
   areaLeitura?.classList.add(normalizarTema(controleTema.value));
-  areaLeitura?.classList.remove('modo-confortavel');
-  areaLeitura?.classList.add('modo-ampliado');
-  rolarViewportParaAreaLeitura();
+  if (controleLargura) {
+    atualizarLimitesControleLargura();
+    controleLargura.value = normalizarLarguraLeitura(controleLargura.value);
+    const indicadorLargura = document.getElementById('valorLarguraLeitura');
+    if (indicadorLargura) indicadorLargura.textContent = `${controleLargura.value}%`;
+    areaLeitura?.style.setProperty('--leitor-largura-vw', `${controleLargura.value}vw`);
+  }
+  if (controleIdiomaTts && window.LEITOR_CONFIG) window.LEITOR_CONFIG.ttsLanguage = controleIdiomaTts.value;
+  if (controleVelocidadeTts) {
+    controleVelocidadeTts.value = normalizarVelocidadeTts(controleVelocidadeTts.value || window.LEITOR_CONFIG?.ttsSpeed || 1);
+    const indicadorVelocidade = document.getElementById('valorVelocidadeTts');
+    if (indicadorVelocidade) indicadorVelocidade.textContent = `${Number(controleVelocidadeTts.value).toFixed(2).replace('.', ',')}×`;
+    if (window.LEITOR_CONFIG) window.LEITOR_CONFIG.ttsSpeed = Number(controleVelocidadeTts.value);
+  }
   salvarPreferenciasLocal();
   persistirPreferenciasNoServidor();
 
@@ -291,6 +391,14 @@ function aplicarPreferenciasNoIframe() {
   observarMudancasNoIframe();
 }
 
+function alternarConfiguracoesLeitor(abrir) {
+  if (!painelConfiguracoes) return;
+  const deveAbrir = typeof abrir === 'boolean' ? abrir : painelConfiguracoes.classList.contains('oculto');
+  painelConfiguracoes.classList.toggle('oculto', !deveAbrir);
+  painelConfiguracoes.setAttribute('aria-hidden', deveAbrir ? 'false' : 'true');
+  botaoAbrirConfiguracoes?.setAttribute('aria-expanded', deveAbrir ? 'true' : 'false');
+}
+
 /** Abrirsumario. Usada pelo fluxo principal da aplicação. */
 function abrirSumario() {
   modalSumario?.classList.remove('oculto');
@@ -306,7 +414,10 @@ function fecharSumario() {
 /** Irparacapitulo. Usada pelo fluxo principal da aplicação. */
 function irParaCapitulo(numero) {
   if (!numero) return;
-  window.location.href = `/biblioteca/${window.LEITOR_CONFIG.slug}/capitulos/${numero}/ler`;
+  const cfg = window.LEITOR_CONFIG || {};
+  const slug = encodeURIComponent(cfg.slug || '');
+  const base = cfg.base === 'biblioteca' ? 'biblioteca' : 'projetos';
+  window.location.href = `/${base}/${slug}/capitulos/${numero}/ler`;
 }
 
 /** Calcularpercentualiframe. Usada pelo fluxo principal da aplicação. */
@@ -395,9 +506,31 @@ function restaurarPosicaoLeitura(tentativa = 0) {
 }
 
 
-[controleTema, controleFonte, controleTamanho].forEach((controle) => {
+[controleTema, controleFonte, controleTamanho, controleLargura, controleIdiomaTts, controleVelocidadeTts].forEach((controle) => {
   controle?.addEventListener('input', aplicarPreferenciasNoIframe);
   controle?.addEventListener('change', aplicarPreferenciasNoIframe);
+});
+
+document.querySelectorAll('[data-font-size-step]').forEach((botao) => {
+  botao.addEventListener('click', (evento) => {
+    evento.preventDefault();
+    evento.stopPropagation();
+    ajustarTamanhoFonte(Number(botao.dataset.fontSizeStep || 0));
+  });
+});
+
+botaoAbrirConfiguracoes?.addEventListener('click', (evento) => {
+  evento.preventDefault();
+  evento.stopPropagation();
+  alternarConfiguracoesLeitor();
+});
+botaoFecharConfiguracoes?.addEventListener('click', (evento) => {
+  evento.preventDefault();
+  alternarConfiguracoesLeitor(false);
+});
+painelConfiguracoes?.addEventListener('click', (evento) => evento.stopPropagation());
+document.addEventListener('click', (evento) => {
+  if (!painelConfiguracoes?.classList.contains('oculto') && !evento.target.closest('.leitor-config-anchor')) alternarConfiguracoesLeitor(false);
 });
 
 botaoAbrirSumario?.addEventListener('click', abrirSumario);
@@ -420,7 +553,11 @@ epubFrame?.addEventListener('load', () => {
 
 window.addEventListener('scroll', salvarPosicaoLeitura, { passive: true });
 window.addEventListener('scroll', () => atualizarIndicadorProgresso(calcularPercentualIframe()), { passive: true });
-window.addEventListener('resize', ajustarAlturaIframe, { passive: true });
+window.addEventListener('resize', () => {
+  atualizarLimitesControleLargura();
+  aplicarPreferenciasNoIframe();
+  ajustarAlturaIframe();
+}, { passive: true });
 window.addEventListener('beforeunload', () => enviarPosicaoLeitura(true));
 window.addEventListener('pagehide', () => enviarPosicaoLeitura(true));
 
@@ -447,6 +584,11 @@ document.addEventListener('keydown', (evento) => {
     return;
   }
   if (evento.key === 'Escape') {
+    if (painelConfiguracoes && !painelConfiguracoes.classList.contains('oculto')) {
+      evento.preventDefault();
+      alternarConfiguracoesLeitor(false);
+      return;
+    }
     if (modalSumario && !modalSumario.classList.contains('oculto')) {
       evento.preventDefault();
       fecharSumario();
@@ -481,5 +623,7 @@ function sincronizarLeitorAltComLayout() {
 window.addEventListener('load', sincronizarLeitorAltComLayout);
 window.addEventListener('app:skeleton-hidden', sincronizarLeitorAltComLayout);
 
+atualizarLimitesControleLargura();
 carregarPreferencias();
+atualizarLimitesControleLargura();
 sincronizarLeitorAltComLayout();

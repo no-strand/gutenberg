@@ -57,6 +57,27 @@
   <script src="{{ url_for('static', filename='js/skeleton-loading.js') }}"></script>
   <script src="{{ url_for('static', filename='js/validacao_campos.js') }}"></script>
   <script src="{{ url_for('static', filename='js/atualizacoes.js') }}"></script>
+  <script>
+    (function registrarUltimaAreaApp() {
+      const caminho = window.location.pathname || '/';
+      let area = null;
+      if (caminho === '/biblioteca' || caminho.startsWith('/biblioteca/')) {
+        area = 'biblioteca';
+      } else if (caminho === '/' || caminho.startsWith('/projetos/')) {
+        area = 'editor';
+      }
+      if (!area) return;
+
+      try {
+        fetch('/api/app/ultima-area', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({area}),
+          keepalive: true
+        }).catch(() => {});
+      } catch (_) {}
+    })();
+  </script>
   {% block scripts %}{% endblock %}
   
   <script>

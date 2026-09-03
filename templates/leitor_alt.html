@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block titulo %}{{ t('reader.page_title') }} - {{ capitulo.titulo }}{% endblock %}
+{% block classe_pagina %}pagina-leitor{% endblock %}
 {% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/leitor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/biblioteca.css') }}">{% endblock %}
 {% block conteudo %}
 <section class="topo-leitor topo-leitor-compacto">
@@ -9,37 +10,51 @@
     <div class="topo-leitor-acoes topo-leitor-acoes-compactas">
       <a class="botao-secundario botao-com-icone" id="abrirSumario"><img class="icone-img" src="{{ url_for('static', filename='img/sumario.png') }}" alt=""><span>{{ t('reader.summary') }}</span></a>
       <div class="indicador-progresso-leitura indicador-progresso-leitura-topo"><span id="indicadorProgressoLivro">{{ '%.0f'|format(livro.progresso_percentual or 0) }}%</span></div>
+      <div class="leitor-config-anchor">
+        <button type="button" class="botao-secundario botao-apenas-icone leitor-config-btn" id="abrirConfiguracoesLeitor" title="{{ t('reader.settings') }}" aria-label="{{ t('reader.settings') }}"><span class="icone-svg">{{ icon_svg('config')|safe }}</span></button>
+        <div class="leitor-config-popover oculto" id="configuracoesLeitor" aria-hidden="true">
+          <div class="leitor-config-header"><div><strong>{{ t('reader.settings') }}</strong><span>{{ t('reader.visual_mode') }}</span></div><button type="button" class="botao-fechar-sumario" id="fecharConfiguracoesLeitor" aria-label="{{ t('common.close') }}">×</button></div>
+          <div class="leitor-config-grid">
+            <label class="leitor-config-field"><span>{{ t('reader.mode') }}</span><select id="controleTema" class="theme-select" aria-label="{{ t('reader.visual_mode') }}">
+              <option value="light" {% if config_global.leitor_tema == 'light' %}selected{% endif %}>{{ t('theme.light') }}</option><option value="dark" {% if config_global.leitor_tema == 'dark' %}selected{% endif %}>{{ t('theme.dark') }}</option><option value="serpia" {% if config_global.leitor_tema == 'serpia' %}selected{% endif %}>{{ t('theme.serpia') }}</option><option value="dark-blue" {% if config_global.leitor_tema == 'dark-blue' %}selected{% endif %}>{{ t('theme.dark_blue') }}</option><option value="terminal-calm" {% if config_global.leitor_tema == 'terminal-calm' %}selected{% endif %}>{{ t('theme.terminal_calm') }}</option><option value="warm-brown" {% if config_global.leitor_tema == 'warm-brown' %}selected{% endif %}>{{ t('theme.warm_brown') }}</option><option value="sunset-mode" {% if config_global.leitor_tema == 'sunset-mode' %}selected{% endif %}>{{ t('theme.sunset_mode') }}</option><option value="frost" {% if config_global.leitor_tema == 'frost' %}selected{% endif %}>{{ t('theme.frost') }}</option><option value="pastel-pink" {% if config_global.leitor_tema == 'pastel-pink' %}selected{% endif %}>{{ t('theme.pastel_pink') }}</option><option value="code-like" {% if config_global.leitor_tema == 'code-like' %}selected{% endif %}>{{ t('theme.code_like') }}</option>
+            </select></label>
+            <label class="leitor-config-field"><span>{{ t('reader.font') }}</span><select id="controleFonte" class="reader-font-select" aria-label="{{ t('reader.font') }}">
+              <optgroup label="{{ t('reader.font_sans') }}">
+                <option value="atkinson-hyperlegible" {% if config_global.leitor_fonte == 'atkinson-hyperlegible' %}selected{% endif %}>Atkinson Hyperlegible</option>
+                <option value="inter" {% if config_global.leitor_fonte in ['inter', 'fonte-sans'] %}selected{% endif %}>Inter</option>
+                <option value="source-sans-3" {% if config_global.leitor_fonte == 'source-sans-3' %}selected{% endif %}>Source Sans 3</option>
+                <option value="noto-sans" {% if config_global.leitor_fonte == 'noto-sans' %}selected{% endif %}>Noto Sans</option>
+                <option value="ibm-plex-sans" {% if config_global.leitor_fonte == 'ibm-plex-sans' %}selected{% endif %}>IBM Plex Sans</option>
+                <option value="arial" {% if config_global.leitor_fonte == 'arial' %}selected{% endif %}>Arial</option>
+                <option value="roboto" {% if config_global.leitor_fonte == 'roboto' %}selected{% endif %}>Roboto</option>
+              </optgroup>
+              <optgroup label="{{ t('reader.font_serif') }}">
+                <option value="literata" {% if config_global.leitor_fonte in ['literata', 'fonte-serif', none, ''] %}selected{% endif %}>Literata</option>
+                <option value="source-serif-4" {% if config_global.leitor_fonte == 'source-serif-4' %}selected{% endif %}>Source Serif 4</option>
+                <option value="noto-serif" {% if config_global.leitor_fonte == 'noto-serif' %}selected{% endif %}>Noto Serif</option>
+                <option value="georgia" {% if config_global.leitor_fonte == 'georgia' %}selected{% endif %}>Georgia</option>
+                <option value="times-new-roman" {% if config_global.leitor_fonte == 'times-new-roman' %}selected{% endif %}>Times New Roman</option>
+              </optgroup>
+              <optgroup label="{{ t('reader.font_mono') }}">
+                <option value="ibm-plex-mono" {% if config_global.leitor_fonte in ['ibm-plex-mono', 'fonte-mono'] %}selected{% endif %}>IBM Plex Mono</option>
+                <option value="jetbrains-mono" {% if config_global.leitor_fonte == 'jetbrains-mono' %}selected{% endif %}>JetBrains Mono</option>
+                <option value="source-code-pro" {% if config_global.leitor_fonte == 'source-code-pro' %}selected{% endif %}>Source Code Pro</option>
+                <option value="consolas" {% if config_global.leitor_fonte == 'consolas' %}selected{% endif %}>Consolas</option>
+                <option value="courier-new" {% if config_global.leitor_fonte == 'courier-new' %}selected{% endif %}>Courier New</option>
+              </optgroup>
+            </select></label>
+            <div class="leitor-config-field"><span>{{ t('reader.font_size') }}</span><div class="reader-size-control"><button type="button" class="reader-size-btn" data-font-size-step="-1" aria-label="Diminuir tamanho da fonte">A−</button><input type="number" id="controleTamanho" min="16" max="32" step="1" value="{{ config_global.leitor_tamanho_fonte_px or config_global.tamanho_fonte_px }}" aria-label="{{ t('reader.font_size') }}"><button type="button" class="reader-size-btn" data-font-size-step="1" aria-label="Aumentar tamanho da fonte">A+</button></div></div>
+            <label class="leitor-config-field"><span>{{ t('reader.tts_language') }}</span><select id="controleIdiomaTts" class="reader-tts-language-select" aria-label="{{ t('reader.tts_language') }}"><option value="pt_BR" {% if config_global.idioma_tts|default('pt_BR', true) == 'pt_BR' %}selected{% endif %}>{{ t('reader.tts_portuguese') }}</option><option value="en_US" {% if config_global.idioma_tts|default('pt_BR', true) == 'en_US' %}selected{% endif %}>{{ t('reader.tts_english') }}</option></select></label>
+            <div class="leitor-config-field"><span>Velocidade do TTS <strong id="valorVelocidadeTts">1,00×</strong></span><div class="reader-tts-speed-control"><input type="range" id="controleVelocidadeTts" min="0.75" max="1.25" step="0.05" value="{{ config_global.leitor_tts_velocidade or 1.0 }}" aria-label="Velocidade da leitura em voz alta"><div class="reader-width-scale"><span>0,75×</span><span>1,25×</span></div></div></div>
+            <label class="leitor-config-field leitor-width-field"><span>Largura do texto <strong id="valorLarguraLeitura">{{ config_global.leitor_largura_percentual or 90 }}%</strong></span><div class="reader-width-control"><input type="range" id="controleLargura" min="30" max="90" step="1" value="{{ config_global.leitor_largura_percentual or 90 }}" aria-label="Largura do texto"><div class="reader-width-scale"><span>30%</span><span id="valorMaxLarguraLeitura">90%</span></div></div></label>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="botao-secundario botao-apenas-icone tts-leitor-btn" id="botaoTtsLeitor" title="Ler em voz alta" aria-label="Ler em voz alta" aria-pressed="false"><span class="icone-svg">{{ icon_svg('tts')|safe }}</span></button>
     </div>
   </div>
 </section>
 
-<section class="painel-preferencias painel-preferencias-compacto">
-  <div class="theme-select-wrap" title="{{ t('reader.visual_mode') }}">
-    <label class="theme-select-label" for="controleTema">{{ t('reader.mode') }}</label>
-    <select id="controleTema" class="theme-select" aria-label="{{ t('reader.visual_mode') }}">
-      <option value="light" {% if config_global.leitor_tema == 'light' %}selected{% endif %}>{{ t('theme.light') }}</option>
-      <option value="dark" {% if config_global.leitor_tema == 'dark' %}selected{% endif %}>{{ t('theme.dark') }}</option>
-      <option value="serpia" {% if config_global.leitor_tema == 'serpia' %}selected{% endif %}>{{ t('theme.serpia') }}</option>
-      <option value="dark-blue" {% if config_global.leitor_tema == 'dark-blue' %}selected{% endif %}>{{ t('theme.dark_blue') }}</option>
-      <option value="terminal-calm" {% if config_global.leitor_tema == 'terminal-calm' %}selected{% endif %}>{{ t('theme.terminal_calm') }}</option>
-      <option value="warm-brown" {% if config_global.leitor_tema == 'warm-brown' %}selected{% endif %}>{{ t('theme.warm_brown') }}</option>
-      <option value="sunset-mode" {% if config_global.leitor_tema == 'sunset-mode' %}selected{% endif %}>{{ t('theme.sunset_mode') }}</option>
-      <option value="frost" {% if config_global.leitor_tema == 'frost' %}selected{% endif %}>{{ t('theme.frost') }}</option>
-      <option value="pastel-pink" {% if config_global.leitor_tema == 'pastel-pink' %}selected{% endif %}>{{ t('theme.pastel_pink') }}</option>
-      <option value="code-like" {% if config_global.leitor_tema == 'code-like' %}selected{% endif %}>{{ t('theme.code_like') }}</option>
-    </select>
-  </div>
-  <div class="reader-control-wrap reader-font-wrap" title="{{ t('reader.font') }}">
-    <select id="controleFonte" class="reader-font-select" aria-label="{{ t('reader.font') }}"><option value="fonte-serif" {% if config_global.leitor_fonte == 'fonte-serif' %}selected{% endif %}>{{ t('reader.font_serif') }}</option><option value="fonte-sans" {% if config_global.leitor_fonte == 'fonte-sans' %}selected{% endif %}>{{ t('reader.font_sans') }}</option><option value="fonte-mono" {% if config_global.leitor_fonte == 'fonte-mono' %}selected{% endif %}>{{ t('reader.font_mono') }}</option></select>
-  </div>
-  <div class="reader-control-wrap reader-range-wrap label-range-leitor" title="{{ t('reader.font_size') }}">
-    <input type="range" id="controleTamanho" min="16" max="32" value="{{ config_global.leitor_tamanho_fonte_px or config_global.tamanho_fonte_px }}" aria-label="{{ t('reader.font_size') }}">
-  </div>
-  <div class="navegacao-capitulos navegacao-capitulos-painel">
-    {% if capitulo_anterior %}<a class="botao-secundario botao-navegacao" href="{{ url_for('ler_livro_biblioteca', slug=livro.slug, numero=capitulo_anterior.id) }}">&lt;</a>{% else %}<span class="botao-secundario botao-navegacao desativado">&lt;</span>{% endif %}
-    {% if proximo_capitulo %}<a class="botao-secundario botao-navegacao" href="{{ url_for('ler_livro_biblioteca', slug=livro.slug, numero=proximo_capitulo.id) }}">&gt;</a>{% else %}<span class="botao-secundario botao-navegacao desativado">&gt;</span>{% endif %}
-  </div>
-</section>
 
 <div class="modal-leitor oculto" id="modalSumario" aria-hidden="true">
   <div class="modal-leitor-overlay" data-fechar-sumario="true"></div>
@@ -68,6 +83,11 @@
   <iframe id="epubFrame" data-posicao-inicial="{{ posicao_inicial or 0 }}" class="epub-frame" src="{{ conteudo_url }}" title="{{ capitulo.titulo }}"></iframe>
 </section>
 
+<nav class="navegacao-capitulos navegacao-capitulos-inferior" aria-label="{{ t('reader.chapter_navigation') }}">
+  {% if capitulo_anterior %}<a class="botao-secundario botao-navegacao" href="{{ url_for('ler_livro_biblioteca', slug=livro.slug, numero=capitulo_anterior.id) }}" aria-label="{{ t('reader.previous_chapter') }}">&lt;</a>{% else %}<span class="botao-secundario botao-navegacao desativado">&lt;</span>{% endif %}
+  {% if proximo_capitulo %}<a class="botao-secundario botao-navegacao" href="{{ url_for('ler_livro_biblioteca', slug=livro.slug, numero=proximo_capitulo.id) }}" aria-label="{{ t('reader.next_chapter') }}">&gt;</a>{% else %}<span class="botao-secundario botao-navegacao desativado">&gt;</span>{% endif %}
+</nav>
+
 <script>
   window.LEITOR_ALT = true;
   window.LEITOR_CONFIG = {
@@ -80,6 +100,9 @@
     numero: {{ numero|tojson }},
     salvarPosicaoUrl: {{ url_for('rota_salvar_posicao_livro', slug=livro.slug, numero=numero)|tojson }},
     posicaoInicial: {{ posicao_inicial|tojson }},
+    ttsLanguage: {{ config_global.idioma_tts|default('pt_BR', true)|tojson }},
+    ttsSpeed: {{ config_global.leitor_tts_velocidade|default(1.0, true)|tojson }},
+    ttsFallbackLanguage: null,
     voltarUrl: {{ url_for('pagina_biblioteca')|tojson }},
     overrides: {
       indent: {{ config_global.identacao_paragrafo_em|tojson }},
@@ -94,7 +117,7 @@
   };
 </script>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/leitor_alt.js') }}"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/leitor_alt.js') }}"></script><script src="{{ url_for('static', filename='js/leitor_tts.js') }}"></script>{% endblock %}
 
 {% block skeleton %}
 <section class="skeleton-topo">
