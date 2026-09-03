@@ -18,8 +18,6 @@ Python · Flask · HTML · CSS · JavaScript
 
 **Gutenberg** é um editor local para criação de livros e roteiros. O projeto combina **Python**, **Flask**, **HTML**, **CSS** e **JavaScript** para oferecer uma interface de escrita organizada, com foco em planejamento, produção, revisão, exportação e leitura.
 
-Ele também oferece recursos de **geração de texto com Inteligência Artificial** por meio da API Gemini e **Text-to-Speech (TTS)** integrado ao leitor de livros.
-
 Ele pode ser usado como aplicativo desktop no Windows ou como servidor local acessado pelo navegador em outros ambientes compatíveis.
 
 ---
@@ -107,8 +105,6 @@ O Gutenberg salva dados localmente no computador do usuário. Projetos, bibliote
 ## Overview
 
 **Gutenberg** is a local editor for creating books and screenplays. The project combines **Python**, **Flask**, **HTML**, **CSS**, and **JavaScript** to provide an organized writing interface focused on planning, production, revision, export, and reading.
-
-It also provides **AI-powered text generation** through the Gemini API and integrated **Text-to-Speech (TTS)** in the book reader.
 
 It can be used as a desktop application on Windows or as a local server accessed through the browser in other compatible environments.
 
