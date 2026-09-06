@@ -27,6 +27,8 @@ Ele pode ser usado como aplicativo desktop no Windows ou como servidor local ace
 - Criar e organizar **projetos de livro** com capítulos, capa, metadados e tags.
 - Criar **projetos de roteiro** com múltiplos roteiros, cenas, diálogos, personagens e blocos especializados.
 - Escrever em editores com **formatação rica**, salvamento automático, atalhos e modo de leitura.
+- Gerar textos com **Inteligência Artificial** diretamente nos editores e recursos do projeto por meio da API Gemini.
+- Utilizar **TTS (Text-to-Speech)** no leitor de livros para ouvir o conteúdo durante a leitura.
 - Organizar **recursos do projeto**, como informações, fluxo visual, personagens, lugares e anotações.
 - Consultar personagens, lugares e notas diretamente durante a escrita pelo modal de recursos.
 - Revisar textos com integração à **API Gemini**, quando uma chave válida estiver configurada.
@@ -46,7 +48,7 @@ Ele pode ser usado como aplicativo desktop no Windows ou como servidor local ace
 | `requirements.txt` | Contém as dependências Python necessárias. |
 | Navegador moderno | Necessário para uso em modo servidor/browser. |
 | **Windows 10+** | Necessário para o modo desktop com `pywebview`. |
-| **API Gemini** | Necessária apenas para usar a revisão automática. |
+| **API Gemini** | Necessária apenas para os recursos de geração e revisão com IA. |
 
 Para instalar as dependências:
 
@@ -82,7 +84,7 @@ Gutenberg/
 ├── app.py                       # Inicialização principal do aplicativo
 ├── server_only.py               # Execução em modo servidor/browser
 ├── requirements.txt             # Dependências Python
-├── modules/                     # Backend: projetos, biblioteca, importação, exportação, i18n e persistência
+├── modules/                     # Backend: projetos, biblioteca, importação, exportação, TTS, i18n e persistência
 ├── templates/                   # Templates HTML usados pelo Flask
 ├── static/                      # CSS, JavaScript, imagens e assets da interface
 ├── locales/                     # Arquivos de tradução pt_BR e en_US
@@ -113,6 +115,8 @@ It can be used as a desktop application on Windows or as a local server accessed
 - Create and organize **book projects** with chapters, cover, metadata, and tags.
 - Create **screenplay projects** with multiple scripts, scenes, dialogue, characters, and specialized blocks.
 - Write in editors with **rich formatting**, autosave, shortcuts, and reading mode.
+- Generate text with **Artificial Intelligence** directly in editors and project resources through the Gemini API.
+- Use **TTS (Text-to-Speech)** in the book reader to listen to content while reading.
 - Organize **project resources**, such as information, visual flow, characters, places, and notes.
 - Consult characters, places, and notes directly while writing through the resources modal.
 - Revise texts with **Gemini API** integration when a valid key is configured.
@@ -132,7 +136,7 @@ It can be used as a desktop application on Windows or as a local server accessed
 | `requirements.txt` | Contains the required Python dependencies. |
 | Modern browser | Required for server/browser mode. |
 | **Windows 10+** | Required for desktop mode with `pywebview`. |
-| **Gemini API** | Required only for automatic revision. |
+| **Gemini API** | Required only for AI generation and revision features. |
 
 To install the dependencies:
 
@@ -168,7 +172,7 @@ Gutenberg/
 ├── app.py                       # Main application startup
 ├── server_only.py               # Server/browser mode execution
 ├── requirements.txt             # Python dependencies
-├── modules/                     # Backend: projects, library, import, export, i18n, and persistence
+├── modules/                     # Backend: projects, library, import, export, TTS, i18n, and persistence
 ├── templates/                   # HTML templates used by Flask
 ├── static/                      # CSS, JavaScript, images, and interface assets
 ├── locales/                     # pt_BR and en_US translation files
