@@ -22,6 +22,12 @@
   let carregandoPrimeiroAudio = false;
   let tokenExecucao = 0;
 
+  // Guarda o ponto que originou a sessão atual. Ao pausar e rolar para cima,
+  // o Play pode iniciar uma nova sessão a partir do novo parágrafo visível,
+  // sem forçar o usuário a continuar do ponto anterior.
+  let indiceInicioSessao = 0;
+  let scrollYAoPausar = null;
+
   // index -> Promise<string> (Object URL). O Promise permite que vários pedidos
   // de pré-carregamento do mesmo trecho compartilhem uma única requisição.
   const cacheAudio = new Map();
@@ -162,6 +168,8 @@
       preparando = false;
       carregandoPrimeiroAudio = false;
       indice = idxAtual;
+      indiceInicioSessao = idxAtual;
+      scrollYAoPausar = null;
       atualizarBotao();
 
       solicitarAudio(idxAtual, token)
@@ -515,6 +523,141 @@ function limparTextoParaTts(texto) {
     return lista;
   }
 
+  // Converte a posição de um elemento do conteúdo para coordenadas da
+  // janela principal. Os dois leitores usam um iframe alto, enquanto a
+  // rolagem real acontece no documento pai.
+  function retanguloNaTela(el) {
+    if (!el?.getBoundingClientRect) return null;
+    const rect = el.getBoundingClientRect();
+
+    if (frame && el.ownerDocument === frame.contentDocument) {
+      const rectFrame = frame.getBoundingClientRect();
+      return {
+        top: rectFrame.top + rect.top,
+        bottom: rectFrame.top + rect.bottom,
+        left: rectFrame.left + rect.left,
+        right: rectFrame.left + rect.right,
+        width: rect.width,
+        height: rect.height,
+      };
+    }
+
+    return {
+      top: rect.top,
+      bottom: rect.bottom,
+      left: rect.left,
+      right: rect.right,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  // A barra superior é sticky no desktop. Uma parte do texto que esteja
+  // geometricamente dentro da viewport, porém atrás dessa barra, não conta
+  // como conteúdo efetivamente mostrado ao leitor.
+  function limiteSuperiorConteudoVisivel() {
+    let limite = 0;
+    const topo = document.querySelector('.topo-leitor');
+    if (!topo) return limite;
+
+    const estilo = window.getComputedStyle?.(topo);
+    if (!['sticky', 'fixed'].includes(estilo?.position)) return limite;
+
+    const rect = topo.getBoundingClientRect();
+    if (rect.bottom > 0 && rect.top < window.innerHeight) {
+      limite = Math.max(limite, Math.min(window.innerHeight, rect.bottom + 8));
+    }
+    return limite;
+  }
+
+  function elementoEstaVisivelNaTela(el, topoVisivel, baseVisivel) {
+    const rect = retanguloNaTela(el);
+    if (!rect || rect.height <= 0 || rect.width <= 0) return false;
+    return rect.bottom > topoVisivel && rect.top < baseVisivel;
+  }
+
+  // Determina de onde uma NOVA sessão de TTS deve começar. A prioridade é o
+  // primeiro parágrafo (ou bloco textual equivalente) atualmente mostrado na
+  // tela. Mesmo que só a parte final do parágrafo esteja visível, retornamos o
+  // primeiro trecho TTS dele para que a leitura comece no início do parágrafo.
+  // Caso o EPUB não use tags semânticas de parágrafo, usamos o primeiro trecho
+  // TTS efetivamente visível como fallback.
+  function calcularIndiceInicialVisivel() {
+    if (!trechos.length) return 0;
+
+    const topoVisivel = limiteSuperiorConteudoVisivel();
+    const baseVisivel = Math.max(topoVisivel, window.innerHeight || document.documentElement.clientHeight || 0);
+    const blocosVistos = new Set();
+
+    for (const trecho of trechos) {
+      const bloco = trecho.closest?.('p, li, blockquote, dd, dt');
+      if (!bloco || blocosVistos.has(bloco)) continue;
+      blocosVistos.add(bloco);
+
+      if (!elementoEstaVisivelNaTela(bloco, topoVisivel, baseVisivel)) continue;
+
+      const primeiro = bloco.querySelector?.('[data-tts-idx]');
+      const idx = Number(primeiro?.dataset?.ttsIdx);
+      if (Number.isInteger(idx) && idx >= 0 && idx < trechos.length) {
+        enviarLogTts('tts_inicio_pela_tela', {
+          indice: idx,
+          origem: 'primeiro_paragrafo_visivel',
+          topoVisivel: Math.round(topoVisivel),
+        });
+        return idx;
+      }
+    }
+
+    for (let i = 0; i < trechos.length; i++) {
+      if (elementoEstaVisivelNaTela(trechos[i], topoVisivel, baseVisivel)) {
+        enviarLogTts('tts_inicio_pela_tela', {
+          indice: i,
+          origem: 'primeiro_trecho_visivel',
+          topoVisivel: Math.round(topoVisivel),
+        });
+        return i;
+      }
+    }
+
+    // Se o conteúdo ainda estiver terminando de ajustar o layout, usa o
+    // primeiro trecho como fallback seguro, preservando o comportamento antigo.
+    enviarLogTts('tts_inicio_pela_tela', {indice: 0, origem: 'fallback_inicio'});
+    return 0;
+  }
+
+  function posicaoVerticalLeitor() {
+    const scroller = document.scrollingElement || document.documentElement;
+    const valor = Number(window.scrollY ?? scroller?.scrollTop ?? 0);
+    return Number.isFinite(valor) ? valor : 0;
+  }
+
+  function registrarPausaParaRetomada() {
+    scrollYAoPausar = posicaoVerticalLeitor();
+    enviarLogTts('tts_pausa_posicao_registrada', {
+      indice,
+      indiceInicioSessao,
+      scrollY: Math.round(scrollYAoPausar),
+    });
+  }
+
+  // Só troca o ponto de leitura se, depois da pausa, o usuário realmente
+  // rolou a página para cima E o primeiro parágrafo visível está antes do
+  // ponto que iniciou a sessão atual. Isso evita reinícios acidentais apenas
+  // porque o trecho pausado está centralizado e há texto anterior na viewport.
+  function calcularIndiceReinicioAposPausa() {
+    if (scrollYAoPausar === null || !trechos.length) return null;
+
+    const scrollAtual = posicaoVerticalLeitor();
+    if (scrollAtual >= scrollYAoPausar - 4) return null;
+
+    const indiceVisivel = calcularIndiceInicialVisivel();
+    if (!Number.isInteger(indiceVisivel) || indiceVisivel >= indiceInicioSessao) {
+      return null;
+    }
+
+    return indiceVisivel;
+  }
+
   function limparDestaque() {
     trechos.forEach((el) => el.classList.remove('tts-atual'));
   }
@@ -551,9 +694,11 @@ function limparTextoParaTts(texto) {
   }
 
   function liberarCacheAudio() {
-    cacheAudio.forEach((valor) => {
-      if (typeof valor !== 'string') return;
-      try { URL.revokeObjectURL(valor); } catch (_) {}
+    // Os itens do cache são Promises; os Object URLs efetivamente criados
+    // ficam em urlsCriadas. Revoga todos antes de limpar para não acumular
+    // áudio órfão quando uma sessão é reiniciada.
+    urlsCriadas.forEach((url) => {
+      try { URL.revokeObjectURL(url); } catch (_) {}
     });
     cacheAudio.clear();
     urlsCriadas.clear();
@@ -654,6 +799,11 @@ function limparTextoParaTts(texto) {
       throw erro;
     }
 
+    if (token !== tokenExecucao) {
+      enviarLogTts('blob_descartado_token', {indice: idx, token, tokenAtual: tokenExecucao});
+      throw new Error('TTS interrompido.');
+    }
+
     const url = URL.createObjectURL(blob);
     urlsCriadas.add(url);
     enviarLogTts('object_url_criada', {indice: idx, bytes: blob.size});
@@ -710,6 +860,8 @@ function limparTextoParaTts(texto) {
       preparando = false;
       carregandoPrimeiroAudio = false;
       indice = 0;
+      indiceInicioSessao = 0;
+      scrollYAoPausar = null;
       liberarCacheAudio();
       limparDestaque();
       atualizarBotao();
@@ -860,7 +1012,7 @@ function limparTextoParaTts(texto) {
     enviarLogTts('iniciar_solicitado', {indice, trechosExistentes: trechos.length});
     if (!trechos.length) {
       trechos = prepararTrechos();
-      indice = 0;
+      indice = calcularIndiceInicialVisivel();
       liberarCacheAudio();
     }
 
@@ -869,8 +1021,11 @@ function limparTextoParaTts(texto) {
       return;
     }
 
+    indiceInicioSessao = indice;
+    scrollYAoPausar = null;
+
     const token = ++tokenExecucao;
-    enviarLogTts('sessao_tts_iniciada', {token, indice, totalTrechos: trechos.length});
+    enviarLogTts('sessao_tts_iniciada', {token, indice, indiceInicioSessao, totalTrechos: trechos.length});
     tocando = false;
     preparando = true;
     carregandoPrimeiroAudio = true;
@@ -891,6 +1046,7 @@ function limparTextoParaTts(texto) {
       tocando = false;
       liberarCacheAudio();
       limparDestaque();
+      registrarPausaParaRetomada();
       atualizarBotao();
       return;
     }
@@ -900,6 +1056,7 @@ function limparTextoParaTts(texto) {
       tocando = false;
       preparando = false;
       carregandoPrimeiroAudio = false;
+      registrarPausaParaRetomada();
       atualizarBotao();
       return;
     }
@@ -938,6 +1095,39 @@ function limparTextoParaTts(texto) {
       return;
     }
 
+    const indiceReinicio = calcularIndiceReinicioAposPausa();
+    if (indiceReinicio !== null) {
+      // Nova posição escolhida pelo usuário: invalida a reprodução/cache da
+      // sessão pausada e começa pelo início do novo parágrafo visível.
+      ++tokenExecucao;
+      pararAudio();
+      liberarCacheAudio();
+      limparDestaque();
+
+      indice = indiceReinicio;
+      indiceInicioSessao = indiceReinicio;
+      scrollYAoPausar = null;
+
+      const token = tokenExecucao;
+      tocando = false;
+      preparando = true;
+      carregandoPrimeiroAudio = true;
+      atualizarBotao();
+
+      enviarLogTts('tts_reinicio_acima_apos_pausa', {
+        token,
+        indice,
+        indiceInicioSessao,
+        totalTrechos: trechos.length,
+      });
+
+      solicitarAudio(indice, token).catch(erroTts);
+      preCarregarFrente(indice, token);
+      tocarIndice(indice, token).catch(erroTts);
+      return;
+    }
+
+    scrollYAoPausar = null;
     const token = ++tokenExecucao;
     solicitarAudio(indice, token).catch(erroTts);
     preCarregarFrente(indice, token);
@@ -952,6 +1142,8 @@ function limparTextoParaTts(texto) {
       liberarCacheAudio();
       trechos = [];
       indice = 0;
+      indiceInicioSessao = 0;
+      scrollYAoPausar = null;
       tocando = false;
       preparando = false;
       carregandoPrimeiroAudio = false;

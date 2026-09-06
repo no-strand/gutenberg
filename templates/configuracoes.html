@@ -39,6 +39,27 @@
         <option value="en_US" {% if config.idioma_tts|default('pt_BR') == 'en_US' %}selected{% endif %}>{{ t('language.en_US') }}</option>
       </select>
     </label>
+    <label>{{ t('settings.tts_voice_ptbr') }}
+      <select name="voz_tts_pt_BR" id="cfgVozTtsPtBr">
+        <option value="pf_dora" {% if config.voz_tts_pt_BR|default('pf_dora', true) == 'pf_dora' %}selected{% endif %}>{{ t('settings.tts_voice_pf_dora') }}</option>
+        <option value="pm_alex" {% if config.voz_tts_pt_BR|default('pf_dora', true) == 'pm_alex' %}selected{% endif %}>{{ t('settings.tts_voice_pm_alex') }}</option>
+        <option value="pm_santa" {% if config.voz_tts_pt_BR|default('pf_dora', true) == 'pm_santa' %}selected{% endif %}>{{ t('settings.tts_voice_pm_santa') }}</option>
+      </select>
+    </label>
+    <label>{{ t('settings.tts_voice_english') }}
+      <select name="voz_tts_en_US" id="cfgVozTtsEn">
+        <optgroup label="{{ t('settings.tts_voice_group_us') }}">
+          <option value="af_heart" {% if config.voz_tts_en_US|default('af_heart', true) == 'af_heart' %}selected{% endif %}>{{ t('settings.tts_voice_af_heart') }}</option>
+          <option value="af_bella" {% if config.voz_tts_en_US|default('af_heart', true) == 'af_bella' %}selected{% endif %}>{{ t('settings.tts_voice_af_bella') }}</option>
+          <option value="af_nicole" {% if config.voz_tts_en_US|default('af_heart', true) == 'af_nicole' %}selected{% endif %}>{{ t('settings.tts_voice_af_nicole') }}</option>
+          <option value="am_michael" {% if config.voz_tts_en_US|default('af_heart', true) == 'am_michael' %}selected{% endif %}>{{ t('settings.tts_voice_am_michael') }}</option>
+        </optgroup>
+        <optgroup label="{{ t('settings.tts_voice_group_gb') }}">
+          <option value="bf_emma" {% if config.voz_tts_en_US|default('af_heart', true) == 'bf_emma' %}selected{% endif %}>{{ t('settings.tts_voice_bf_emma') }}</option>
+          <option value="bm_george" {% if config.voz_tts_en_US|default('af_heart', true) == 'bm_george' %}selected{% endif %}>{{ t('settings.tts_voice_bm_george') }}</option>
+        </optgroup>
+      </select>
+    </label>
     <div class="coluna-inteira tts-modelos-card" id="ttsModelosCard" data-instalado="{{ 'true' if tts_modelos.instalado else 'false' }}">
       <div class="tts-modelos-info">
         <div class="tts-modelos-titulo-linha">

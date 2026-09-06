@@ -107,7 +107,7 @@ from .utilidades import (
     PASTA_MODELOS_TTS,
 )
 from .logging_config import obter_logger, obter_logger_tts, obter_caminho_log_tts, registrar_etapa
-from .tts_kokoro import sintetizar_wav
+from .tts_kokoro import normalizar_voz_tts, sintetizar_wav
 from .tts_modelos import (
     cancelar_download_modelos_tts,
     iniciar_download_modelos_tts,
@@ -1491,6 +1491,8 @@ def criar_app() -> Flask:
             "gemini_api_key": request.form.get("gemini_api_key", config_atual.get("gemini_api_key", "")).strip(),
             "idioma_app": normalizar_idioma_app(request.form.get("idioma_app", config_atual.get("idioma_app", "pt_BR"))),
             "idioma_tts": "en_US" if str(request.form.get("idioma_tts", config_atual.get("idioma_tts", "pt_BR"))).strip().lower().replace("-", "_") == "en_us" else "pt_BR",
+            "voz_tts_pt_BR": normalizar_voz_tts(request.form.get("voz_tts_pt_BR", config_atual.get("voz_tts_pt_BR", "pf_dora")), "pt_BR"),
+            "voz_tts_en_US": normalizar_voz_tts(request.form.get("voz_tts_en_US", config_atual.get("voz_tts_en_US", "af_heart")), "en_US"),
             "leitor_tts_velocidade": max(0.75, min(1.25, round(float(config_atual.get("leitor_tts_velocidade") or 1.0) * 20) / 20)),
         }
         dados["ultima_area_app"] = "biblioteca" if str(config_atual.get("ultima_area_app") or "editor") == "biblioteca" else "editor"
@@ -2480,17 +2482,22 @@ def criar_app() -> Flask:
         inicio = time.perf_counter()
         dados = request.get_json(silent=True) or {}
         texto = str(dados.get("text") or "").strip()
-        idioma = str(obter_configuracoes().get("idioma_tts") or "pt_BR").strip()
-        fallback = "pt_BR"
+        config_tts = obter_configuracoes()
+        idioma_solicitado = str(dados.get("language") or config_tts.get("idioma_tts") or "pt_BR").strip()
+        idioma = "en_US" if idioma_solicitado.lower().replace("-", "_") == "en_us" else "pt_BR"
+        chave_voz = "voz_tts_en_US" if idioma == "en_US" else "voz_tts_pt_BR"
+        voz = normalizar_voz_tts(config_tts.get(chave_voz), idioma)
+        fallback = str(dados.get("fallback_language") or "pt_BR").strip() or "pt_BR"
         try:
             velocidade = max(0.75, min(1.25, round(float(dados.get("speed") or 1.0) * 20) / 20))
         except (TypeError, ValueError):
             velocidade = 1.0
 
         tts_logger.info(
-            "HTTP TTS recebido | chars=%d | idioma=%s | velocidade=%.2f | content_type=%s | content_length=%s | log=%s",
+            "HTTP TTS recebido | chars=%d | idioma=%s | voz=%s | velocidade=%.2f | content_type=%s | content_length=%s | log=%s",
             len(texto),
             idioma,
+            voz,
             velocidade,
             request.content_type,
             request.content_length,
@@ -2504,7 +2511,7 @@ def criar_app() -> Flask:
             tts_logger.warning("HTTP TTS recusado | motivo=trecho_grande | chars=%d", len(texto))
             return jsonify({"ok": False, "erro": "Trecho muito grande."}), 400
         try:
-            audio = sintetizar_wav(texto, idioma, fallback, velocidade)
+            audio = sintetizar_wav(texto, idioma, fallback, velocidade, voz=voz)
         except FileNotFoundError as exc:
             tts_logger.exception("HTTP TTS falhou: modelo nao encontrado")
             return jsonify({"ok": False, "erro": str(exc), "log": str(obter_caminho_log_tts())}), 503
@@ -2524,6 +2531,7 @@ def criar_app() -> Flask:
         )
         resposta = send_file(BytesIO(audio), mimetype="audio/wav", download_name="tts.wav")
         resposta.headers["X-Gutenberg-TTS-Bytes"] = str(len(audio))
+        resposta.headers["X-Gutenberg-TTS-Voice"] = voz
         return resposta
 
     @app.post("/api/configuracoes/leitor")
@@ -2552,6 +2560,8 @@ def criar_app() -> Flask:
             "leitor_tamanho_fonte_px": int(dados.get("tamanho") or config_atual.get("leitor_tamanho_fonte_px") or config_atual.get("tamanho_fonte_px") or 20),
             "leitor_largura_percentual": max(30, min(90, int(dados.get("largura") or config_atual.get("leitor_largura_percentual") or 90))),
             "idioma_tts": "en_US" if str(dados.get("ttsLanguage") or config_atual.get("idioma_tts", "pt_BR")).strip().lower().replace("-", "_") == "en_us" else "pt_BR",
+            "voz_tts_pt_BR": normalizar_voz_tts(config_atual.get("voz_tts_pt_BR", "pf_dora"), "pt_BR"),
+            "voz_tts_en_US": normalizar_voz_tts(config_atual.get("voz_tts_en_US", "af_heart"), "en_US"),
             "leitor_tts_velocidade": max(0.75, min(1.25, round(float(dados.get("ttsSpeed") or config_atual.get("leitor_tts_velocidade") or 1.0) * 20) / 20)),
             "leitor_modo_confortavel": False,
             "leitor_modo_ampliado": True,

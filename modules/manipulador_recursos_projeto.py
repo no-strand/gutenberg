@@ -83,7 +83,6 @@ def _pagina_info_padrao(agora: str | None = None) -> dict[str, Any]:
     return {
         "id": _novo_id("info"),
         "titulo": t("resources.default_page_title", default="Página inicial"),
-        "html": t("resources.default_page_html", default="<h2>Ideias do projeto</h2><p>Escreva aqui resumos, regras do mundo, cenas soltas e referências.</p>"),
         "data_criacao": agora,
         "data_atualizacao": agora,
     }

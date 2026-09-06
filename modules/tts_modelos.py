@@ -27,6 +27,7 @@ VOICES_PATH = PASTA_MODELOS_TTS / VOICES_NAME
 MIN_MODEL_BYTES = 250_000_000
 MIN_VOICES = 54
 PTBR_VOICES = {"pf_dora", "pm_alex", "pm_santa"}
+TTS_MENU_VOICES = PTBR_VOICES | {"af_heart", "af_bella", "af_nicole", "am_michael", "bf_emma", "bm_george"}
 
 _estado_lock = Lock()
 _cancelar = Event()
@@ -82,12 +83,12 @@ def _validar_vozes(path: Path) -> tuple[bool, str]:
             nomes = {Path(nome).stem for nome in pacote.namelist() if nome.endswith(".npy")}
     except Exception as exc:
         return False, f"não foi possível abrir o pacote de vozes: {exc}"
-    faltantes = sorted(PTBR_VOICES - nomes)
+    faltantes = sorted(TTS_MENU_VOICES - nomes)
     if len(nomes) < MIN_VOICES:
         return False, f"pacote antigo: {len(nomes)} vozes (esperado >= {MIN_VOICES})"
     if faltantes:
-        return False, f"faltam vozes PT-BR: {', '.join(faltantes)}"
-    return True, f"{len(nomes)} vozes; PT-BR OK"
+        return False, f"faltam vozes configuráveis: {', '.join(faltantes)}"
+    return True, f"{len(nomes)} vozes; catálogo configurável OK"
 
 
 def status_modelos_tts() -> dict:

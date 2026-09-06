@@ -145,10 +145,72 @@ class ReaderTtsEnhancementsTests(unittest.TestCase):
         js = (ROOT / 'static' / 'js' / 'leitor_tts.js').read_text(encoding='utf-8')
         self.assertIn('speed: Number(cfg.ttsSpeed || 1)', js)
 
+    def test_configuracoes_oferecem_vozes_ptbr_e_ingles(self):
+        html = (ROOT / 'templates' / 'configuracoes.html').read_text(encoding='utf-8')
+        self.assertIn('id="cfgVozTtsPtBr"', html)
+        self.assertIn('id="cfgVozTtsEn"', html)
+        for voz in ('pf_dora', 'pm_alex', 'pm_santa', 'af_heart', 'af_bella', 'af_nicole', 'am_michael', 'bf_emma', 'bm_george'):
+            self.assertIn(f'value="{voz}"', html)
+
+    def test_vozes_tts_sao_persistidas_e_usadas_na_sintese(self):
+        util_py = (ROOT / 'modules' / 'utilidades.py').read_text(encoding='utf-8')
+        server = (ROOT / 'modules' / 'servidor_flask.py').read_text(encoding='utf-8')
+        tts = (ROOT / 'modules' / 'tts_kokoro.py').read_text(encoding='utf-8')
+        self.assertIn('"voz_tts_pt_BR": "pf_dora"', util_py)
+        self.assertIn('"voz_tts_en_US": "af_heart"', util_py)
+        self.assertIn('normalizar_voz_tts(request.form.get("voz_tts_pt_BR"', server)
+        self.assertIn('normalizar_voz_tts(request.form.get("voz_tts_en_US"', server)
+        self.assertIn('sintetizar_wav(texto, idioma, fallback, velocidade, voz=voz)', server)
+        self.assertIn('EN_GB_VOICES = {"bf_emma", "bm_george"}', tts)
+        self.assertIn('return "en-gb" if voz_normalizada in EN_GB_VOICES else "en-us"', tts)
+        self.assertIn('af_bella', tts)
+        self.assertIn('af_nicole', tts)
+
+    def test_rotulos_de_voz_nao_usam_voz_atual_e_marcam_recomendadas(self):
+        pt = (ROOT / 'locales' / 'pt_BR.json').read_text(encoding='utf-8')
+        en = (ROOT / 'locales' / 'en_US.json').read_text(encoding='utf-8')
+        self.assertNotIn('(voz atual)', pt)
+        self.assertNotIn('(current voice)', en)
+        self.assertIn('Dora — Feminina (recomendada)', pt)
+        self.assertIn('Alex — Masculina (recomendada)', pt)
+        self.assertIn('Heart — Feminina (EUA, recomendada)', pt)
+        self.assertIn('Michael — Masculina (EUA, recomendada)', pt)
+        self.assertIn('Bella — Feminina (EUA)', pt)
+        self.assertIn('Nicole — Feminina (EUA)', pt)
+
+    def test_cache_tts_inclui_voz_para_nao_reutilizar_audio_de_outra_voz(self):
+        py = (ROOT / 'modules' / 'tts_kokoro.py').read_text(encoding='utf-8')
+        self.assertIn('voz_normalizada = normalizar_voz_tts(voz, idioma_base)', py)
+        self.assertIn('{voz_normalizada}', py)
+        self.assertIn('{velocidade:.2f}', py)
+
+    def test_tts_nova_sessao_comeca_no_primeiro_paragrafo_visivel(self):
+        js = (ROOT / 'static' / 'js' / 'leitor_tts.js').read_text(encoding='utf-8')
+        self.assertIn('function calcularIndiceInicialVisivel()', js)
+        self.assertIn("trecho.closest?.('p, li, blockquote, dd, dt')", js)
+        self.assertIn("origem: 'primeiro_paragrafo_visivel'", js)
+        self.assertIn('indice = calcularIndiceInicialVisivel();', js)
+
+    def test_tts_considera_barra_sticky_ao_calcular_inicio_visivel(self):
+        js = (ROOT / 'static' / 'js' / 'leitor_tts.js').read_text(encoding='utf-8')
+        self.assertIn('function limiteSuperiorConteudoVisivel()', js)
+        self.assertIn("['sticky', 'fixed'].includes", js)
+        self.assertIn('rectFrame.top + rect.top', js)
+
+    def test_tts_pausado_pode_reiniciar_em_paragrafo_acima_do_inicio_da_sessao(self):
+        js = (ROOT / 'static' / 'js' / 'leitor_tts.js').read_text(encoding='utf-8')
+        self.assertIn('let indiceInicioSessao = 0;', js)
+        self.assertIn('let scrollYAoPausar = null;', js)
+        self.assertIn('function registrarPausaParaRetomada()', js)
+        self.assertIn('function calcularIndiceReinicioAposPausa()', js)
+        self.assertIn('indiceVisivel >= indiceInicioSessao', js)
+        self.assertIn("enviarLogTts('tts_reinicio_acima_apos_pausa'", js)
+        self.assertIn('indiceInicioSessao = indiceReinicio;', js)
+
     def test_kokoro_inclui_velocidade_na_chave_de_cache_e_na_sintese(self):
         py = (ROOT / 'modules' / 'tts_kokoro.py').read_text(encoding='utf-8')
         self.assertIn('_normalizar_velocidade', py)
-        self.assertIn('_chave_cache(texto, idioma, fallback, velocidade)', py)
+        self.assertIn('_chave_cache(texto, idioma_base, fallback, velocidade, voz)', py)
         self.assertIn('speed=velocidade', py)
 
     def test_segmentos_tts_usam_limite_de_palavras_e_pontuacao(self):
@@ -180,10 +242,10 @@ class ReaderTtsEnhancementsTests(unittest.TestCase):
         self.assertIn('width:min(440px,calc(100vw - 28px))', css)
 
 
-class Release103Tests(unittest.TestCase):
-    def test_versao_do_aplicativo_e_103(self):
+class Release104Tests(unittest.TestCase):
+    def test_versao_do_aplicativo_e_104(self):
         py = (ROOT / 'modules' / 'utilidades.py').read_text(encoding='utf-8')
-        self.assertIn('APP_VERSAO = "1.0.3"', py)
+        self.assertIn('APP_VERSAO = "1.0.4"', py)
 
     def test_seletor_idioma_tts_tem_espaco_ampliado(self):
         css = (ROOT / 'static' / 'css' / 'leitor.css').read_text(encoding='utf-8')
@@ -194,7 +256,7 @@ class Release103Tests(unittest.TestCase):
         py = (ROOT / 'modules' / 'tts_kokoro.py').read_text(encoding='utf-8')
         self.assertIn('def _normalizar_velocidade(', py)
         self.assertIn('velocidade:.2f', py)
-        self.assertIn('_chave_cache(texto, idioma, fallback, velocidade)', py)
+        self.assertIn('_chave_cache(texto, idioma_base, fallback, velocidade, voz)', py)
 
 
 class UnifiedReaderAndPackagingTests(unittest.TestCase):
@@ -283,8 +345,7 @@ class UnifiedReaderAndPackagingTests(unittest.TestCase):
         self.assertIn('recursos_obrigatorios = [', spec)
         self.assertIn('_sem_duplicatas_toc(datas)', spec)
         self.assertIn('_sem_duplicatas_toc(binaries)', spec)
-        self.assertIn('#define MyAppIcon AddBackslash(SourcePath) + "static\\img\\icon.ico"', iss)
-        self.assertNotIn('"installer.ico"', iss)
+        self.assertIn('#define MyAppIcon AddBackslash(SourcePath) + "installer.ico"', iss)
         self.assertIn('OutputBaseFilename={#MyAppName}_{#MyAppVersion}_Installer', iss)
         self.assertIn('SetupLogging=yes', iss)
         self.assertIn('RestartApplications=no', iss)

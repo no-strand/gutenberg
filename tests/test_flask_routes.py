@@ -329,6 +329,20 @@ class FlaskRoutesTests(IsolatedProjectTestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertTrue(resposta.get_json()["ok"])
 
+    def test_salvar_configuracoes_persiste_vozes_tts(self):
+        resposta = self.client.post(
+            "/configuracoes/salvar",
+            data={
+                "idioma_tts": "en_US",
+                "voz_tts_pt_BR": "pm_alex",
+                "voz_tts_en_US": "bf_emma",
+            },
+        )
+        self.assertEqual(resposta.status_code, 302)
+        config = utilidades.obter_configuracoes()
+        self.assertEqual(config.get("voz_tts_pt_BR"), "pm_alex")
+        self.assertEqual(config.get("voz_tts_en_US"), "bf_emma")
+
     def test_api_catalogo_roteiro_rejeita_tipo_invalido(self):
         """
         Executa uma etapa específica do fluxo do módulo, encapsulando detalhes para manter o restante do código mais claro.

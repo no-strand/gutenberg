@@ -44,6 +44,18 @@ LR_LOADFROMFILE = 0x00000010
 
 
 ULTIMO_DIRETORIO_GUT_CHAVE = "ultimo_diretorio_gut"
+ULTIMA_AREA_APP_CHAVE = "ultima_area_app"
+
+
+@registrar_etapa
+def _obter_url_inicial_por_area(base_url: str) -> str:
+    """Retorna a tela inicial conforme a última utilidade principal usada."""
+    base = str(base_url or "").rstrip("/")
+    try:
+        area = str(obter_configuracoes().get(ULTIMA_AREA_APP_CHAVE) or "editor").strip().lower()
+    except Exception:
+        area = "editor"
+    return f"{base}/biblioteca" if area == "biblioteca" else base
 
 
 @registrar_etapa
@@ -754,9 +766,10 @@ class AppController:
         self.registrar_gut_pendente()
         icon_path = str((RAIZ_RECURSOS / "static" / "img" / "icon.ico").resolve())
         taskbar_icon_path = (RAIZ_RECURSOS / "static" / "img" / "favicon.ico").resolve()
+        url_inicial = self.server_url if self.initial_path else _obter_url_inicial_por_area(self.server_url)
         self.window = webview.create_window(
             title=TITULO_JANELA,
-            url=self.server_url,
+            url=url_inicial,
             js_api=bridge,
             width=1280,
             height=800,
@@ -837,8 +850,8 @@ def _executar_modo_browser() -> int:
 
     @registrar_etapa
     def abrir_no_navegador(icon=None, item=None):
-        """Abre o Gutenberg no navegador padrão."""
-        webbrowser.open(BROWSER_URL)
+        """Abre o Gutenberg no navegador padrão na última utilidade principal usada."""
+        webbrowser.open(_obter_url_inicial_por_area(BROWSER_URL))
 
     @registrar_etapa
     def fechar(icon, item):

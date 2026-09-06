@@ -24,9 +24,14 @@ ROOT = RAIZ_RECURSOS
 
 ORT_ESPERADO_NO_EXE = "1.28.0"
 MODEL_FP32_MIN_BYTES = 250_000_000
-TTS_CACHE_VERSION = "ptbr-espeak-g2p-v2-voices54"
+TTS_CACHE_VERSION = "multivoice-v1-voices54"
 VOICES_MIN_COUNT = 54
 PTBR_VOICES = {"pf_dora", "pm_alex", "pm_santa"}
+EN_US_VOICES = {"af_heart", "af_bella", "af_nicole", "am_michael"}
+EN_GB_VOICES = {"bf_emma", "bm_george"}
+TTS_MENU_VOICES = PTBR_VOICES | EN_US_VOICES | EN_GB_VOICES
+DEFAULT_PTBR_VOICE = "pf_dora"
+DEFAULT_EN_VOICE = "af_heart"
 
 # Handles devolvidos por os.add_dll_directory precisam permanecer vivos; caso
 # contrário o Windows remove o diretório da busca de DLLs. O runtime hook faz
@@ -298,11 +303,33 @@ def normalizar_idioma_tts(valor: str | None, fallback: str = "pt-BR") -> str:
     fallback = str(fallback or "pt-BR").strip().lower().replace("_", "-")
     if valor.startswith("pt"):
         return "pt-br"
+    if valor in {"en-gb", "en-uk", "en-british"}:
+        return "en-gb"
     if valor.startswith("en"):
         return "en-us"
+    if fallback in {"en-gb", "en-uk", "en-british"}:
+        return "en-gb"
     if fallback.startswith("en"):
         return "en-us"
     return "pt-br"
+
+
+def normalizar_voz_tts(voz: str | None, idioma: str | None) -> str:
+    """Valida a voz escolhida para o idioma e aplica um fallback seguro."""
+    lang = normalizar_idioma_tts(idioma, "pt-BR")
+    valor = str(voz or "").strip().lower()
+    if lang == "pt-br":
+        return valor if valor in PTBR_VOICES else DEFAULT_PTBR_VOICE
+    return valor if valor in (EN_US_VOICES | EN_GB_VOICES) else DEFAULT_EN_VOICE
+
+
+def idioma_kokoro_para_voz(idioma: str | None, voz: str | None) -> str:
+    """Escolhe en-us/en-gb conforme a voz inglesa; PT-BR permanece pt-br."""
+    lang = normalizar_idioma_tts(idioma, "pt-BR")
+    voz_normalizada = normalizar_voz_tts(voz, lang)
+    if lang == "pt-br":
+        return "pt-br"
+    return "en-gb" if voz_normalizada in EN_GB_VOICES else "en-us"
 
 
 def obter_kokoro():
@@ -366,18 +393,18 @@ def obter_kokoro():
                 raise RuntimeError(
                     f"Não foi possível abrir voices-v1.0.bin como pacote NPZ: {exc}"
                 ) from exc
-            faltantes_ptbr = sorted(PTBR_VOICES - nomes_vozes)
+            faltantes_menu = sorted(TTS_MENU_VOICES - nomes_vozes)
             logger.info(
-                "Pacote de vozes inspecionado | total=%d | ptbr_presentes=%s | faltantes_ptbr=%s",
+                "Pacote de vozes inspecionado | total=%d | configuraveis_presentes=%s | faltantes=%s",
                 len(nomes_vozes),
-                sorted(PTBR_VOICES & nomes_vozes),
-                faltantes_ptbr,
+                sorted(TTS_MENU_VOICES & nomes_vozes),
+                faltantes_menu,
             )
-            if len(nomes_vozes) < VOICES_MIN_COUNT or faltantes_ptbr:
+            if len(nomes_vozes) < VOICES_MIN_COUNT or faltantes_menu:
                 raise RuntimeError(
                     "voices-v1.0.bin desatualizado ou incompatível. "
                     f"Foram encontradas {len(nomes_vozes)} vozes; esperado pelo menos "
-                    f"{VOICES_MIN_COUNT}, incluindo pf_dora, pm_alex e pm_santa. "
+                    f"{VOICES_MIN_COUNT}, incluindo {', '.join(sorted(TTS_MENU_VOICES))}. "
                     "Baixe modelo e voices juntos do release model-files-v1.1."
                 )
 
@@ -643,14 +670,29 @@ def _normalizar_velocidade(valor: float | int | str | None, padrao: float = 1.0)
     return round(max(0.75, min(1.25, velocidade)), 2)
 
 
-def _chave_cache(texto: str, idioma: str, fallback: str, velocidade: float = 1.0) -> str:
+def _chave_cache(
+    texto: str,
+    idioma: str,
+    fallback: str,
+    velocidade: float = 1.0,
+    voz: str | None = None,
+) -> str:
     velocidade = _normalizar_velocidade(velocidade)
-    payload = f"{TTS_CACHE_VERSION}\\0{normalizar_idioma_tts(idioma, fallback)}\\0{velocidade:.2f}\\0{texto}"
+    idioma_base = normalizar_idioma_tts(idioma, fallback)
+    voz_normalizada = normalizar_voz_tts(voz, idioma_base)
+    lang = idioma_kokoro_para_voz(idioma_base, voz_normalizada)
+    payload = f"{TTS_CACHE_VERSION}\\0{lang}\\0{voz_normalizada}\\0{velocidade:.2f}\\0{texto}"
     return sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _arquivo_cache(texto: str, idioma: str, fallback: str, velocidade: float = 1.0) -> Path:
-    return _CACHE_DIR / f"{_chave_cache(texto, idioma, fallback, velocidade)}.wav"
+def _arquivo_cache(
+    texto: str,
+    idioma: str,
+    fallback: str,
+    velocidade: float = 1.0,
+    voz: str | None = None,
+) -> Path:
+    return _CACHE_DIR / f"{_chave_cache(texto, idioma, fallback, velocidade, voz)}.wav"
 
 
 def limpar_cache_tts() -> None:
@@ -664,7 +706,13 @@ def limpar_cache_tts() -> None:
 register(limpar_cache_tts)
 
 
-def sintetizar_wav(texto: str, idioma: str, fallback: str = "pt-BR", velocidade: float = 1.0) -> bytes:
+def sintetizar_wav(
+    texto: str,
+    idioma: str,
+    fallback: str = "pt-BR",
+    velocidade: float = 1.0,
+    voz: str | None = None,
+) -> bytes:
     texto = " ".join(str(texto or "").split())
     if not texto:
         logger.warning("Sintese recusada: texto vazio")
@@ -673,19 +721,22 @@ def sintetizar_wav(texto: str, idioma: str, fallback: str = "pt-BR", velocidade:
         logger.warning("Sintese recusada: trecho muito grande | chars=%d", len(texto))
         raise ValueError("Trecho muito grande para síntese.")
 
-    lang = normalizar_idioma_tts(idioma, fallback)
+    idioma_base = normalizar_idioma_tts(idioma, fallback)
+    voz = normalizar_voz_tts(voz, idioma_base)
+    lang = idioma_kokoro_para_voz(idioma_base, voz)
     velocidade = _normalizar_velocidade(velocidade)
-    chave = _chave_cache(texto, lang, fallback, velocidade)
+    chave = _chave_cache(texto, idioma_base, fallback, velocidade, voz)
     req_id = chave[:12]
     caminho_cache = _CACHE_DIR / f"{chave}.wav"
     inicio_total = time.perf_counter()
 
     logger.info(
-        "Sintese iniciada | req=%s | chars=%d | idioma_entrada=%s | lang=%s | velocidade=%.2f | cache=%s",
+        "Sintese iniciada | req=%s | chars=%d | idioma_entrada=%s | lang=%s | voz=%s | velocidade=%.2f | cache=%s",
         req_id,
         len(texto),
         idioma,
         lang,
+        voz,
         velocidade,
         caminho_cache,
     )
@@ -712,7 +763,6 @@ def sintetizar_wav(texto: str, idioma: str, fallback: str = "pt-BR", velocidade:
             raise
 
     kokoro = obter_kokoro()
-    voz = "pf_dora" if lang == "pt-br" else "af_heart"
     logger.info("Parametros de inferencia | req=%s | voz=%s | lang=%s | speed=%.2f", req_id, voz, lang, velocidade)
 
     # A inferência do ONNX é serializada para evitar disputa pelo mesmo
@@ -752,7 +802,8 @@ def sintetizar_wav(texto: str, idioma: str, fallback: str = "pt-BR", velocidade:
                 mecanismo_g2p,
             )
             # Como já fornecemos fonemas prontos, não pedimos ao Kokoro para
-            # reinterpretar o idioma. A voz pf_dora carrega a identidade PT-BR.
+            # reinterpretar o idioma. A identidade/acento vem da voz escolhida
+            # e, para inglês britânico, a fonemização usa explicitamente en-gb.
             samples, sample_rate = kokoro.create(
                 phonemes,
                 voice=voz,

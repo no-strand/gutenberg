@@ -6,7 +6,7 @@ import unittest
 
 import numpy as np
 
-from modules.tts_kokoro import _samples_para_wav_pcm16
+from modules.tts_kokoro import _samples_para_wav_pcm16, idioma_kokoro_para_voz, normalizar_voz_tts
 
 
 class TtsWavPcmTests(unittest.TestCase):
@@ -40,6 +40,20 @@ class TtsWavPcmTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "zero amostras"):
             _samples_para_wav_pcm16(np.array([], dtype=np.float32), 24000)
 
+
+    def test_vozes_configuradas_sao_normalizadas_por_idioma(self):
+        self.assertEqual(normalizar_voz_tts("pm_alex", "pt_BR"), "pm_alex")
+        self.assertEqual(normalizar_voz_tts("af_bella", "en_US"), "af_bella")
+        self.assertEqual(normalizar_voz_tts("af_nicole", "en_US"), "af_nicole")
+        self.assertEqual(normalizar_voz_tts("bf_emma", "en_US"), "bf_emma")
+        self.assertEqual(normalizar_voz_tts("voz_invalida", "pt_BR"), "pf_dora")
+        self.assertEqual(normalizar_voz_tts("voz_invalida", "en_US"), "af_heart")
+
+    def test_vozes_britanicas_usam_fonemizacao_en_gb(self):
+        self.assertEqual(idioma_kokoro_para_voz("en_US", "bf_emma"), "en-gb")
+        self.assertEqual(idioma_kokoro_para_voz("en_US", "bm_george"), "en-gb")
+        self.assertEqual(idioma_kokoro_para_voz("en_US", "am_michael"), "en-us")
+        self.assertEqual(idioma_kokoro_para_voz("pt_BR", "pm_alex"), "pt-br")
 
 if __name__ == "__main__":
     unittest.main()
