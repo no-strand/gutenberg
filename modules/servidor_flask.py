@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
-from tempfile import NamedTemporaryFile, mkdtemp
+from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 import os
 import json
 import math
@@ -108,6 +108,7 @@ from .utilidades import (
 )
 from .logging_config import obter_logger, obter_logger_tts, obter_caminho_log_tts, registrar_etapa
 from .tts_kokoro import normalizar_voz_tts, sintetizar_wav
+from .dicionario_online import ErroConsultaDicionario, consultar_palavra_online
 from .tts_modelos import (
     cancelar_download_modelos_tts,
     iniciar_download_modelos_tts,
@@ -1491,10 +1492,15 @@ def criar_app() -> Flask:
             "gemini_api_key": request.form.get("gemini_api_key", config_atual.get("gemini_api_key", "")).strip(),
             "idioma_app": normalizar_idioma_app(request.form.get("idioma_app", config_atual.get("idioma_app", "pt_BR"))),
             "idioma_tts": "en_US" if str(request.form.get("idioma_tts", config_atual.get("idioma_tts", "pt_BR"))).strip().lower().replace("-", "_") == "en_us" else "pt_BR",
+            "idioma_traducao_de": "en_US" if str(request.form.get("idioma_traducao_de", config_atual.get("idioma_traducao_de", "en_US"))).strip().lower().replace("-", "_") == "en_us" else "pt_BR",
+            "idioma_traducao_para": "en_US" if str(request.form.get("idioma_traducao_para", config_atual.get("idioma_traducao_para", "pt_BR"))).strip().lower().replace("-", "_") == "en_us" else "pt_BR",
             "voz_tts_pt_BR": normalizar_voz_tts(request.form.get("voz_tts_pt_BR", config_atual.get("voz_tts_pt_BR", "pf_dora")), "pt_BR"),
             "voz_tts_en_US": normalizar_voz_tts(request.form.get("voz_tts_en_US", config_atual.get("voz_tts_en_US", "af_heart")), "en_US"),
             "leitor_tts_velocidade": max(0.75, min(1.25, round(float(config_atual.get("leitor_tts_velocidade") or 1.0) * 20) / 20)),
+            "leitor_tts_volume": max(0, min(100, int(round(float(config_atual.get("leitor_tts_volume") if config_atual.get("leitor_tts_volume") is not None else 100))))),
         }
+        if dados["idioma_traducao_de"] == dados["idioma_traducao_para"]:
+            dados["idioma_traducao_para"] = "pt_BR" if dados["idioma_traducao_de"] == "en_US" else "en_US"
         dados["ultima_area_app"] = "biblioteca" if str(config_atual.get("ultima_area_app") or "editor") == "biblioteca" else "editor"
         salvar_configuracoes(dados)
         return redirect(url_for("pagina_configuracoes"))
@@ -2196,26 +2202,24 @@ def criar_app() -> Flask:
             return jsonify({"ok": False, "erro": t('backend.no_book_file_uploaded')}), 400
         adicionados = []
         for arquivo in arquivos:
-            sufixo = Path(arquivo.filename).suffix.lower()
+            nome_original = Path(str(arquivo.filename).replace("\\", "/")).name
+            sufixo = Path(nome_original).suffix.lower()
             if sufixo not in {".epub", ".pdf"}:
                 continue
-            with NamedTemporaryFile(delete=False, suffix=sufixo or ".epub") as tmp:
-                caminho_tmp = Path(tmp.name)
-                arquivo.save(tmp.name)
-            caminho_origem = caminho_tmp.with_name(Path(arquivo.filename).name)
-            caminho_tmp.replace(caminho_origem)
+
+            # No Windows, NamedTemporaryFile permanece aberto e pode bloquear
+            # arquivo.save() / renomeações do mesmo caminho. Uma pasta temporária
+            # exclusiva evita esse lock e também preserva o nome original para o
+            # importador e para os metadados do livro.
             try:
-                livro = adicionar_livro_pdf(caminho_origem) if sufixo == ".pdf" else adicionar_livro_epub(caminho_origem)
+                with TemporaryDirectory(prefix="gutenberg_biblioteca_") as pasta_tmp:
+                    caminho_origem = Path(pasta_tmp) / nome_original
+                    arquivo.save(str(caminho_origem))
+                    livro = adicionar_livro_pdf(caminho_origem) if sufixo == ".pdf" else adicionar_livro_epub(caminho_origem)
             except Exception as exc:
-                try:
-                    caminho_origem.unlink(missing_ok=True)
-                except Exception:
-                    pass
+                logger.exception("Falha ao adicionar livro à biblioteca | arquivo=%s", nome_original)
                 return jsonify({"ok": False, "erro": str(exc) or t('backend.error_converting_pdf_to_epub')}), 400
-            try:
-                caminho_origem.unlink(missing_ok=True)
-            except Exception:
-                pass
+
             adicionados.append({"slug": livro["slug"], "titulo": livro["titulo"]})
         if not adicionados:
             return jsonify({"ok": False, "erro": t('backend.no_valid_book_added')}), 400
@@ -2415,6 +2419,30 @@ def criar_app() -> Flask:
         livro = marcar_livro_como_lido(slug, bool(dados.get("lido", False)))
         return jsonify({"ok": True, "progresso_percentual": livro.get("progresso_percentual", 0), "foi_lido": livro.get("foi_lido", False)})
 
+
+    @app.get("/api/dicionario/consultar")
+    def api_dicionario_consultar():
+        """Consulta uma palavra no idioma atual do TTS para uso dentro dos leitores."""
+        palavra = str(request.args.get("palavra") or "").strip()
+        idioma = str(request.args.get("idioma") or "pt_BR").strip()
+        config_dicionario = obter_configuracoes()
+        traducao_de = config_dicionario.get("idioma_traducao_de", "en_US")
+        traducao_para = config_dicionario.get("idioma_traducao_para", "pt_BR")
+        try:
+            resultado = consultar_palavra_online(palavra, idioma, traducao_de, traducao_para)
+        except ValueError as exc:
+            return jsonify({"ok": False, "erro": str(exc)}), 400
+        except ErroConsultaDicionario as exc:
+            logger.warning("Falha na consulta do dicionário online: %s", exc)
+            return jsonify({"ok": False, "erro": str(exc)}), 502
+        except Exception as exc:
+            logger.exception("Erro inesperado ao consultar o dicionário online")
+            return jsonify({"ok": False, "erro": "Não foi possível consultar o dicionário agora."}), 500
+
+        if not resultado.get("ok"):
+            return jsonify({**resultado, "erro": "Nenhum significado foi encontrado para esta palavra."}), 404
+        return jsonify(resultado)
+
     @app.post("/api/tts/log")
     def api_tts_log_cliente():
         """Recebe eventos do player TTS do WebView e grava no mesmo log do Kokoro."""
@@ -2427,6 +2455,21 @@ def criar_app() -> Flask:
         # Não aceitamos texto do livro neste endpoint. O JavaScript envia apenas
         # metadados técnicos; ainda assim limitamos tamanho e profundidade para
         # evitar que um erro do cliente faça o arquivo de diagnóstico crescer sem controle.
+        eventos_erro_permitidos = {
+            "modelos_tts_status_erro",
+            "fetch_excecao",
+            "fetch_erro_http",
+            "blob_excecao",
+            "blob_vazio",
+            "preload_erro",
+            "audio_error_event",
+            "audio_play_rejeitado",
+            "tocar_indice_excecao",
+            "erro_tts",
+        }
+        if evento not in eventos_erro_permitidos:
+            return ("", 204)
+
         seguros = {}
         for chave, valor in list(detalhes.items())[:30]:
             chave_segura = re.sub(r"[^a-zA-Z0-9_.:-]", "_", str(chave))[:80]
@@ -2435,8 +2478,8 @@ def criar_app() -> Flask:
             else:
                 seguros[chave_segura] = str(valor)[:500]
 
-        tts_logger.info(
-            "CLIENT | event=%s | details=%s",
+        tts_logger.error(
+            "CLIENT TTS | event=%s | details=%s",
             evento,
             json.dumps(seguros, ensure_ascii=False, separators=(",", ":")),
         )
@@ -2493,22 +2536,9 @@ def criar_app() -> Flask:
         except (TypeError, ValueError):
             velocidade = 1.0
 
-        tts_logger.info(
-            "HTTP TTS recebido | chars=%d | idioma=%s | voz=%s | velocidade=%.2f | content_type=%s | content_length=%s | log=%s",
-            len(texto),
-            idioma,
-            voz,
-            velocidade,
-            request.content_type,
-            request.content_length,
-            obter_caminho_log_tts(),
-        )
-
         if not texto:
-            tts_logger.warning("HTTP TTS recusado | motivo=texto_vazio")
             return jsonify({"ok": False, "erro": "Texto vazio."}), 400
         if len(texto) > 1400:
-            tts_logger.warning("HTTP TTS recusado | motivo=trecho_grande | chars=%d", len(texto))
             return jsonify({"ok": False, "erro": "Trecho muito grande."}), 400
         try:
             audio = sintetizar_wav(texto, idioma, fallback, velocidade, voz=voz)
@@ -2520,15 +2550,8 @@ def criar_app() -> Flask:
             return jsonify({"ok": False, "erro": str(exc), "log": str(obter_caminho_log_tts())}), 503
         except Exception as exc:
             tts_logger.exception("HTTP TTS falhou: erro inesperado")
-            logger.exception("Erro inesperado no TTS Kokoro")
             return jsonify({"ok": False, "erro": str(exc), "log": str(obter_caminho_log_tts())}), 500
 
-        tts_logger.info(
-            "HTTP TTS sucesso | bytes=%d | assinatura=%s | duracao_ms=%.2f",
-            len(audio),
-            audio[:12].hex(),
-            (time.perf_counter() - inicio) * 1000,
-        )
         resposta = send_file(BytesIO(audio), mimetype="audio/wav", download_name="tts.wav")
         resposta.headers["X-Gutenberg-TTS-Bytes"] = str(len(audio))
         resposta.headers["X-Gutenberg-TTS-Voice"] = voz
@@ -2563,6 +2586,7 @@ def criar_app() -> Flask:
             "voz_tts_pt_BR": normalizar_voz_tts(config_atual.get("voz_tts_pt_BR", "pf_dora"), "pt_BR"),
             "voz_tts_en_US": normalizar_voz_tts(config_atual.get("voz_tts_en_US", "af_heart"), "en_US"),
             "leitor_tts_velocidade": max(0.75, min(1.25, round(float(dados.get("ttsSpeed") or config_atual.get("leitor_tts_velocidade") or 1.0) * 20) / 20)),
+            "leitor_tts_volume": max(0, min(100, int(round(float(dados.get("ttsVolume") if dados.get("ttsVolume") is not None else config_atual.get("leitor_tts_volume", 100)))))),
             "leitor_modo_confortavel": False,
             "leitor_modo_ampliado": True,
             "caminho_exportacao": str(config_atual.get("caminho_exportacao") or EXPORTS_PADRAO),

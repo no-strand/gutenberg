@@ -23,6 +23,12 @@ let filtroAtual = 'todos';
 let colecaoAtual = '';
 
 
+/** Atualiza o texto de status quando esse elemento existir na página. */
+function atualizarStatusBiblioteca(mensagem) {
+  if (statusBiblioteca) statusBiblioteca.textContent = mensagem;
+}
+
+
 /** Definirprocessamentobiblioteca. Usada pelo fluxo principal da aplicação. */
 function definirProcessamentoBiblioteca(ativo, mensagem = i18n('js.import_preparing')) {
   document.body.classList.toggle('biblioteca-processando', !!ativo);
@@ -118,7 +124,7 @@ inputEpubs?.addEventListener('change', async () => {
   if (!arquivos.length) return;
   const possuiPdf = arquivos.some((arquivo) => (arquivo.name || '').toLowerCase().endsWith('.pdf'));
   const mensagemProgresso = arquivos.length > 1 ? i18n('js.adding_books', {count: arquivos.length}) : i18n('js.adding_book');
-  statusBiblioteca.textContent = mensagemProgresso;
+  atualizarStatusBiblioteca(mensagemProgresso);
   definirProcessamentoBiblioteca(true, possuiPdf ? i18n('js.import_pdf_wait') : (arquivos.length > 1 ? i18n('js.import_many_wait', {count: arquivos.length}) : i18n('js.import_one_wait')));
   const body = new FormData();
   arquivos.forEach((arquivo) => body.append('epubs', arquivo));
@@ -126,16 +132,16 @@ inputEpubs?.addEventListener('change', async () => {
     const resposta = await fetch('/biblioteca/adicionar', { method: 'POST', body });
     const dados = await resposta.json();
     if (!dados.ok) {
-      statusBiblioteca.textContent = dados.erro || i18n('js.add_books_error');
+      atualizarStatusBiblioteca(dados.erro || i18n('js.add_books_error'));
       definirProcessamentoBiblioteca(false, dados.erro || i18n('js.add_books_error'));
       return;
     }
     const totalAdicionados = Array.isArray(dados.adicionados) ? dados.adicionados.length : 0;
-    statusBiblioteca.textContent = window.t('js.books_added_success', { total: totalAdicionados });
+    atualizarStatusBiblioteca(i18n('js.books_added_success', { total: totalAdicionados }));
     definirProcessamentoBiblioteca(true, i18n('js.import_success_reloading'));
     window.location.reload();
   } catch (_) {
-    statusBiblioteca.textContent = i18n('js.upload_book_error');
+    atualizarStatusBiblioteca(i18n('js.upload_book_error'));
     definirProcessamentoBiblioteca(false, i18n('js.upload_book_error'));
   } finally {
     inputEpubs.value = '';

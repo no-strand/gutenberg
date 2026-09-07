@@ -85,3 +85,12 @@
 .tts-download-erro{margin:0;padding:12px 14px;border-radius:14px;background:rgba(239,68,68,.12);border:1px solid rgba(248,113,113,.24);color:#fecaca;line-height:1.45}.tts-download-erro.oculto{display:none}
 .tts-download-acoes{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.tts-download-acoes .botao-secundario{min-height:44px;padding:0 16px}.tts-download-cancelar{border-color:rgba(248,113,113,.36)!important;color:#fecaca!important}.tts-download-cancelar.oculto{display:none}
 @media (max-width:700px){.tts-modelos-card{align-items:stretch;flex-direction:column}.tts-modelos-card #botaoBaixarModelosTts{width:100%;min-width:0}.tts-download-lista{grid-template-columns:1fr}}
+
+
+.config-translation-card{display:flex;flex-direction:column;gap:12px}
+.config-translation-title{font-weight:700;color:#f8fafc}
+.config-translation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:2px}
+.config-translation-field{display:grid;gap:8px;min-width:0}
+.form-config-grid .config-translation-field-label{color:#AAB2BF;font-size:.9rem;line-height:1.2}
+.config-translation-field select{width:100%}
+@media (max-width:560px){.config-translation-grid{grid-template-columns:1fr}}

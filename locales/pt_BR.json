@@ -1477,6 +1477,7 @@
   "reader.tts_language": "Idioma da leitura em voz alta",
   "reader.tts_portuguese": "Português (Brasil)",
   "reader.tts_english": "Inglês (EUA)",
+  "reader.tts_volume": "Volume do TTS",
   "tts_models.title": "Modelos do TTS",
   "tts_models.description": "Baixe o modelo Kokoro e o conjunto de vozes separadamente do executável. Os arquivos ficam salvos no seu perfil de usuário.",
   "tts_models.folder": "Pasta",
@@ -1505,5 +1506,20 @@
   "tts_models": {
     "open_folder_title": "Abrir a pasta dos modelos TTS",
     "open_folder_error": "Não foi possível abrir a pasta dos modelos TTS."
-  }
+  },
+  "reader.dictionary_title": "Dicionário",
+  "reader.dictionary_close": "Fechar",
+  "reader.dictionary_loading": "Buscando significado…",
+  "reader.dictionary_translation": "Tradução",
+  "reader.dictionary_headword": "Verbete encontrado",
+  "reader.dictionary_meanings": "Significados",
+  "reader.dictionary_example": "Exemplo",
+  "reader.dictionary_definition_unavailable": "A tradução foi encontrada, mas não há uma definição disponível para esta palavra.",
+  "reader.dictionary_source": "Dicionário",
+  "reader.dictionary_translation_source": "Tradução",
+  "reader.dictionary_error": "Não foi possível consultar esta palavra.",
+  "reader.dictionary_not_found": "Nenhum significado foi encontrado para esta palavra.",
+  "reader.dictionary_network_error": "Não foi possível acessar o dicionário online. Verifique sua conexão com a internet.",
+  "settings.translation_from": "Tradução de",
+  "settings.translation_to": "Para"
 }

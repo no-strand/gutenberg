@@ -185,6 +185,12 @@ class BibliotecaFlaskRoutesTests(IsolatedProjectTestCase):
         self.assertEqual(resposta.status_code, 400)
         self.assertFalse(resposta.get_json()["ok"])
 
+    def test_upload_biblioteca_usa_pasta_temporaria_compativel_com_windows(self):
+        codigo = Path(servidor_flask.__file__).read_text(encoding="utf-8")
+        trecho = codigo[codigo.index('@app.post("/biblioteca/adicionar")'):codigo.index('@app.post("/biblioteca/<slug>/excluir")')]
+        self.assertIn("TemporaryDirectory", trecho)
+        self.assertNotIn("NamedTemporaryFile", trecho)
+
     def test_rotas_leitura_servem_capa_capitulo_posicao_e_redirecionamento(self):
         livro = self.adicionar_epub()
 

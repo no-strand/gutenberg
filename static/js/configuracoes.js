@@ -51,6 +51,20 @@ function atualizarPreview(){
 ids.forEach((id) => document.getElementById(id)?.addEventListener('input', atualizarPreview));
 document.addEventListener('DOMContentLoaded', atualizarPreview);
 
+(function configurarDirecaoTraducao() {
+  const origem = document.getElementById('cfgIdiomaTraducaoDe');
+  const destino = document.getElementById('cfgIdiomaTraducaoPara');
+  if (!origem || !destino) return;
+
+  const outroIdioma = (valor) => valor === 'en_US' ? 'pt_BR' : 'en_US';
+  origem.addEventListener('change', () => {
+    if (origem.value === destino.value) destino.value = outroIdioma(origem.value);
+  });
+  destino.addEventListener('change', () => {
+    if (origem.value === destino.value) origem.value = outroIdioma(destino.value);
+  });
+})();
+
 (function configurarAtualizacoes() {
   const botaoAbrir = document.getElementById('botaoVerificarAtualizacao');
   const modal = document.getElementById('modalAtualizacao');

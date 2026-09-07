@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import sys
 import platform
+import re
 import time
 from importlib import metadata as importlib_metadata
 from threading import Lock
@@ -24,7 +25,7 @@ ROOT = RAIZ_RECURSOS
 
 ORT_ESPERADO_NO_EXE = "1.28.0"
 MODEL_FP32_MIN_BYTES = 250_000_000
-TTS_CACHE_VERSION = "multivoice-v1-voices54"
+TTS_CACHE_VERSION = "multivoice-v7-hw-global-ordinal"
 VOICES_MIN_COUNT = 54
 PTBR_VOICES = {"pf_dora", "pm_alex", "pm_santa"}
 EN_US_VOICES = {"af_heart", "af_bella", "af_nicole", "am_michael"}
@@ -223,8 +224,6 @@ def _registrar_diagnostico_inicial() -> None:
         _versao_pacote("phonemizer-fork"),
     )
 
-
-_registrar_diagnostico_inicial()
 
 _KOKORO = None
 _KOKORO_LOCK = Lock()
@@ -613,6 +612,68 @@ def _obter_g2p_ptbr():
     return _PTBR_G2P
 
 
+_PTBR_HW_RE = re.compile(r"hw", re.IGNORECASE)
+_PTBR_CONSOANTE_ANTES_DE_W_RE = re.compile(r"(?<=[bcdfgjklmnpqrstvxzçBCDFGJKLMNPQRSTVXZÇ])[wW]")
+_PTBR_PALAVRA_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ]+")
+_TTS_ORDINAL_SUFFIX_RE = re.compile(r"(?<![\w])([0-9]+)(?:st|nd|rd|th)(?![\w])", re.IGNORECASE)
+
+
+def _normalizar_ordinais_numericos_tts(texto: str) -> str:
+    """Remove sufixos ordinais ingleses colados a números antes da síntese.
+
+    Exemplos: ``20nd``, ``20th`` e ``20rd`` viram simplesmente ``20``.
+    A regra vale para qualquer idioma do TTS porque o objetivo é preservar
+    apenas a parte numérica desses tokens híbridos.
+    """
+    return _TTS_ORDINAL_SUFFIX_RE.sub(r"\1", str(texto or ""))
+
+
+def _normalizar_hw_tts(texto: str) -> str:
+    """Converte literalmente ``hw`` para ``ru`` no texto interno do TTS.
+
+    A regra é independente do idioma selecionado porque nomes/transliterações
+    com ``hwa`` podem aparecer tanto em textos lidos com voz portuguesa quanto
+    inglesa. Exemplos: ``hwa`` -> ``rua`` e ``Kae-hwa`` -> ``Kae-rua``.
+    """
+    texto = str(texto or "")
+
+    def ajustar_palavra(match: re.Match[str]) -> str:
+        palavra = match.group(0)
+
+        def substituir_hw(match_hw: re.Match[str]) -> str:
+            trecho = match_hw.group(0)
+            if trecho.isupper():
+                return "ru"
+            if trecho[:1].isupper():
+                return "Ru"
+            return "ru"
+
+        ajustada = _PTBR_HW_RE.sub(substituir_hw, palavra)
+        if ajustada != palavra and palavra.isupper():
+            ajustada = ajustada.lower()
+        return ajustada
+
+    return _PTBR_PALAVRA_RE.sub(ajustar_palavra, texto)
+
+
+def _ajustar_pronuncia_w_ptbr(texto: str) -> str:
+    """Normaliza W/HW no texto interno enviado ao TTS PT-BR.
+
+    Primeiro aplica a regra global ``hw`` -> ``ru``. Depois, apenas para PT-BR,
+    W após outra consoante vira U (``rwa`` -> ``rua``). O texto visual do livro
+    não é alterado.
+    """
+    texto = _normalizar_hw_tts(texto)
+
+    def ajustar_palavra(match: re.Match[str]) -> str:
+        palavra = match.group(0)
+        ajustada = _PTBR_CONSOANTE_ANTES_DE_W_RE.sub("u", palavra)
+        if ajustada != palavra and palavra.isupper():
+            ajustada = ajustada.lower()
+        return ajustada
+
+    return _PTBR_PALAVRA_RE.sub(ajustar_palavra, texto)
+
 def _phonemizar_ptbr_kokoro(texto: str) -> str:
     """Converte português brasileiro para o alfabeto fonético do Kokoro.
 
@@ -621,8 +682,15 @@ def _phonemizar_ptbr_kokoro(texto: str) -> str:
     """
     backend = _obter_g2p_ptbr()
 
+    # Ajuste de pronúncia específico do PT-BR: quando W vier logo após
+    # uma consoante, ele deve soar como U (ex.: rwa -> rua).
+    # Exceção específica: "hw" deve virar "ru" (ex.: hwa -> rua).
+    # Isso é aplicado apenas ao texto enviado ao G2P, sem alterar o conteúdo
+    # exibido no leitor.
+    preparado = _ajustar_pronuncia_w_ptbr(texto)
+
     # Mesmas normalizações estruturais do EspeakG2P do Misaki.
-    preparado = str(texto or "").replace("«", "“").replace("»", "”")
+    preparado = preparado.replace("«", "“").replace("»", "”")
     preparado = preparado.replace("(", "«").replace(")", "»")
 
     resultado = backend.phonemize([preparado])
@@ -725,10 +793,24 @@ def sintetizar_wav(
     voz = normalizar_voz_tts(voz, idioma_base)
     lang = idioma_kokoro_para_voz(idioma_base, voz)
     velocidade = _normalizar_velocidade(velocidade)
-    chave = _chave_cache(texto, idioma_base, fallback, velocidade, voz)
+
+    # Normalizações de pronúncia precisam acontecer ANTES da chave de cache,
+    # para que o áudio seja gerado e reutilizado a partir do texto efetivamente
+    # enviado ao sintetizador. Sufixos ordinais híbridos como 20th/20nd/20rd
+    # preservam somente o número.
+    texto_sintese = _normalizar_ordinais_numericos_tts(texto)
+    # HW -> RU deve ser aplicado independentemente do idioma da voz. Isso
+    # evita que transliterações como "hwa" sejam interpretadas como H.W.A.
+    texto_sintese = _normalizar_hw_tts(texto_sintese)
+    if idioma_base == "pt-br":
+        texto_sintese = _ajustar_pronuncia_w_ptbr(texto_sintese)
+    chave = _chave_cache(texto_sintese, idioma_base, fallback, velocidade, voz)
     req_id = chave[:12]
     caminho_cache = _CACHE_DIR / f"{chave}.wav"
     inicio_total = time.perf_counter()
+
+    if texto_sintese != texto:
+        logger.info("Texto TTS normalizado | original=%r | sintese=%r", texto, texto_sintese)
 
     logger.info(
         "Sintese iniciada | req=%s | chars=%d | idioma_entrada=%s | lang=%s | voz=%s | velocidade=%.2f | cache=%s",
@@ -784,7 +866,7 @@ def sintetizar_wav(
             # deixe no TXT qual das duas etapas foi a ultima executada.
             inicio_fonemas = time.perf_counter()
             logger.info("Fonemizacao iniciada | req=%s | lang=%s", req_id, lang)
-            phonemes, mecanismo_g2p = _fonemizar_para_kokoro(kokoro, texto, lang)
+            phonemes, mecanismo_g2p = _fonemizar_para_kokoro(kokoro, texto_sintese, lang)
             if not phonemes:
                 raise RuntimeError("A fonemização não produziu fonemas para o trecho.")
             logger.info(

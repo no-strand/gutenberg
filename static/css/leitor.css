@@ -432,3 +432,148 @@
 
 /* Compatibilidade do seletor TTS (mantém a mesma largura nos dois leitores). */
 .reader-tts-language-select{width:320px;min-width:320px;max-width:100%;}
+
+/* Dicionário contextual do leitor (Alt + clique). */
+.reader-dictionary-modal{
+  position:fixed;
+  inset:0;
+  z-index:260;
+  display:grid;
+  place-items:center;
+  padding:20px;
+}
+.reader-dictionary-overlay{
+  position:absolute;
+  inset:0;
+  background:rgba(2,6,23,.62);
+  backdrop-filter:blur(8px) saturate(110%);
+  -webkit-backdrop-filter:blur(8px) saturate(110%);
+}
+.reader-dictionary-card{
+  position:relative;
+  z-index:1;
+  width:min(620px,calc(100vw - 28px));
+  max-height:min(78vh,720px);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.13);
+  border-radius:20px;
+  background:linear-gradient(180deg,rgba(17,24,39,.97),rgba(15,23,42,.96));
+  color:#f8fafc;
+  box-shadow:0 28px 80px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.reader-dictionary-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  padding:19px 20px 16px;
+  border-bottom:1px solid rgba(255,255,255,.09);
+  background:#111827;
+  color:#f8fafc;
+}
+.reader-dictionary-heading{min-width:0}
+.reader-dictionary-kicker{
+  display:block;
+  margin-bottom:5px;
+  color:#7dd3fc !important;
+  font-size:.72rem;
+  line-height:1;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.reader-dictionary-title-line{display:flex;align-items:baseline;gap:10px;min-width:0;flex-wrap:wrap}
+.reader-dictionary-title-line h2{
+  margin:0;
+  color:#f8fafc !important;
+  text-shadow:0 1px 1px rgba(0,0,0,.22);
+  font-size:clamp(1.45rem,3vw,2rem);
+  line-height:1.12;
+  overflow-wrap:anywhere;
+}
+.reader-dictionary-phonetic{color:#cbd5e1 !important;font-size:.95rem;font-weight:600}
+.reader-dictionary-close{
+  flex:0 0 38px;
+  width:38px;
+  height:38px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:11px;
+  background:rgba(255,255,255,.06);
+  color:#f8fafc;
+  font-size:1.55rem;
+  line-height:1;
+  cursor:pointer;
+}
+.reader-dictionary-close:hover{background:rgba(255,255,255,.12);border-color:rgba(125,211,252,.28)}
+.reader-dictionary-body{padding:18px 20px;overflow:auto;overscroll-behavior:contain}
+.reader-dictionary-info{
+  display:grid;
+  gap:5px;
+  margin-bottom:18px;
+  padding:13px 15px;
+  border:1px solid rgba(125,211,252,.13);
+  border-radius:13px;
+  background:rgba(14,116,144,.09);
+}
+.reader-dictionary-label{font-size:.75rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7dd3fc}
+.reader-dictionary-value{font-size:1.06rem;color:#f8fafc;overflow-wrap:anywhere}
+.reader-dictionary-section-title{margin:0 0 11px;font-size:.84rem;text-transform:uppercase;letter-spacing:.06em;color:#cbd5e1}
+.reader-dictionary-definitions{margin:0;padding:0 0 0 1.45rem;display:grid;gap:14px}
+.reader-dictionary-definitions li{padding-left:3px;color:#e2e8f0}
+.reader-dictionary-definition-main{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;line-height:1.55}
+.reader-dictionary-pos{
+  display:inline-flex;
+  align-items:center;
+  min-height:22px;
+  padding:2px 7px;
+  border-radius:999px;
+  background:rgba(99,102,241,.16);
+  border:1px solid rgba(129,140,248,.18);
+  color:#c7d2fe;
+  font-size:.72rem;
+  font-style:italic;
+  white-space:nowrap;
+}
+.reader-dictionary-definition-text{font-size:.96rem}
+.reader-dictionary-example{margin:5px 0 0;color:#94a3b8;font-size:.86rem;line-height:1.5;font-style:italic}
+.reader-dictionary-muted{margin:0;color:#aab2bf;line-height:1.55}
+.reader-dictionary-loading{min-height:92px;display:flex;align-items:center;justify-content:center;gap:10px;color:#cbd5e1}
+.reader-dictionary-spinner{
+  width:19px;
+  height:19px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,.18);
+  border-top-color:#7dd3fc;
+  animation:reader-dictionary-spin .72s linear infinite;
+}
+@keyframes reader-dictionary-spin{to{transform:rotate(360deg)}}
+.reader-dictionary-error{
+  padding:14px 15px;
+  border:1px solid rgba(248,113,113,.22);
+  border-radius:13px;
+  background:rgba(127,29,29,.16);
+  color:#fecaca;
+  line-height:1.5;
+}
+.reader-dictionary-footer{
+  min-height:40px;
+  padding:11px 20px 13px;
+  border-top:1px solid rgba(255,255,255,.07);
+  color:#64748b;
+  font-size:.73rem;
+  line-height:1.4;
+}
+@media (max-width:600px){
+  .reader-dictionary-modal{padding:10px}
+  .reader-dictionary-card{width:calc(100vw - 20px);max-height:82vh;border-radius:17px}
+  .reader-dictionary-header{padding:16px 16px 13px}
+  .reader-dictionary-body{padding:15px 16px}
+  .reader-dictionary-footer{padding:10px 16px 12px}
+}
+@media (prefers-reduced-motion:reduce){.reader-dictionary-spinner{animation-duration:1.5s}}

@@ -47,6 +47,7 @@
             <div class="leitor-config-field"><span>{{ t('reader.font_size') }}</span><div class="reader-size-control"><button type="button" class="reader-size-btn" data-font-size-step="-1" aria-label="Diminuir tamanho da fonte">A−</button><input type="number" id="controleTamanho" min="16" max="32" step="1" value="{{ config_global.leitor_tamanho_fonte_px or config_global.tamanho_fonte_px }}" aria-label="{{ t('reader.font_size') }}"><button type="button" class="reader-size-btn" data-font-size-step="1" aria-label="Aumentar tamanho da fonte">A+</button></div></div>
             <label class="leitor-config-field"><span>{{ t('reader.tts_language') }}</span><select id="controleIdiomaTts" class="reader-tts-language-select" aria-label="{{ t('reader.tts_language') }}"><option value="pt_BR" {% if config_global.idioma_tts|default('pt_BR', true) == 'pt_BR' %}selected{% endif %}>{{ t('reader.tts_portuguese') }}</option><option value="en_US" {% if config_global.idioma_tts|default('pt_BR', true) == 'en_US' %}selected{% endif %}>{{ t('reader.tts_english') }}</option></select></label>
             <div class="leitor-config-field"><span>Velocidade do TTS <strong id="valorVelocidadeTts">1,00×</strong></span><div class="reader-tts-speed-control"><input type="range" id="controleVelocidadeTts" min="0.75" max="1.25" step="0.05" value="{{ config_global.leitor_tts_velocidade or 1.0 }}" aria-label="Velocidade da leitura em voz alta"><div class="reader-width-scale"><span>0,75×</span><span>1,25×</span></div></div></div>
+            <div class="leitor-config-field"><span>{{ t('reader.tts_volume') }} <strong id="valorVolumeTts">{{ config_global.leitor_tts_volume|default(100) }}%</strong></span><div class="reader-tts-speed-control"><input type="range" id="controleVolumeTts" min="0" max="100" step="5" value="{{ config_global.leitor_tts_volume|default(100) }}" aria-label="{{ t('reader.tts_volume') }}"><div class="reader-width-scale"><span>0%</span><span>100%</span></div></div></div>
             <label class="leitor-config-field leitor-width-field"><span>Largura do texto <strong id="valorLarguraLeitura">{{ config_global.leitor_largura_percentual or 90 }}%</strong></span><div class="reader-width-control"><input type="range" id="controleLargura" min="30" max="90" step="1" value="{{ config_global.leitor_largura_percentual or 90 }}" aria-label="Largura do texto"><div class="reader-width-scale"><span>30%</span><span id="valorMaxLarguraLeitura">90%</span></div></div></label>
           </div>
         </div>
@@ -87,7 +88,8 @@
     anterior: {{ capitulo_anterior.id|tojson if capitulo_anterior else 'null' }}, proximo: {{ proximo_capitulo.id|tojson if proximo_capitulo else 'null' }},
     base: 'projetos', numero: {{ numero|tojson }},
     salvarPosicaoUrl: {{ url_for('api_salvar_posicao_leitura', slug=projeto.slug, numero=numero)|tojson }}, posicaoInicial: {{ posicao_inicial|tojson }},
-    ttsLanguage: {{ config_global.idioma_tts|default('pt_BR', true)|tojson }}, ttsSpeed: {{ config_global.leitor_tts_velocidade|default(1.0, true)|tojson }},
+    ttsLanguage: {{ config_global.idioma_tts|default('pt_BR', true)|tojson }},
+    translationFrom: {{ config_global.idioma_traducao_de|default('en_US', true)|tojson }}, translationTo: {{ config_global.idioma_traducao_para|default('pt_BR', true)|tojson }}, ttsSpeed: {{ config_global.leitor_tts_velocidade|default(1.0, true)|tojson }}, ttsVolume: {{ config_global.leitor_tts_volume|default(100)|tojson }},
     ttsFallbackLanguage: null, voltarUrl: {{ url_for('editar_capitulo', slug=projeto.slug, numero=numero)|tojson }},
     overrides: {
       indent: {{ config_global.identacao_paragrafo_em|tojson }}, indentMaior: {{ config_global.identacao_paragrafo_maior_em|tojson }},
@@ -97,7 +99,7 @@
   };
 </script>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/leitor.js') }}"></script><script src="{{ url_for('static', filename='js/leitor_tts.js') }}"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/leitor.js') }}"></script><script src="{{ url_for('static', filename='js/leitor_tts.js') }}?v=1.0.4-hw-rua-4"></script><script src="{{ url_for('static', filename='js/leitor_dicionario.js') }}"></script>{% endblock %}
 
 {% block skeleton %}
 <section class="skeleton-topo"><section class="sk-leitor-topo"><div class="sk-leitor-header"><div class="sk-botao sk-bloco"></div><div class="sk-titulo curto sk-bloco"></div><div class="sk-acoes"><div class="sk-botao sk-bloco"></div><div class="sk-botao sk-bloco"></div><div class="sk-botao sk-bloco"></div></div></div></section><div class="sk-frame-estendido sk-bloco"></div></section>

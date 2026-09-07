@@ -39,6 +39,25 @@
         <option value="en_US" {% if config.idioma_tts|default('pt_BR') == 'en_US' %}selected{% endif %}>{{ t('language.en_US') }}</option>
       </select>
     </label>
+    <label class="config-translation-card">
+      <span class="config-translation-title">{{ t('settings.translation_from') }}</span>
+      <div class="config-translation-grid">
+        <div class="config-translation-field">
+          <span class="config-translation-field-label">{{ t('settings.translation_from') }}</span>
+          <select name="idioma_traducao_de" id="cfgIdiomaTraducaoDe">
+            <option value="pt_BR" {% if config.idioma_traducao_de|default('en_US') == 'pt_BR' %}selected{% endif %}>{{ t('language.pt_BR') }}</option>
+            <option value="en_US" {% if config.idioma_traducao_de|default('en_US') == 'en_US' %}selected{% endif %}>{{ t('language.en_US') }}</option>
+          </select>
+        </div>
+        <div class="config-translation-field">
+          <span class="config-translation-field-label">{{ t('settings.translation_to') }}</span>
+          <select name="idioma_traducao_para" id="cfgIdiomaTraducaoPara">
+            <option value="pt_BR" {% if config.idioma_traducao_para|default('pt_BR') == 'pt_BR' %}selected{% endif %}>{{ t('language.pt_BR') }}</option>
+            <option value="en_US" {% if config.idioma_traducao_para|default('pt_BR') == 'en_US' %}selected{% endif %}>{{ t('language.en_US') }}</option>
+          </select>
+        </div>
+      </div>
+    </label>
     <label>{{ t('settings.tts_voice_ptbr') }}
       <select name="voz_tts_pt_BR" id="cfgVozTtsPtBr">
         <option value="pf_dora" {% if config.voz_tts_pt_BR|default('pf_dora', true) == 'pf_dora' %}selected{% endif %}>{{ t('settings.tts_voice_pf_dora') }}</option>

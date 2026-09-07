@@ -33,10 +33,24 @@
   const cacheAudio = new Map();
   const urlsCriadas = new Set();
 
-  // Diagnóstico persistente: os eventos técnicos do player são enviados ao
-  // Flask e gravados junto com o diagnóstico do Kokoro em tts_debug.txt.
-  // Nunca enviamos o texto do livro, apenas metadados de reprodução.
+  // O TTS não envia mais diagnóstico de execução normal. Somente falhas reais
+  // do player são encaminhadas ao backend e salvas no errors.log. Nunca é
+  // enviado o texto do livro, apenas metadados técnicos do erro.
+  const EVENTOS_ERRO_TTS = new Set([
+    'modelos_tts_status_erro',
+    'fetch_excecao',
+    'fetch_erro_http',
+    'blob_excecao',
+    'blob_vazio',
+    'preload_erro',
+    'audio_error_event',
+    'audio_play_rejeitado',
+    'tocar_indice_excecao',
+    'erro_tts'
+  ]);
+
   function enviarLogTts(event, details = {}) {
+    if (!EVENTOS_ERRO_TTS.has(String(event || ''))) return;
     try {
       fetch('/api/tts/log', {
         method: 'POST',
@@ -71,6 +85,7 @@
     userAgent: navigator.userAgent,
     language: cfg.ttsLanguage || 'pt_BR',
     speed: Number(cfg.ttsSpeed || 1),
+    volume: Number(cfg.ttsVolume ?? 100),
     temIframe: Boolean(frame)
   });
 
@@ -86,6 +101,19 @@
       return fallback;
     }
   }
+
+  function volumeAtualTts() {
+    const percentual = Number(cfg.ttsVolume ?? 100);
+    const seguro = Number.isFinite(percentual) ? Math.max(0, Math.min(100, percentual)) : 100;
+    return seguro / 100;
+  }
+
+  window.addEventListener('gutenberg:tts-volume-change', (evento) => {
+    const percentual = Number(evento?.detail?.volume ?? cfg.ttsVolume ?? 100);
+    cfg.ttsVolume = Number.isFinite(percentual) ? Math.max(0, Math.min(100, percentual)) : 100;
+    if (audio) audio.volume = volumeAtualTts();
+    enviarLogTts('volume_alterado', { volume: cfg.ttsVolume });
+  });
 
   async function verificarModelosTtsAntesDeReproduzir() {
     if (verificandoModelosTts) return false;
@@ -238,6 +266,37 @@
     return valor;
   }
 
+  function idiomaTtsEhPortugues() {
+    const idioma = String(cfg.ttsLanguage || 'pt_BR').trim().toLocaleLowerCase('pt-BR').replace(/_/g, '-');
+    return idioma.startsWith('pt');
+  }
+
+  // Esta substituição ocorre no texto interno enviado ao TTS, antes de qualquer
+  // tratamento que possa interpretar uma palavra curta em caixa alta como sigla.
+  // Ex.: hwa -> rua, RWA -> rua. O conteúdo exibido no leitor permanece intacto.
+  function ajustarWDepoisDeConsoantePtBr(palavra) {
+    const original = String(palavra || '');
+    if (!original) return original;
+
+    // HW -> RU vale para qualquer idioma do TTS, porque nomes/transliterações
+    // como "hwa" também aparecem em textos lidos com voz inglesa.
+    let ajustada = original.replace(/hw/giu, (trecho) => {
+      if (trecho === trecho.toLocaleUpperCase('pt-BR')) return 'ru';
+      if (trecho[0] === trecho[0].toLocaleUpperCase('pt-BR')) return 'Ru';
+      return 'ru';
+    });
+
+    // As demais ocorrências de W após consoante continuam específicas do PT-BR.
+    if (idiomaTtsEhPortugues()) {
+      ajustada = ajustada.replace(/([bcdfgjklmnpqrstvxzç])w/giu, '$1u');
+    }
+
+    if (ajustada !== original && original === original.toLocaleUpperCase('pt-BR')) {
+      return ajustada.toLocaleLowerCase('pt-BR');
+    }
+    return ajustada;
+  }
+
   function tokenEhSomSemVogais(token) {
     const str = String(token || '');
     if (APOSTROFOS.test(str) || /y/i.test(str)) return false;
@@ -251,6 +310,12 @@
 function limparTextoParaTts(texto) {
     let valor = String(texto || '').replace(/\s+/g, ' ').trim();
     if (!valor) return '';
+
+    // Normaliza HW no texto inteiro ANTES de dividir/analisar tokens. Isso é
+    // intencionalmente redundante com o backend para cobrir palavras compostas
+    // com hífen (ex.: Kae-hwa -> Kae-rua) e impedir que "hwa" chegue ao
+    // sintetizador como uma sigla a ser soletrada. Só vale para PT-BR.
+    valor = valor.replace(/\p{L}+/gu, (palavra) => ajustarWDepoisDeConsoantePtBr(palavra));
 
     // "W-Well", "H-Hey", etc.: remove a consoante isolada usada como
     // gaguejo antes do hífen. Não mexemos em hífens internos de palavras.
@@ -267,11 +332,17 @@ function limparTextoParaTts(texto) {
         continue;
       }
 
+      // Numeração com sufixo ordinal inglês colado deve preservar somente
+      // os dígitos: 20nd, 20th, 20rd e 20st -> 20. Fazemos isso antes da
+      // limpeza genérica de tokens alfanuméricos para que as letras finais
+      // não façam o número desaparecer.
+      const tokenOrdinalNormalizado = token.replace(/(\p{N}+)(?:st|nd|rd|th)(?=$|[^\p{L}\p{N}])/giu, '$1');
+
       // Tokens sem nenhuma letra não formam uma palavra pronunciável.
       // Isso elimina marcadores como ~~ e ◇◇◇, mas números isolados são
       // preservados porque são conteúdo válido (ex.: "capitulo 20").
-      if (!LETRAS.test(token)) {
-        if (/\p{N}/u.test(token)) saida.push(token);
+      if (!LETRAS.test(tokenOrdinalNormalizado)) {
+        if (/\p{N}/u.test(tokenOrdinalNormalizado)) saida.push(tokenOrdinalNormalizado);
         continue;
       }
 
@@ -288,7 +359,7 @@ function limparTextoParaTts(texto) {
       // separados por espaço continuam intactos (ex.: "capitulo 20").
       // Fazemos as duas direções para cobrir "claro20", "20claro" e
       // casos mistos como "a1b2" sem remover números isolados.
-      const tokenSemDigitosColados = token
+      const tokenSemDigitosColados = tokenOrdinalNormalizado
         .replace(/(\p{L})\p{N}+/gu, '$1')
         .replace(/\p{N}+(\p{L})/gu, '$1');
 
@@ -304,7 +375,7 @@ function limparTextoParaTts(texto) {
       }
 
       const prefixo = match[1];
-      const palavraOriginal = match[2];
+      const palavraOriginal = ajustarWDepoisDeConsoantePtBr(match[2]);
       const sufixo = match[3];
       const chave = palavraOriginal.toLocaleLowerCase('en-US');
 
@@ -894,6 +965,7 @@ function limparTextoParaTts(texto) {
       pararAudio();
       audio = new Audio();
       audio.preload = 'auto';
+      audio.volume = volumeAtualTts();
       audio.src = url;
       const audioAtual = audio;
       enviarLogTts('audio_elemento_criado', estadoAudio({indice, token}, audioAtual));

@@ -20,16 +20,14 @@ from typing import Any, Callable, Iterator, TypeVar
 
 F = TypeVar("F", bound=Callable[..., Any])
 
-NOME_APP = "gutenberg"
+NOME_APP = "Gutenberg"
 PASTA_LOGS_ENV = "GUTENBERG_LOG_DIR"
 ARQUIVO_LOG_ERROS = "errors.log"
-ARQUIVO_LOG_TTS = "tts_debug.txt"
 FORMATO_LOG = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 FORMATO_DATA = "%Y-%m-%d %H:%M:%S"
 _MAX_BYTES = 5 * 1024 * 1024
 _BACKUP_COUNT = 7
 _CONFIGURADO = False
-_TTS_CONFIGURADO = False
 def _known_folder_documentos_windows() -> Path | None:
     """Obtém a pasta Documentos oficial do Windows, incluindo redirecionamento para OneDrive."""
     if os.name != "nt":
@@ -84,9 +82,43 @@ def _pasta_documentos_usuario() -> Path:
 
 
 
+def _normalizar_capitalizacao_pasta_gutenberg(base: Path) -> Path:
+    """Garante que a pasta do app em Documentos seja exibida como ``Gutenberg``.
+
+    No Windows o sistema de arquivos normalmente não diferencia maiúsculas de
+    minúsculas. Por isso, apenas trocar ``gutenberg`` por ``Gutenberg`` no código
+    não altera necessariamente a grafia de uma pasta que já existe. Quando uma
+    pasta legada com outra capitalização é encontrada, fazemos uma renomeação em
+    duas etapas para que o Explorer passe a exibir o nome correto.
+    """
+    destino = base / NOME_APP
+    try:
+        if base.exists():
+            for item in base.iterdir():
+                if not item.is_dir():
+                    continue
+                if item.name.casefold() != NOME_APP.casefold() or item.name == NOME_APP:
+                    continue
+
+                temporaria = base / f"{NOME_APP}.__casefix__"
+                contador = 1
+                while temporaria.exists():
+                    temporaria = base / f"{NOME_APP}.__casefix__{contador}"
+                    contador += 1
+
+                item.rename(temporaria)
+                temporaria.rename(destino)
+                break
+    except OSError:
+        # Falhas de renomeação não devem impedir a inicialização. O mkdir abaixo
+        # continua apontando para o nome oficial e funcionará em novas instalações.
+        pass
+    return destino
+
+
 def obter_pasta_logs() -> Path:
-    """Retorna a pasta de logs do Gutenberg e garante sua existência."""
-    pasta = _pasta_documentos_usuario() / NOME_APP
+    """Retorna ``Documentos/Gutenberg`` e garante sua existência."""
+    pasta = _normalizar_capitalizacao_pasta_gutenberg(_pasta_documentos_usuario())
     pasta.mkdir(parents=True, exist_ok=True)
     return pasta
 
@@ -148,42 +180,21 @@ def configurar_logging(nivel: int = logging.DEBUG) -> Path:
 
 
 def obter_caminho_log_tts() -> Path:
-    """Retorna o arquivo de diagnóstico detalhado do TTS local."""
-    return obter_pasta_logs() / ARQUIVO_LOG_TTS
+    """Retorna o arquivo geral onde falhas reais do TTS são registradas."""
+    return obter_pasta_logs() / ARQUIVO_LOG_ERROS
 
 
 def obter_logger_tts(nome: str = "gutenberg.tts") -> logging.Logger:
-    """Obtém um logger DEBUG dedicado ao TTS, persistido em ``tts_debug.txt``.
+    """Obtém um logger do TTS que registra somente ERROR/CRITICAL.
 
-    O logger fica separado do ``errors.log`` porque este diagnóstico precisa
-    registrar também eventos INFO/DEBUG (resolução dos modelos, carregamento
-    de DLLs, geração do WAV e reprodução no WebView). O arquivo é rotativo e
-    fica na mesma pasta de logs do Gutenberg, que é gravável mesmo quando o
-    aplicativo está instalado em Program Files.
+    O TTS não mantém mais um arquivo de diagnóstico próprio. Mensagens normais
+    (DEBUG/INFO/WARNING) são descartadas e somente falhas reais seguem para
+    ``Documentos/Gutenberg/errors.log`` pelo handler central da aplicação.
     """
-    global _TTS_CONFIGURADO
     configurar_logging()
-
-    base = logging.getLogger("gutenberg.tts")
-    base.setLevel(logging.DEBUG)
-    base.propagate = False
-
-    if not _TTS_CONFIGURADO:
-        for handler in list(base.handlers):
-            if getattr(handler, "_gutenberg_tts_handler", False):
-                base.removeHandler(handler)
-                handler.close()
-
-        handler = _criar_handler_arquivo(obter_caminho_log_tts(), logging.DEBUG)
-        handler._gutenberg_tts_handler = True  # type: ignore[attr-defined]
-        base.addHandler(handler)
-        _TTS_CONFIGURADO = True
-        base.info("=" * 72)
-        base.info("Nova sessão de diagnóstico TTS")
-        base.info("Arquivo de log: %s", obter_caminho_log_tts())
-
     logger = logging.getLogger(nome)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.ERROR)
+    logger.propagate = True
     return logger
 
 def obter_logger(nome: str) -> logging.Logger:

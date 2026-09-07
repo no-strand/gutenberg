@@ -210,7 +210,7 @@ class ReaderTtsEnhancementsTests(unittest.TestCase):
     def test_kokoro_inclui_velocidade_na_chave_de_cache_e_na_sintese(self):
         py = (ROOT / 'modules' / 'tts_kokoro.py').read_text(encoding='utf-8')
         self.assertIn('_normalizar_velocidade', py)
-        self.assertIn('_chave_cache(texto, idioma_base, fallback, velocidade, voz)', py)
+        self.assertIn('_chave_cache(texto_sintese, idioma_base, fallback, velocidade, voz)', py)
         self.assertIn('speed=velocidade', py)
 
     def test_segmentos_tts_usam_limite_de_palavras_e_pontuacao(self):
@@ -256,7 +256,7 @@ class Release104Tests(unittest.TestCase):
         py = (ROOT / 'modules' / 'tts_kokoro.py').read_text(encoding='utf-8')
         self.assertIn('def _normalizar_velocidade(', py)
         self.assertIn('velocidade:.2f', py)
-        self.assertIn('_chave_cache(texto, idioma_base, fallback, velocidade, voz)', py)
+        self.assertIn('_chave_cache(texto_sintese, idioma_base, fallback, velocidade, voz)', py)
 
 
 class UnifiedReaderAndPackagingTests(unittest.TestCase):
@@ -294,22 +294,24 @@ class UnifiedReaderAndPackagingTests(unittest.TestCase):
         self.assertIn('import joblib', py)
         self.assertIn('pydoc/joblib importados', py)
 
-    def test_tts_possui_log_dedicado_em_txt(self):
+    def test_tts_grava_somente_erros_no_log_geral(self):
         logging_py = (ROOT / "modules" / "logging_config.py").read_text(encoding="utf-8")
-        kokoro_py = (ROOT / "modules" / "tts_kokoro.py").read_text(encoding="utf-8")
         server_py = (ROOT / "modules" / "servidor_flask.py").read_text(encoding="utf-8")
         js = (ROOT / "static" / "js" / "leitor_tts.js").read_text(encoding="utf-8")
 
-        self.assertIn('ARQUIVO_LOG_TTS = "tts_debug.txt"', logging_py)
+        self.assertNotIn('tts_debug.txt', logging_py)
         self.assertIn('def obter_logger_tts(', logging_py)
-        self.assertIn('Runtime TTS | frozen=', kokoro_py)
-        self.assertIn('get_available_providers()', kokoro_py)
-        self.assertIn('WAV PCM16 criado sem libsndfile | req=', kokoro_py)
+        self.assertIn('logger.setLevel(logging.ERROR)', logging_py)
+        self.assertIn('return obter_pasta_logs() / ARQUIVO_LOG_ERROS', logging_py)
         self.assertIn('@app.post("/api/tts/log")', server_py)
-        self.assertIn('CLIENT | event=%s', server_py)
-        self.assertIn("enviarLogTts('fetch_resposta'", js)
-        self.assertIn("enviarLogTts('audio_play_rejeitado'", js)
-        self.assertIn("enviarLogTts('audio_error_event'", js)
+        self.assertIn('tts_logger.error(', server_py)
+        self.assertIn('eventos_erro_permitidos', server_py)
+        self.assertNotIn('HTTP TTS recebido |', server_py)
+        self.assertNotIn('HTTP TTS sucesso |', server_py)
+        self.assertIn('const EVENTOS_ERRO_TTS = new Set([', js)
+        self.assertIn("'audio_play_rejeitado'", js)
+        self.assertIn("'audio_error_event'", js)
+        self.assertIn("if (!EVENTOS_ERRO_TTS.has(String(event || ''))) return;", js)
 
     def test_spec_mantem_modelos_externos_e_dependencias_kokoro(self):
         spec = (ROOT / "Gutenberg.spec").read_text(encoding="utf-8")
@@ -443,6 +445,25 @@ class UnifiedReaderAndPackagingTests(unittest.TestCase):
         self.assertIn('MIN_VOICES = 54', modelos)
         self.assertIn('PASTA_MODELOS_TTS / MODEL_NAME', modelos)
         self.assertIn('PASTA_MODELOS_TTS / VOICES_NAME', modelos)
+
+
+class ReaderTtsVolumeStaticTests(unittest.TestCase):
+    def test_volume_tts_existe_nos_dois_leitores_e_player(self):
+        raiz = Path(__file__).resolve().parents[1]
+        for nome in ("leitor.html", "leitor_alt.html"):
+            html = (raiz / "templates" / nome).read_text(encoding="utf-8")
+            self.assertIn('id="controleVolumeTts"', html, nome)
+            self.assertIn('ttsVolume:', html, nome)
+        for nome in ("leitor.js", "leitor_alt.js"):
+            js = (raiz / "static" / "js" / nome).read_text(encoding="utf-8")
+            self.assertIn("normalizarVolumeTts", js, nome)
+            self.assertIn("gutenberg:tts-volume-change", js, nome)
+        player = (raiz / "static" / "js" / "leitor_tts.js").read_text(encoding="utf-8")
+        self.assertIn("audio.volume = volumeAtualTts()", player)
+        self.assertIn("gutenberg:tts-volume-change", player)
+        server = (raiz / "modules" / "servidor_flask.py").read_text(encoding="utf-8")
+        self.assertIn('"leitor_tts_volume"', server)
+        self.assertIn('dados.get("ttsVolume")', server)
 
 
 if __name__ == "__main__":

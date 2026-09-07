@@ -10,6 +10,7 @@ const controleTamanho = document.getElementById('controleTamanho');
 const controleLargura = document.getElementById('controleLargura');
 const controleIdiomaTts = document.getElementById('controleIdiomaTts');
 const controleVelocidadeTts = document.getElementById('controleVelocidadeTts');
+const controleVolumeTts = document.getElementById('controleVolumeTts');
 const botaoAbrirSumario = document.getElementById('abrirSumario');
 const modalSumario = document.getElementById('modalSumario');
 const botaoAbrirConfiguracoes = document.getElementById('abrirConfiguracoesLeitor');
@@ -91,6 +92,12 @@ function normalizarVelocidadeTts(valor) {
   return Math.max(0.75, Math.min(1.25, Math.round(numero * 20) / 20));
 }
 
+function normalizarVolumeTts(valor) {
+  const numero = Number(valor);
+  if (!Number.isFinite(numero)) return 100;
+  return Math.max(0, Math.min(100, Math.round(numero / 5) * 5));
+}
+
 function normalizarTamanhoFonte(valor) {
   const numero = Number(valor);
   if (!Number.isFinite(numero)) return 20;
@@ -113,6 +120,7 @@ function obterPreferencias() {
     largura: String(normalizarLarguraLeitura(controleLargura?.value || calcularMaximoPercentualLargura())),
     ttsLanguage: ['pt_BR', 'en_US'].includes(controleIdiomaTts?.value) ? controleIdiomaTts.value : 'pt_BR',
     ttsSpeed: normalizarVelocidadeTts(controleVelocidadeTts?.value || window.LEITOR_CONFIG?.ttsSpeed || 1),
+    ttsVolume: normalizarVolumeTts(controleVolumeTts?.value ?? window.LEITOR_CONFIG?.ttsVolume ?? 100),
     conforto: false,
     ampliado: true,
   };
@@ -147,6 +155,7 @@ function carregarPreferencias() {
     if (dados.largura && controleLargura) controleLargura.value = normalizarLarguraLeitura(dados.largura);
     if (dados.ttsLanguage && controleIdiomaTts && ['pt_BR', 'en_US'].includes(dados.ttsLanguage)) controleIdiomaTts.value = dados.ttsLanguage;
     if (dados.ttsSpeed && controleVelocidadeTts) controleVelocidadeTts.value = normalizarVelocidadeTts(dados.ttsSpeed);
+    if (dados.ttsVolume !== undefined && controleVolumeTts) controleVolumeTts.value = normalizarVolumeTts(dados.ttsVolume);
   } catch (_) {}
 }
 
@@ -365,6 +374,13 @@ function aplicarPreferenciasNoIframe() {
     if (indicadorVelocidade) indicadorVelocidade.textContent = `${Number(controleVelocidadeTts.value).toFixed(2).replace('.', ',')}×`;
     if (window.LEITOR_CONFIG) window.LEITOR_CONFIG.ttsSpeed = Number(controleVelocidadeTts.value);
   }
+  if (controleVolumeTts) {
+    controleVolumeTts.value = normalizarVolumeTts(controleVolumeTts.value ?? window.LEITOR_CONFIG?.ttsVolume ?? 100);
+    const indicadorVolume = document.getElementById('valorVolumeTts');
+    if (indicadorVolume) indicadorVolume.textContent = `${controleVolumeTts.value}%`;
+    if (window.LEITOR_CONFIG) window.LEITOR_CONFIG.ttsVolume = Number(controleVolumeTts.value);
+    window.dispatchEvent(new CustomEvent('gutenberg:tts-volume-change', { detail: { volume: Number(controleVolumeTts.value) } }));
+  }
   salvarPreferenciasLocal();
   persistirPreferenciasNoServidor();
 
@@ -506,7 +522,7 @@ function restaurarPosicaoLeitura(tentativa = 0) {
 }
 
 
-[controleTema, controleFonte, controleTamanho, controleLargura, controleIdiomaTts, controleVelocidadeTts].forEach((controle) => {
+[controleTema, controleFonte, controleTamanho, controleLargura, controleIdiomaTts, controleVelocidadeTts, controleVolumeTts].forEach((controle) => {
   controle?.addEventListener('input', aplicarPreferenciasNoIframe);
   controle?.addEventListener('change', aplicarPreferenciasNoIframe);
 });
