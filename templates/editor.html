@@ -2,7 +2,7 @@
 {% block titulo %}{{ t('common.edit_label') }} {{ capitulo.titulo }}{% endblock %}
 {% block body_class %}pagina-editor-app{% if not config_global.efeito_editor %} editor-sem-efeito{% endif %}{% endblock %}
 {% block body_attrs %}data-editor-page="true" data-editor-effects-enabled="{{ 'true' if config_global.efeito_editor else 'false' }}"{% endblock %}
-{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}">{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}">{% endblock %}
 {% block conteudo %}
 <section class="editor-topo">
   <div class="cabecalho-editor-grid">
@@ -68,9 +68,41 @@
     </div>
   </div>
   <div class="grupo-ferramenta">
-    <button type="button" class="botao-branco texto-preto" data-span-classe="fonte-sans" title="{{ t('editor.font_sans_short') }} (Ctrl+Alt+X)" aria-label="{{ t('editor.font_sans_short') }} (Ctrl+Alt+X)">{{ t('editor.font_sans_short') }}</button>
-    <button type="button" class="botao-branco texto-preto" data-span-classe="fonte-serif" title="{{ t('editor.font_serif_short') }} (Ctrl+Alt+S)" aria-label="{{ t('editor.font_serif_short') }} (Ctrl+Alt+S)">{{ t('editor.font_serif_short') }}</button>
-    <button type="button" class="botao-branco texto-preto" data-span-classe="fonte-mono" title="{{ t('editor.font_mono_short') }} (Ctrl+Alt+M)" aria-label="{{ t('editor.font_mono_short') }} (Ctrl+Alt+M)">{{ t('editor.font_mono_short') }}</button>
+      <label class="editor-font-picker" for="seletorFonteEditor">
+        <span class="editor-font-picker-label">Fonte</span>
+        <select id="seletorFonteEditor" class="editor-font-select" aria-label="Fonte do texto selecionado" title="Fonte do texto selecionado">
+          
+          <optgroup label="Sem serifa">
+            <option value="fonte-atkinson-hyperlegible">Atkinson Hyperlegible</option>
+            <option value="fonte-inter">Inter</option>
+            <option value="fonte-source-sans-3">Source Sans 3</option>
+            <option value="fonte-noto-sans">Noto Sans</option>
+            <option value="fonte-ibm-plex-sans">IBM Plex Sans</option>
+            <option value="fonte-arial" selected>Arial</option>
+            <option value="fonte-roboto">Roboto</option>
+          </optgroup>
+          <optgroup label="Serifadas">
+            <option value="fonte-literata">Literata</option>
+            <option value="fonte-source-serif-4">Source Serif 4</option>
+            <option value="fonte-noto-serif">Noto Serif</option>
+            <option value="fonte-georgia">Georgia</option>
+            <option value="fonte-times-new-roman">Times New Roman</option>
+          </optgroup>
+          <optgroup label="Monoespaçadas">
+            <option value="fonte-ibm-plex-mono">IBM Plex Mono</option>
+            <option value="fonte-jetbrains-mono">JetBrains Mono</option>
+            <option value="fonte-source-code-pro">Source Code Pro</option>
+            <option value="fonte-consolas">Consolas</option>
+            <option value="fonte-courier-new">Courier New</option>
+          </optgroup>
+        </select>
+      </label>
+      <label class="editor-size-picker" for="seletorTamanhoFonteEditor">
+        <span class="editor-size-picker-label">Tamanho</span>
+        <select id="seletorTamanhoFonteEditor" class="editor-size-select" aria-label="Tamanho da fonte do texto selecionado" title="Tamanho da fonte">
+          {% include '_editor_font_size_options.html' %}
+        </select>
+      </label>
     <button type="button" class="botao-branco" id="btnInserirImagem" title="{{ t('editor.insert_image') }} (Ctrl+Alt+I)" aria-label="{{ t('editor.insert_image') }} (Ctrl+Alt+I)"><img src="{{ url_for('static', filename='img/editor_icons/inserir_imagem.png') }}" alt="{{ t('editor.insert_image') }}"></button>
     <button type="button" class="botao-branco" id="btnLimparEdicao" title="{{ t('editor.clear_formatting') }} (Ctrl+Alt+L)" aria-label="{{ t('editor.clear_formatting') }} (Ctrl+Alt+L)"><img src="{{ url_for('static', filename='img/editor_icons/limpar-edicao.png') }}" alt="{{ t('editor.clear_formatting') }}"></button>
     <button type="button" class="botao-branco botao-apenas-icone" id="btnAbrirIAEditor" title="{{ t('editor.ai_generate') }} (Ctrl+Alt+G)" aria-label="{{ t('editor.ai_generate') }} (Ctrl+Alt+G)"><span class="icone-svg">{{ icon_svg('ai')|safe }}</span></button>
@@ -152,7 +184,9 @@
 {% endblock %}
 {% block scripts %}
 <script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|tojson }}, numero: {{ numero|tojson }}, idioma: {{ projeto.idioma|tojson }}, catalogoPersonagens: {{ (recursos_editor.personagens if recursos_editor is defined else [])|tojson }}, catalogoLocais: {{ (recursos_editor.locais if recursos_editor is defined else [])|tojson }}, catalogoAnotacoes: {{ (recursos_editor.anotacoes if recursos_editor is defined else [])|tojson }}};</script>
+<script src="{{ url_for('static', filename='js/editor_tipografia.js') }}"></script>
 <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/epub-pagination.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ia_editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/recursos_visualizacao.js') }}"></script>
 {% endblock %}

@@ -1,0 +1,336 @@
+/* Gutenberg 1.0.5 — acabamento editorial, sem substituir controles nem eventos.
+   Carregado após ui-system.css. Todas as regras funcionais são limitadas
+   aos espaços de leitura e escrita. */
+:root {
+  --paper-radius: 12px;
+  --paper-shadow: 0 28px 72px rgba(0,0,0,.26), 0 5px 16px rgba(0,0,0,.13);
+  --paper-highlight: #85a0ff;
+}
+
+/* Barras de navegação: hierarquia discreta e consistente. */
+.pagina-editor-app .pagina-shell,
+.pagina-leitor-app .pagina-shell { margin-top: 14px!important; }
+.pagina-editor-app .editor-topo,
+.pagina-leitor-app .topo-leitor {
+  border-radius: 15px!important;
+  background: rgba(20,27,38,.92)!important;
+  border: 1px solid rgba(161,177,202,.15)!important;
+  box-shadow: 0 7px 24px rgba(0,0,0,.14)!important;
+}
+.pagina-editor-app .editor-topo { padding: 10px 16px!important; }
+.pagina-editor-app .cabecalho-editor-grid { width:100%;min-width:0; }
+.pagina-editor-app input.titulo-editor {
+  display:block; width:100%; min-width:0; max-width:100%;
+  height:46px!important; min-height:46px!important;
+  margin:0!important; padding:0 12px!important;
+  border:1px solid transparent!important;
+  border-radius:10px!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#f5f7ff!important;
+  text-align:center; font-size:clamp(1.35rem,2vw,1.9rem)!important;
+  font-weight:750!important; letter-spacing:-.035em;
+}
+.pagina-editor-app input.titulo-editor:hover { background:rgba(255,255,255,.035)!important; }
+.pagina-editor-app input.titulo-editor:focus {
+  background:rgba(255,255,255,.055)!important;
+  border-color:rgba(133,160,255,.48)!important;
+  box-shadow:0 0 0 3px rgba(133,160,255,.10)!important;
+}
+.pagina-editor-app .barra-ferramentas {
+  border-radius:14px!important;
+  border:1px solid rgba(161,177,202,.14)!important;
+  padding:8px 10px!important;
+  background:rgba(19,25,35,.96)!important;
+  box-shadow:0 9px 28px rgba(0,0,0,.17)!important;
+}
+.pagina-editor-app .barra-ferramentas button { transition:background .14s ease,border-color .14s ease,color .14s ease!important; }
+.pagina-editor-app .barra-ferramentas button:hover { border-color:rgba(133,160,255,.47)!important; }
+.pagina-editor-app .barra-ferramentas button:focus-visible { outline:2px solid var(--paper-highlight);outline-offset:2px; }
+
+/* Editor de livros: uma única folha, não um campo de texto encostado na borda. */
+.pagina-editor-app .painel-word {
+  padding: 12px 10px 46px!important;
+  background: transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+}
+.pagina-editor-app .painel-word > .pagina-editor {
+  box-sizing:border-box;
+  position:relative;
+  width:min(816px,100%);
+  min-height:1056px;
+  margin:0 auto;
+  padding:clamp(42px,6vw,88px)!important;
+  border-radius:var(--paper-radius)!important;
+  border:1px solid rgba(28,40,61,.10)!important;
+  background:#fff!important;
+  color:#202a3b!important;
+  box-shadow:var(--paper-shadow)!important;
+  overflow:visible;
+}
+.pagina-editor-app .painel-word #editorTexto {
+  box-sizing:border-box;
+  display:block;
+  width:100%;
+  min-height:calc(1056px - 176px);
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  outline:none!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#242b38!important;
+  font-family:Georgia,'Times New Roman',serif;
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+.pagina-editor-app .painel-word #editorTexto:focus,
+.pagina-editor-app .painel-word #editorTexto:focus-visible { outline:none!important;box-shadow:none!important; }
+.pagina-editor-app .painel-word #editorTexto :is(h1,h2,h3,h4) { color:#202a3b!important; }
+.pagina-editor-app .painel-word #editorTexto :is(p,li,blockquote,h1,h2,h3) {
+  max-width:100%;overflow-wrap:anywhere;
+}
+.pagina-editor-app .painel-word #editorTexto > :first-child { margin-top:0; }
+
+/* Roteiro: não há cartão branco atrás das páginas reais. */
+.pagina-editor-app .roteiro-layout { gap:18px;align-items:start; }
+.pagina-editor-app .painel-roteiro {
+  min-width:0;
+  padding:8px 0 48px!important;
+  background:transparent!important;
+  border:none!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+.pagina-editor-app .painel-roteiro > .pagina-roteiro {
+  box-sizing:border-box;
+  width:100%;
+  max-width:100%;
+  margin:0 auto;
+  padding:8px 0 12px!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow:visible;
+}
+.pagina-editor-app .painel-roteiro > .pagina-roteiro::before { content:none!important; }
+.pagina-editor-app .painel-roteiro #editorTexto.editor-roteiro {
+  background:transparent!important;
+  box-shadow:none!important;
+  border:0!important;
+  border-radius:0!important;
+  padding:0!important;
+  margin:0!important;
+  outline:none!important;
+  color:var(--roteiro-page-ink)!important;
+  /* Mantém largura, tamanho da fonte e áreas de paginação originais. */
+}
+.pagina-editor-app .painel-roteiro #editorTexto.editor-roteiro:focus-visible { outline:none!important; }
+.pagina-editor-app .painel-roteiro .roteiro-page {
+  flex:0 0 auto;
+  box-sizing:border-box;
+  border-radius:var(--paper-radius)!important;
+  background:var(--roteiro-page-bg)!important;
+  color:var(--roteiro-page-ink)!important;
+  border:1px solid var(--roteiro-page-border)!important;
+  box-shadow:var(--paper-shadow)!important;
+  transition:border-color .15s ease,box-shadow .15s ease,outline-color .15s ease;
+}
+.pagina-editor-app .painel-roteiro .roteiro-page.is-current-page {
+  outline:2px solid var(--paper-highlight)!important;
+  outline-offset:3px!important;
+  border-color:rgba(125,151,255,.50)!important;
+  box-shadow:var(--paper-shadow),0 0 0 6px rgba(133,160,255,.07)!important;
+}
+.pagina-editor-app .painel-roteiro .roteiro-page :is(.roteiro-page-header,.roteiro-page-footer) {
+  color:var(--roteiro-page-chrome)!important;
+}
+
+/* Ferramentas do roteiro. Os data-block-type, IDs e atalhos originais permanecem. */
+.pagina-editor-app .barra-roteiro { gap:10px!important;flex-wrap:nowrap;min-width:0; }
+.pagina-editor-app .barra-roteiro-esquerda {
+  gap:5px;
+  min-width:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+}
+.pagina-editor-app .barra-roteiro-esquerda::-webkit-scrollbar { display:none; }
+.pagina-editor-app .barra-roteiro .btn-toolbar {
+  height:36px!important;
+  min-height:36px!important;
+  flex:0 0 auto;
+  border-radius:9px!important;
+  font-size:.84rem!important;
+  box-shadow:none!important;
+}
+.pagina-editor-app .barra-roteiro .btn-toolbar.botao-apenas-icone {
+  width:36px!important;min-width:36px!important;padding:0!important;
+  font-size:1.18rem!important;
+}
+.pagina-editor-app .barra-roteiro .btn-tipo-bloco {
+  width:auto!important;min-width:36px!important;
+  padding:0 9px!important;
+  color:#d5deec!important;
+  font-size:.82rem!important;
+  font-weight:730!important;
+  letter-spacing:.01em;
+}
+.pagina-editor-app .barra-roteiro .btn-tipo-bloco[data-block-type="scene_heading"] { min-width:66px!important; }
+.pagina-editor-app .barra-roteiro .btn-tipo-bloco.ativo {
+  color:#f2f5ff!important;
+  border-color:rgba(133,160,255,.55)!important;
+  background:rgba(111,140,255,.21)!important;
+}
+.pagina-editor-app .barra-roteiro .separador-toolbar { min-width:1px;opacity:.7; }
+.pagina-editor-app .barra-roteiro .theme-select-wrap {
+  height:36px;
+  padding:0 5px 0 10px;
+  border:1px solid rgba(154,171,194,.18);
+  border-radius:10px;
+  background:#171f2c;
+  box-shadow:none;
+}
+.pagina-editor-app .barra-roteiro .theme-select-label { color:#9faec4; }
+.pagina-editor-app .barra-roteiro select.theme-select {
+  box-sizing:border-box;
+  width:132px!important;
+  min-width:132px!important;
+  max-width:132px!important;
+  height:30px!important;
+  min-height:30px!important;
+  margin:0;
+  padding:0 26px 0 9px!important;
+  border:1px solid transparent!important;
+  border-radius:7px!important;
+  background:#111926!important;
+  color:#ebeff7!important;
+  font-size:.81rem!important;
+  font-weight:650!important;
+  box-shadow:none!important;
+  cursor:pointer;
+}
+.pagina-editor-app .barra-roteiro select.theme-select:focus {
+  border-color:var(--paper-highlight)!important;
+  box-shadow:0 0 0 2px rgba(133,160,255,.14)!important;
+}
+.pagina-editor-app .barra-roteiro-direita { padding-left:8px; }
+.pagina-editor-app .barra-roteiro .indicador-tipo-bloco { height:34px;min-width:72px;max-width:165px; }
+.pagina-editor-app .roteiro-sidebar .sidebar-card-acoes { display:flex;flex-wrap:wrap;gap:8px;justify-content:center; }
+.pagina-editor-app .roteiro-sidebar .sidebar-card-acoes .botao-apenas-icone {
+  width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;
+}
+
+/* Leitores: mesma linguagem editorial, sem interferir no tema escolhido. */
+.pagina-leitor-app .pagina-shell.pagina-leitor { width:min(1500px,calc(100% - 36px))!important; }
+.pagina-leitor-app .topo-leitor {
+  padding:10px 14px!important;
+  margin-bottom:16px!important;
+}
+.pagina-leitor-app .titulo-centro-leitor { color:#f4f7fc!important;font-weight:720!important;letter-spacing:-.025em; }
+.pagina-leitor-app .indicador-progresso-leitura,
+.pagina-leitor-app .indicador-progresso-leitura-topo {
+  display:inline-flex;
+  width:auto;
+  min-width:auto!important;
+  height:auto;
+  min-height:0!important;
+  padding:3px 5px!important;
+  margin:0 2px;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#aabbd5!important;
+  font-size:.86rem!important;
+  font-weight:750!important;
+  font-variant-numeric:tabular-nums;
+}
+.pagina-leitor-app .area-leitura-epub {
+  box-sizing:border-box;
+  width:min(var(--leitor-largura-vw,90vw),1180px)!important;
+  max-width:100%!important;
+  margin:0 auto 28px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+.pagina-leitor-app .area-leitura-epub .epub-frame {
+  display:block;
+  width:100%!important;
+  border:1px solid rgba(23,38,62,.10)!important;
+  border-radius:var(--paper-radius)!important;
+  box-shadow:var(--paper-shadow)!important;
+  background:transparent!important;
+  overflow:hidden;
+}
+.pagina-leitor-app .navegacao-capitulos-inferior { margin-top:18px; }
+.pagina-leitor-app .leitor-config-popover select { box-shadow:none!important; }
+
+@media (max-width:1180px) {
+  .pagina-editor-app .barra-roteiro { flex-wrap:wrap; }
+  .pagina-editor-app .barra-roteiro-esquerda { width:100%;max-width:100%; }
+  .pagina-editor-app .barra-roteiro-direita { width:auto;align-self:flex-end;margin-left:auto; }
+}
+@media (max-width:760px) {
+  .pagina-editor-app .painel-word { padding:8px 0 28px!important; }
+  .pagina-editor-app .painel-word > .pagina-editor { min-height:78vh;padding:clamp(24px,5vw,42px)!important; }
+  .pagina-editor-app .painel-word #editorTexto { min-height:66vh; }
+  .pagina-editor-app .roteiro-layout { gap:12px; }
+  .pagina-editor-app .barra-roteiro .btn-tipo-bloco { flex:0 0 auto!important; }
+  .pagina-editor-app .barra-roteiro .theme-select-wrap { width:auto;justify-content:flex-start; }
+  .pagina-editor-app .barra-roteiro select.theme-select { width:132px!important;min-width:132px!important; }
+  .pagina-leitor-app .pagina-shell.pagina-leitor { width:calc(100% - 16px)!important; }
+}
+@media (max-width:480px) {
+  .pagina-editor-app .painel-word > .pagina-editor { padding:26px 20px!important; }
+  .pagina-editor-app .cabecalho-editor-grid { gap:8px; }
+  .pagina-leitor-app .topo-leitor { padding:10px!important; }
+}
+
+/* Ícones do editor de livros: integrados ao mesmo chrome escuro do roteiro. */
+.pagina-editor-app .barra-word .botao-branco {
+  min-width:35px!important;
+  height:36px!important;
+  min-height:36px!important;
+  padding:0 9px!important;
+  border:1px solid rgba(154,171,194,.22)!important;
+  border-radius:9px!important;
+  background:#253041!important;
+  color:#ecf1fa!important;
+  box-shadow:none!important;
+  font-size:.87rem!important;
+}
+.pagina-editor-app .barra-word .botao-branco:hover {
+  background:#324158!important;
+  border-color:rgba(133,160,255,.47)!important;
+}
+.pagina-editor-app .barra-word .botao-branco img {
+  filter:grayscale(1) brightness(0) invert(1);
+  opacity:.88;
+}
+.pagina-editor-app .barra-word .botao-branco:hover img { opacity:1; }
+.pagina-editor-app .barra-word .controle-menu-seta { border-left-color:rgba(255,255,255,.18); }
+@media (max-width:1240px) {
+  .pagina-editor-app .barra-word { flex-wrap:wrap!important; }
+}
+
+/* Em janelas estreitas, não esconder o seletor ao final da barra de roteiro. */
+@media (max-width:1180px) {
+  .pagina-editor-app .barra-roteiro-esquerda {
+    flex-wrap:wrap!important;
+    overflow:visible!important;
+    gap:6px;
+  }
+  .pagina-editor-app .barra-roteiro .theme-select-wrap {
+    flex:0 0 auto;
+    margin-left:2px;
+  }
+}

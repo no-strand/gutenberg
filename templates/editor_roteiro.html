@@ -20,7 +20,7 @@
     <button type="button" class="botao-secundario botao-apenas-icone btn-toolbar" id="btnUndo" title="{{ t('editor.undo') }} (Ctrl+Z)" aria-label="{{ t('editor.undo') }} (Ctrl+Z)">↶</button>
     <button type="button" class="botao-secundario botao-apenas-icone btn-toolbar" id="btnRedo" title="{{ t('editor.redo') }} (Ctrl+Shift+Z)" aria-label="{{ t('editor.redo') }} (Ctrl+Shift+Z)">↷</button>
     <div class="separador-toolbar"></div>
-    {% set blocos = [("scene_heading",t("script.editor_block_scene_heading"),"CENA +","Alt+C"),("action",t("script.editor_block_action"),"A","Alt+A"),("character",t("script.editor_block_character"),"P","Alt+P"),("dialogue",t("script.editor_block_dialogue"),"D","Alt+D"),("parenthetical",t("script.editor_block_parenthetical"),"(","Alt+S"),("shot",t("script.editor_block_shot"),"PL","Alt+L"),("transition",t("script.editor_block_transition"),"TR","Alt+T"),("comment",t("script.editor_block_comment"),"#","Alt+N"),("music",t("script.editor_block_music"),"M","Alt+M"),("neutral",t("script.editor_block_neutral"),"N","Alt+E")] %}
+    {% set blocos = [("scene_heading",t("script.editor_block_scene_heading"),"Cena","Alt+C"),("action",t("script.editor_block_action"),"Ação","Alt+A"),("character",t("script.editor_block_character"),"Personagem","Alt+P"),("dialogue",t("script.editor_block_dialogue"),"Diálogo","Alt+D"),("parenthetical",t("script.editor_block_parenthetical"),t("script.editor_block_parenthetical"),"Alt+S"),("shot",t("script.editor_block_shot"),"Plano","Alt+L"),("transition",t("script.editor_block_transition"),"Transição","Alt+T"),("comment",t("script.editor_block_comment"),"Nota","Alt+N"),("music",t("script.editor_block_music"),"Música","Alt+M"),("neutral",t("script.editor_block_neutral"),"Livre","Alt+E")] %}
     {% for tipo,nome,sigla,atalho in blocos %}
     <button type="button" class="botao-secundario btn-toolbar btn-tipo-bloco" data-block-type="{{ tipo }}" title="{{ nome }} ({{ atalho }})"><span>{{ sigla }}</span></button>
     {% endfor %}
@@ -28,6 +28,8 @@
       <input type="checkbox" id="toggleVisualizacaoRoteiro" hidden>
       <img id="iconeToggleVisualizacaoRoteiro" src="{{ url_for('static', filename='img/mostrar.png') }}" alt="{{ t('common.show_comments') }}">
     </button>
+  </div>
+  <div class="barra-roteiro-direita">
     <div class="theme-select-wrap" title="{{ t('script.editor_theme_pages') }}">
       <label class="theme-select-label" for="selectTemaRoteiro">{{ t('script.editor_theme_mode') }}</label>
       <select id="selectTemaRoteiro" class="theme-select" aria-label="{{ t('script.editor_theme_pages') }}">
@@ -43,8 +45,6 @@
         <option value="code-like">{{ t('theme.code_like') }}</option>
       </select>
     </div>
-  </div>
-  <div class="barra-roteiro-direita">
     <span class="tipo-atual-label">{{ t("common.type_current") }}</span>
     <strong id="indicadorTipoBloco" class="indicador-tipo-bloco">{{ t("script.editor_block_action") }}</strong>
   </div>

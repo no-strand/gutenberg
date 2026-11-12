@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block titulo %}{{ t('resources.page_title', project=projeto.titulo) }}{% endblock %}
 {% block classe_pagina %}pagina-recursos-projeto-shell{% endblock %}
-{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}">{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-editor.css') }}">{% endblock %}
 {% block conteudo %}
 <section class="recursos-topo topo-projeto">
   <div class="recursos-topo-info">
@@ -15,8 +15,9 @@
       <button type="button" id="btnAbrirIARecursos" class="botao-primario botao-com-icone recursos-ai-btn" title="{{ t('resources.ai_generate') }} (Ctrl+Alt+G)" aria-label="{{ t('resources.ai_generate') }} (Ctrl+Alt+G)"><span class="icone-svg">{{ icon_svg('ai')|safe }}</span><span>{{ t('resources.ai_generate') }}</span></button>
       <span class="status-chip" id="recursosStatus">{{ t('resources.ready') }}</span>
     </div>
-    <h1 class="limite-2linhas-projeto" title="{{ projeto.titulo }}">{{ projeto.titulo }}</h1>
-    <p class="resumo-projeto limite-3linhas">{{ projeto.descricao or '' }}</p>
+    <div class="recursos-hero-identificacao" title="{{ projeto.titulo }}">{{ t('resources.project_prefix', project=projeto.titulo) }}</div>
+    <h1 class="recursos-hero-titulo">{{ t('resources.project_resources') }}</h1>
+    <p class="recursos-hero-subtitulo">{{ t('resources.hero_desc') }}</p>
   </div>
 </section>
 
@@ -44,16 +45,27 @@
           <div class="info-page-list" id="listaPaginasInfo"></div>
         </aside>
         <article class="info-editor-card">
-          <div class="info-editor-fixed-top">
-            <div class="info-format-toolbar" aria-label="{{ t('resources.info_formatting') }}">
+          <div class="info-format-toolbar info-format-toolbar-sticky" role="toolbar" aria-label="{{ t('resources.info_formatting') }}">
+              <button type="button" class="botao-secundario info-format-btn" data-info-comando="bold" title="{{ t('editor.bold') }}"><strong>{{ t('editor.bold')[:1] }}</strong></button>
+              <button type="button" class="botao-secundario info-format-btn" data-info-comando="italic" title="{{ t('editor.italic') }}"><em>{{ t('editor.italic')[:1] }}</em></button>
+              <button type="button" class="botao-secundario info-format-btn" data-info-comando="underline" title="{{ t('editor.underline') }}"><u>{{ t('editor.underline')[:1] }}</u></button>
               <button type="button" class="botao-secundario info-format-btn" data-info-bloco="p" title="{{ t('resources.paragraph') }}">P</button>
               <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h1" title="{{ t('resources.heading1') }}">H1</button>
               <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h2" title="{{ t('resources.heading2') }}">H2</button>
               <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h3" title="{{ t('resources.heading3') }}">H3</button>
-              <button type="button" class="botao-secundario info-format-btn" data-info-comando="bold" title="{{ t('editor.bold') }}"><strong>{{ t('editor.bold')[:1] }}</strong></button>
-              <button type="button" class="botao-secundario info-format-btn" data-info-comando="italic" title="{{ t('editor.italic') }}"><em>{{ t('editor.italic')[:1] }}</em></button>
-              <button type="button" class="botao-secundario info-format-btn" data-info-comando="underline" title="{{ t('editor.underline') }}"><u>{{ t('editor.underline')[:1] }}</u></button>
               <button type="button" class="botao-secundario info-format-btn" data-info-comando="insertUnorderedList" title="{{ t('resources.list') }}">•</button>
+              <label class="editor-font-picker info-font-picker" for="seletorFonteInfo">
+                <span class="editor-font-picker-label">Fonte</span>
+                <select id="seletorFonteInfo" class="editor-font-select" aria-label="Fonte do texto em informações">
+                  {% include '_editor_font_options.html' %}
+                </select>
+              </label>
+              <label class="editor-size-picker info-size-picker" for="seletorTamanhoFonteInfo">
+                <span class="editor-size-picker-label">Tamanho</span>
+                <select id="seletorTamanhoFonteInfo" class="editor-size-select" aria-label="Tamanho da fonte em informações">
+                  {% include '_editor_font_size_options.html' %}
+                </select>
+              </label>
             </div>
             <div class="info-editor-toolbar">
               <input id="tituloPaginaInfo" class="info-title-input" maxlength="90" placeholder="{{ t('resources.page_title_placeholder') }}">
@@ -63,8 +75,12 @@
                 <input type="file" id="inputImagemInfo" accept="image/*" hidden>
               </div>
             </div>
+          <div class="info-paper-workspace">
+            <div class="info-paper-stage" id="infoPaperStage">
+              <div class="info-paper-layers" id="infoPaperLayers" aria-hidden="true"></div>
+              <div id="editorInfoPagina" class="info-rich-editor" contenteditable="true" spellcheck="true"></div>
+            </div>
           </div>
-          <div id="editorInfoPagina" class="info-rich-editor" contenteditable="true" spellcheck="true"></div>
         </article>
       </div>
     </div>
@@ -204,6 +220,7 @@
 {% endblock %}
 {% block scripts %}
 <script>window.PROJETO_SLUG = {{ projeto.slug|tojson }}; window.PROJETO_RECURSOS_INITIAL = {{ recursos|tojson }};</script>
+<script src="{{ url_for('static', filename='js/editor_tipografia.js') }}"></script>
 <script src="{{ url_for('static', filename='js/recursos_projeto.js') }}"></script><script src="{{ url_for('static', filename='js/ia_recursos.js') }}"></script>
 {% endblock %}
 

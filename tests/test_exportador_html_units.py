@@ -20,6 +20,16 @@ class ExportadorHtmlHelpersTests(IsolatedProjectTestCase):
         self.assertNotIn("script", normalizado.lower())
         self.assertNotIn("onclick", normalizado.lower())
 
+    def test_epub_preserva_tamanho_de_fonte_em_pontos_e_elimina_style_arbitrario(self):
+        entrada = ('<p>Texto <span class="fonte-inter tamanho-fonte-24pt" '
+                   'style="font-size:500px;position:fixed" onclick="alert(1)">Maior</span></p>')
+        html = exportador_html._normalizar_conteudo_html(entrada)
+        self.assertIn('font-size:24pt', html)
+        self.assertIn('tamanho-fonte-24pt', html)
+        self.assertNotIn('500px', html)
+        self.assertNotIn('position:fixed', html)
+        self.assertNotIn('onclick', html)
+
     def test_substituir_imagens_base64_salva_arquivo_e_atualiza_src(self):
         """Imagens EPUB: base64 embutido vira arquivo em Images e referência relativa."""
         pasta_images = self.base / "OEBPS" / "Images"
@@ -33,5 +43,5 @@ class ExportadorHtmlHelpersTests(IsolatedProjectTestCase):
         arquivo = pasta_images / imagens[0]["href"]
         self.assertTrue(arquivo.exists())
         self.assertEqual(arquivo.read_bytes(), raw)
-        self.assertIn('src="Images/', atualizado)
+        self.assertIn('src="../Images/', atualizado)
         self.assertNotIn("data:image/png;base64", atualizado)

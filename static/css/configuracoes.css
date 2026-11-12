@@ -94,3 +94,12 @@
 .form-config-grid .config-translation-field-label{color:#AAB2BF;font-size:.9rem;line-height:1.2}
 .config-translation-field select{width:100%}
 @media (max-width:560px){.config-translation-grid{grid-template-columns:1fr}}
+
+/* v5: contraste consistente na pré-visualização e no botão de salvar. */
+.painel-configuracoes .form-config-grid button.botao-config-modal,
+.painel-configuracoes .form-config-grid button.botao-config-modal :is(span,.icone-svg,svg) {
+  color:#ffffff!important;
+}
+.painel-configuracoes #previewFolha.preview-folha :is(h1,h2,h3) {
+  color:#111827!important;
+}

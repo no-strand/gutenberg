@@ -3,7 +3,7 @@
 .recursos-topo{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:stretch;}
 .recursos-topo-info{min-width:0;display:flex;flex-direction:column;gap:12px;}
 .recursos-topo-acoes{grid-template-columns:repeat(2,minmax(170px,1fr));display:grid;min-width:min(440px,100%);}
-.recursos-workspace{margin-top:22px;border:1px solid var(--borda);box-shadow:var(--sombra);background:linear-gradient(180deg,rgba(30,34,40,.90),rgba(42,47,54,.76));border-radius:28px;padding:18px;min-height:72vh;}
+.recursos-workspace{margin-top:22px;border:1px solid var(--borda);box-shadow:var(--sombra),inset 0 5px 20px rgba(0,0,0,.16);background:linear-gradient(180deg,rgba(30,34,40,.90),rgba(42,47,54,.76));border-radius:28px;padding:18px;min-height:72vh;}
 .recursos-tabs{display:flex;gap:8px;align-items:flex-end;border-bottom:1px solid rgba(255,255,255,.12);padding:0 8px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;}
 .recursos-tabs::-webkit-scrollbar{display:none;}
 .recursos-tab{appearance:none;border:1px solid rgba(255,255,255,.12);border-bottom:0;background:rgba(255,255,255,.06);color:var(--texto);padding:13px 18px;border-radius:16px 16px 0 0;font-weight:800;cursor:pointer;white-space:nowrap;transform:translateY(1px);transition:.18s ease;}
@@ -531,3 +531,330 @@
 .ia-recursos-footer{gap:8px;align-items:center;flex-wrap:wrap;min-width:0}.ia-recursos-footer button{min-width:0}.ia-recursos-preview{overflow-wrap:anywhere;word-break:break-word}.ia-recursos-prompt,.ia-recursos-preview-wrap{min-width:0}
 .ia-recursos-footer .status-form{margin-right:auto}
 @media (max-width:760px){.ia-recursos-alvos{grid-template-columns:repeat(2,minmax(0,1fr))}.recursos-ai-btn span:last-child{display:none}.modal-ia-recursos{width:calc(100vw - 20px);max-height:90vh}.ia-recursos-footer{align-items:stretch}.ia-recursos-footer .status-form{width:100%;margin-right:0}.ia-recursos-footer button{flex:1 1 100%}}
+
+
+/* Informações — o cartão estrutural fica transparente e o conteúdo
+   segue o mesmo sistema visual do editor EPUB: palco externo com
+   border-radius + folhas numeradas paginadas visualmente. */
+.recursos-painel[data-recursos-panel="informacoes"] .resource-page-shell,
+.recursos-painel[data-recursos-panel="informacoes"] .resource-page-bar,
+.recursos-painel[data-recursos-panel="informacoes"] .resource-page-tabs{
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .resource-page-bar{
+  padding:0!important;
+  border-bottom-color:rgba(255,255,255,.10)!important;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .resource-page-tab{
+  box-shadow:none!important;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-layout{align-items:start;}
+.recursos-painel[data-recursos-panel="informacoes"] .info-editor-card{
+  background:transparent!important;border:0!important;box-shadow:none!important;
+  border-radius:0!important;padding:0;overflow:visible;min-height:0;align-items:stretch;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-editor-fixed-top{
+  background:transparent!important;border-radius:0;padding:0;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-editor-toolbar{
+  background:transparent!important;border-color:transparent!important;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-paper-workspace{
+  box-sizing:border-box;
+  width:min(100%,1100px);
+  min-width:0;
+  margin:0 auto 36px;
+  padding:clamp(20px,3.1vw,54px) clamp(14px,3.1vw,54px) 70px;
+  background:var(--editor-workspace-bg,rgba(236,241,247,.92));
+  border:1px solid var(--editor-workspace-border,rgba(138,155,181,.32));
+  border-radius:16px;
+  box-shadow:0 17px 48px rgba(0,0,0,.17), var(--editor-workspace-inner-shadow,inset 0 5px 20px rgba(35,48,68,.16));
+  overflow:visible;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-paper-stage{
+  box-sizing:border-box;
+  position:relative;
+  width:min(var(--editor-paper-width,816px),calc(100% - 4px));
+  min-width:0;
+  min-height:1056px;
+  margin:0 auto;
+  padding:0;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  overflow:visible;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-paper-stage:not(.info-paginated){
+  background:#fff;
+  border-radius:0;
+  box-shadow:var(--editor-paper-shadow,0 22px 42px rgba(30,43,64,.18),0 4px 13px rgba(30,43,64,.09));
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-paper-layers{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-paper-sheet{
+  position:absolute;
+  left:0;
+  width:100%;
+  box-sizing:border-box;
+  background:#fff;
+  border-radius:0;
+  border:1px solid rgba(12,22,36,.13);
+  box-shadow:var(--editor-paper-shadow,0 22px 42px rgba(30,43,64,.18),0 4px 13px rgba(30,43,64,.09));
+  transition:border-color .15s,box-shadow .15s;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-paper-sheet.is-active{
+  border-color:rgba(116,151,222,.7);
+  box-shadow:var(--editor-paper-shadow,0 22px 42px rgba(30,43,64,.18),0 4px 13px rgba(30,43,64,.09)),0 0 0 2px rgba(128,170,241,.22);
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-paper-folio{
+  position:absolute;
+  bottom:28px;
+  left:0;
+  right:0;
+  display:block;
+  text-align:center;
+  font-size:11px;
+  font-weight:580;
+  letter-spacing:.11em;
+  color:#aeb6c1;
+  user-select:none;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-rich-editor{
+  display:flow-root;
+  box-sizing:border-box;
+  position:relative;
+  z-index:1;
+  width:calc(100% - 2 * clamp(26px,7vw,88px));
+  max-width:100%;
+  min-height:0;
+  margin:0 auto;
+  padding:clamp(26px,7vw,88px) 0 0;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  outline:none!important;
+  color:#273041;
+  font-family:Arial,Helvetica,sans-serif;
+  line-height:1.58;
+  font-size:1.02rem;
+  overflow:visible!important;
+  overflow-wrap:anywhere;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-rich-editor:focus,
+.recursos-painel[data-recursos-panel="informacoes"] .info-rich-editor:focus-visible{
+  box-shadow:none!important;
+  outline:none!important;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .info-rich-editor > :first-child{margin-top:0;}
+.recursos-painel[data-recursos-panel="informacoes"] .info-rich-editor :is(h1,h2,h3){color:#192d42;}
+@media (max-width:720px){
+  .recursos-painel[data-recursos-panel="informacoes"] .info-paper-workspace{
+    padding:22px 12px 52px;
+    border-radius:14px;
+  }
+  .recursos-painel[data-recursos-panel="informacoes"] .info-paper-stage{min-height:700px;}
+}
+
+/* Abas de Informações: nenhum campo de texto visível até o usuário solicitar
+   renomeação. Mesmo editando, o campo não desenha uma caixa sobre a aba.
+   A barra e sua moldura ficam visualmente transparentes. */
+.recursos-painel[data-recursos-panel="informacoes"] .resource-page-bar {
+  border:0!important;
+  background:transparent!important;
+}
+.recursos-painel[data-recursos-panel="informacoes"] .resource-page-tabs {
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+}
+.resource-page-tab > input.resource-page-tab-input,
+.resource-page-tab > input.resource-page-tab-input:is(:hover,:focus,:focus-visible) {
+  box-sizing:border-box!important;
+  display:block;
+  flex:1 1 auto;
+  width:min(170px,32vw)!important;
+  min-width:0!important;
+  max-width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:inherit!important;
+  caret-color:currentColor;
+  font:inherit!important;
+  line-height:1.35!important;
+}
+
+/* v5: faixa de abas sem fundo, borda ou sombra; os botões mantêm seus contornos. */
+.pagina-recursos-projeto-shell .recursos-workspace > .recursos-tabs {
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+
+.pagina-recursos-projeto-shell .info-format-toolbar {
+  flex-wrap:wrap;align-items:center;row-gap:8px;
+}
+
+/* v5: as folhas de Informações obedecem às preferências globais do Gutenberg.
+   Regras sobre blocos também impedem que entrelinhas importadas alterem
+   a aparência depois de trocar a família de fonte. */
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor {
+  font-size:var(--cfg-font-size,20px)!important;
+  line-height:var(--cfg-line-height,1.85)!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor > :is(p,div,h1,h2,h3,blockquote,ul,ol) {
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor :is(p,div,li,blockquote,h1,h2,h3) {
+  line-height:var(--cfg-line-height,1.85)!important;
+}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor :is(p,div,li) {
+  margin:0 0 var(--cfg-espaco-paragrafo,1.15em);
+  text-align:justify;
+  text-indent:var(--cfg-indent,2em);
+}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor > :is(p,div):last-child {
+  margin-bottom:0;
+}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor h1 {
+  font-size:var(--cfg-h1,28px)!important;
+  text-align:center;
+  text-indent:0;
+  color:#192d42!important;
+}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor h2 {
+  font-size:var(--cfg-h2,22px)!important;
+  text-align:left;
+  text-indent:0;
+  color:#192d42!important;
+}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor h3 {
+  font-size:var(--cfg-h3,18px)!important;
+  text-align:left;
+  text-indent:0;
+  color:#192d42!important;
+}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor :is(p,div,li,blockquote).recuo-a-esquerda {
+  text-indent:0!important;
+}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor :is(p,div,li,blockquote).recuo-a-direita {
+  text-indent:var(--cfg-indent-maior,3.2em)!important;
+}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor :is(p,div,li,blockquote,h1,h2,h3).alinhar-a-esquerda {text-align:left!important;}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor :is(p,div,li,blockquote,h1,h2,h3).alinhar-centro {text-align:center!important;}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor :is(p,div,li,blockquote,h1,h2,h3).alinhar-a-direita {text-align:right!important;}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor :is(p,div,li,blockquote,h1,h2,h3).justificar {text-align:justify!important;}
+.pagina-recursos-projeto-shell #editorInfoPagina.info-rich-editor :is(p,div,li,blockquote,h1,h2,h3) :is(span,strong,em,u,b,i) {
+  line-height:var(--cfg-line-height,1.85)!important;
+}
+
+/* v6 — em Informações somente a barra de FORMATAÇÃO fica fixa.
+   Título, inserir imagem e excluir página rolam normalmente como no EPUB. */
+.pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .info-editor-card {
+  overflow:visible!important;
+}
+.pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .info-format-toolbar.info-format-toolbar-sticky {
+  position:sticky!important;
+  top:72px!important;
+  z-index:45;
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  align-self:stretch;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  column-gap:5px;
+  row-gap:6px;
+  margin:0;
+  padding:8px 9px!important;
+  background:#141e2a!important;
+  border:1px solid rgba(168,190,219,.14)!important;
+  border-radius:14px!important;
+  box-shadow:0 5px 18px rgba(0,0,0,.13)!important;
+}
+.pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .info-format-toolbar .info-format-btn {
+  box-sizing:border-box;
+  flex:0 0 auto;
+  height:36px!important;
+  min-height:36px!important;
+  min-width:35px!important;
+  padding:0 9px!important;
+  margin:0!important;
+  border:1px solid transparent!important;
+  border-radius:8px!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#c7d4e6!important;
+  font-size:.81rem!important;
+  font-weight:700!important;
+  line-height:1!important;
+  cursor:pointer;
+}
+.pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .info-format-toolbar .info-format-btn:hover {
+  background:rgba(154,184,223,.13)!important;
+  border-color:rgba(155,180,215,.18)!important;
+  color:#fff!important;
+}
+.pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .info-format-toolbar .info-format-btn.ativo,
+.pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .info-format-toolbar .info-format-btn[aria-pressed="true"] {
+  background:#2b3e58!important;
+  border-color:rgba(153,187,243,.32)!important;
+  color:#eff5ff!important;
+}
+.pagina-recursos-projeto-shell .info-format-toolbar .info-format-btn:focus-visible {
+  outline:2px solid rgba(146,177,255,.8)!important;
+  outline-offset:2px;
+}
+.pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .info-editor-toolbar {
+  position:static!important;
+  z-index:auto;
+  flex:0 0 auto;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+@media(max-width:680px) {
+  .pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .info-format-toolbar.info-format-toolbar-sticky {top:64px!important;}
+}
+
+/* Cabeçalho do Rascunho/Outline: mesmo padrão de título e subtítulo das seções principais. */
+.pagina-recursos-projeto-shell .recursos-topo-info {gap:7px;}
+.pagina-recursos-projeto-shell .recursos-hero-identificacao {
+  color:var(--texto-suave,#a5b3c5);
+  font-size:.8rem;
+  font-weight:650;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+}
+.pagina-recursos-projeto-shell .recursos-hero-titulo {
+  color:var(--texto,#f0f4f9);
+  font-size:clamp(1.65rem,2.7vw,2.35rem);
+  font-weight:800;
+  line-height:1.18;
+  letter-spacing:-.035em;
+  margin:4px 0 0;
+}
+.pagina-recursos-projeto-shell .recursos-hero-subtitulo {
+  color:var(--texto-suave,#a5b3c5);
+  font-size:.95rem;
+  line-height:1.5;
+  margin:0;
+}

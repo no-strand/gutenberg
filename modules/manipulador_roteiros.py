@@ -392,11 +392,12 @@ def salvar_roteiro(pasta_projeto: Path, numero: int, titulo: str, html: str) -> 
     dados_atuais = _db(pasta_projeto).ler_roteiro(numero)
     if not dados_atuais:
         raise FileNotFoundError(t("backend.script_not_found"))
+    html_normalizado = _normalizar_html_roteiro(html)
     dados = {
         **dados_atuais,
         "titulo": (titulo or "").strip().upper() or str(dados_atuais.get("titulo") or t("script.untitled")),
-        "paragrafos": [_normalizar_html_roteiro(html)],
-        "html_editor": _normalizar_html_roteiro(html),
+        "paragrafos": [html_normalizado],
+        "html_editor": html_normalizado,
         "data_atualizacao": agora_iso(),
     }
     salvo = _db(pasta_projeto).salvar_roteiro(numero, dados)

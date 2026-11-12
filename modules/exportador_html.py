@@ -11,6 +11,7 @@ from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from bs4 import BeautifulSoup, Tag
 
+from .fontes_editor import CLASSES_FONTES_EDITOR, FONTES_CSS_EDITOR
 from .manipulador_capitulos import listar_capitulos, ler_capitulo
 from .manipulador_projetos import caminho_capa_projeto, normalizar_idioma_projeto, obter_projeto
 from .utilidades import PASTA_PROJETOS, agora_iso, inferir_extensao_data_url, nome_seguro, obter_configuracoes, obter_pasta_exportacao_projeto
@@ -34,7 +35,10 @@ DISPLAY_OPTIONS_XML = """<?xml version='1.0' encoding='UTF-8'?>
 """
 
 IDIOMAS = {"pt-BR": "pt-BR", "en_US": "en-US"}
-CLASSES_ESTILO = ["alinhar-a-esquerda", "alinhar-centro", "alinhar-a-direita", "justificar", "recuo-a-esquerda", "recuo-a-direita", "fonte-serif", "fonte-sans", "fonte-mono"]
+CSS_FONTES_NOMEADAS = ''.join('span.' + nome + ' { font-family: ' + familia + '; }\n' for nome, familia in FONTES_CSS_EDITOR.items())
+TAMANHOS_FONTE_PT = ("6", "7", "8", "9", "10", "10.5", "11", "12", "13", "14", "15", "16", "18", "20", "21", "22", "24", "26", "28", "32", "36", "40", "42", "44", "48", "60")
+CLASSES_TAMANHO_FONTE = {f"tamanho-fonte-{pontos.replace('.', '-')}pt": pontos for pontos in TAMANHOS_FONTE_PT}
+CLASSES_ESTILO = ["alinhar-a-esquerda", "alinhar-centro", "alinhar-a-direita", "justificar", "recuo-a-esquerda", "recuo-a-direita", "fonte-serif", "fonte-sans", "fonte-mono", *FONTES_CSS_EDITOR, *CLASSES_TAMANHO_FONTE]
 
 
 @registrar_etapa
@@ -164,6 +168,7 @@ p.recuo-a-direita, li.recuo-a-direita, blockquote.recuo-a-direita {{ text-indent
 span.fonte-serif {{ font-family: Georgia, 'Times New Roman', serif; }}
 span.fonte-sans {{ font-family: Arial, Helvetica, sans-serif; }}
 span.fonte-mono {{ font-family: Consolas, 'Courier New', monospace; }}
+{CSS_FONTES_NOMEADAS}
 a.editor-recurso-link,
 a.editor-recurso-link:visited,
 a.editor-recurso-link:hover,
@@ -332,7 +337,8 @@ def _substituir_imagens_base64(conteudo: str, pasta_images: Path) -> tuple[str, 
             "media_type": _media_type_por_extensao(ext),
         })
         contador += 1
-        return match.group(0).replace(src, f"Images/{nome}")
+        # O XHTML reside em Text/; as imagens ficam no diretório irmão Images/.
+        return match.group(0).replace(src, f"../Images/{nome}")
 
     novo_conteudo = re.sub(r'src=["\']([^"\']+)["\']', repl, conteudo, flags=re.IGNORECASE)
     return novo_conteudo, imagens
@@ -362,6 +368,8 @@ def _normalizar_conteudo_html(conteudo: str) -> str:
     conteudo = re.sub(r"\sstyle=['\"]([^'\"]*)['\"]", '', conteudo)
 
     soup = BeautifulSoup(conteudo, 'html.parser')
+    # Evita ler/regravar config.json uma vez por span (frequente em capítulos extensos).
+    recuo_maior_em = obter_configuracoes().get('identacao_paragrafo_maior_em', 3.2)
 
     for tag in soup.find_all(["script", "style", "iframe", "object", "embed"]):
         tag.decompose()
@@ -401,6 +409,9 @@ def _normalizar_conteudo_html(conteudo: str) -> str:
         """
         estilos: list[str] = []
         valores = set(classes)
+        tamanho = next((pontos for classe, pontos in CLASSES_TAMANHO_FONTE.items() if classe in valores), None)
+        if tamanho:
+            estilos.append(f'font-size:{tamanho}pt !important')
         if 'alinhar-a-esquerda' in valores:
             estilos.append('text-align:left !important')
         elif 'alinhar-centro' in valores:
@@ -412,8 +423,11 @@ def _normalizar_conteudo_html(conteudo: str) -> str:
         if 'recuo-a-esquerda' in valores:
             estilos.append('text-indent:0 !important')
         elif 'recuo-a-direita' in valores:
-            estilos.append(f"text-indent:{obter_configuracoes()['identacao_paragrafo_maior_em']}em !important")
-        if 'fonte-serif' in valores:
+            estilos.append(f"text-indent:{recuo_maior_em}em !important")
+        fonte_nomeada = next((nome for nome in FONTES_CSS_EDITOR if nome in valores), None)
+        if fonte_nomeada:
+            estilos.append(f'font-family:{FONTES_CSS_EDITOR[fonte_nomeada]}')
+        elif 'fonte-serif' in valores:
             estilos.append("font-family:Georgia, 'Times New Roman', serif")
         elif 'fonte-sans' in valores:
             estilos.append('font-family:Arial, Helvetica, sans-serif')
@@ -828,9 +842,9 @@ def exportar_projeto_xhtml(slug: str) -> Path:
             nome = f"{nome}_{capitulo_info['id']}"
         usados.add(nome)
         conteudo = '\n'.join(capitulo.get('paragrafos', []))
-        html_doc = _xhtml_documento(titulo, conteudo, idioma, versao='3.0', usar_css=True, formato_html=True)
+        html_doc = _xhtml_documento(titulo, conteudo, idioma, versao='3.0', usar_css=True, formato_html=False)
         html_doc = html_doc.replace('../Style/stylesheet.css', 'Style/stylesheet.css')
-        (raiz_export / f"{nome}.html").write_text(html_doc, encoding='utf-8')
+        (raiz_export / f"{nome}.xhtml").write_text(html_doc, encoding='utf-8')
     return raiz_export
 
 

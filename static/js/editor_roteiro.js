@@ -62,6 +62,9 @@ let currentSceneCache = null;
 let sceneSummarySignature = '';
 let visualizationStateCache = null;
 let selectionChangeFrame = 0;
+// Destaque visual apenas; nunca integra o HTML persistido do roteiro.
+let activeScriptPage = null;
+let activeTypeButton = null;
 let isEditorComposing = false;
 let hoverFrame = 0;
 let lastHoverEvent = null;
@@ -1147,6 +1150,8 @@ function repaginateEditor({ preserveSelection = true } = {}) {
     if (typeof selectionTargetOffset === 'number') setCaretOffsetWithin(selectionTargetBlock, selectionTargetOffset);
     else placeCaretAtEnd(selectionTargetBlock);
   }
+  // Uma repaginação pode mover o bloco selecionado para uma nova folha.
+  updateActiveScriptPage(getCurrentBlock());
 }
 /** Normalizeeditor. Usada pelo fluxo principal da aplicação. */
 function normalizeEditor({ preserveSelection = true, deferSceneSummary = false, deferVisualization = false } = {}) {
@@ -2120,7 +2125,29 @@ function openCatalogEditor(tipo, item = null, link = null) {
   setTimeout(() => catalogoNome?.focus(), 30);
 }
 /** Handleblockfocus. Usada pelo fluxo principal da aplicação. */
+function updateActiveScriptPage(block) {
+  const page = block?.closest('.roteiro-page') || null;
+  if (activeScriptPage !== page) {
+    activeScriptPage?.classList.remove('is-current-page');
+    activeScriptPage = page;
+  }
+  if (page) page.classList.add('is-current-page');
+
+  const type = block?.dataset?.blockType || null;
+  const button = type ? document.querySelector(`.barra-roteiro .btn-tipo-bloco[data-block-type="${type}"]`) : null;
+  if (activeTypeButton !== button) {
+    activeTypeButton?.classList.remove('ativo');
+    activeTypeButton?.removeAttribute('aria-pressed');
+    activeTypeButton = button;
+  }
+  if (button) {
+    button.classList.add('ativo');
+    button.setAttribute('aria-pressed', 'true');
+  }
+}
+
 function handleBlockFocus(block) {
+  updateActiveScriptPage(block);
   highlightCurrentScene(block);
   updateCurrentTypeIndicator(block);
   maybeAutocomplete(block);
@@ -2649,6 +2676,7 @@ document.addEventListener('selectionchange', () => {
     const block = getCurrentBlock();
     if (block && editor?.contains(block)) {
       saveSelection();
+      updateActiveScriptPage(block);
       highlightCurrentScene(block);
       updateCurrentTypeIndicator(block);
       scheduleEnsureScriptCaretVisible();

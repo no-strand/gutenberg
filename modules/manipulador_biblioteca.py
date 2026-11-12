@@ -4,8 +4,11 @@ from __future__ import annotations
 import mimetypes
 import posixpath
 import shutil
+import tempfile
 import zipfile
 from collections import OrderedDict
+
+from .logging_config import obter_logger, registrar_etapa
 
 try:
     from rapidfuzz import fuzz
@@ -80,7 +83,6 @@ from .persistencia_json import ler_json, salvar_json
 from .conversor_pdf_epub import converter_pdf_para_epub3
 from .i18n import t
 from .utilidades import agora_iso, garantir_pasta_biblioteca, nome_seguro, obter_pasta_biblioteca, obter_progresso, salvar_progresso
-from .logging_config import obter_logger, registrar_etapa
 logger = obter_logger(__name__)
 
 NAMESPACES = {
@@ -706,7 +708,7 @@ def _caminho_meta(slug: str) -> Path:
         Mantém a lógica centralizada e evita que detalhes de implementação vazem
         para quem apenas precisa acionar este comportamento.
     """
-    return obter_pasta_biblioteca() / slug / 'livro.json'
+    return _pasta_livro(slug) / 'livro.json'
 
 
 @registrar_etapa
@@ -729,8 +731,9 @@ def _pasta_livro(slug: str) -> Path:
         Mantém a lógica centralizada e evita que detalhes de implementação vazem
         para quem apenas precisa acionar este comportamento.
     """
-    pasta = obter_pasta_biblioteca() / slug
-    if not pasta.exists():
+    base = obter_pasta_biblioteca().resolve()
+    pasta = (base / str(slug or '')).resolve()
+    if pasta == base or not pasta.is_relative_to(base) or not pasta.is_dir():
         raise FileNotFoundError('Livro não encontrado.')
     return pasta
 
@@ -756,18 +759,15 @@ def adicionar_livro_pdf(caminho_origem: Path) -> dict[str, Any]:
         Mantém a lógica centralizada e evita que detalhes de implementação vazem
         para quem apenas precisa acionar este comportamento.
     """
-    epub_gerado = caminho_origem.with_suffix('.epub')
-    try:
+    # O EPUB intermediário nunca pode sobrescrever um EPUB existente ao lado
+    # do PDF original. A pasta temporária é removida mesmo se a conversão falhar.
+    with tempfile.TemporaryDirectory(prefix='gutenberg_pdf_epub_') as temporaria:
+        epub_gerado = Path(temporaria) / f'{caminho_origem.stem}.epub'
         converter_pdf_para_epub3(caminho_origem, epub_gerado)
         livro = adicionar_livro_epub(epub_gerado)
         livro['arquivo_original_pdf'] = caminho_origem.name
         atualizar_metadados_livro(livro['slug'], {'arquivo_original_pdf': caminho_origem.name})
         return livro
-    finally:
-        try:
-            epub_gerado.unlink(missing_ok=True)
-        except Exception:
-            pass
 
 
 @registrar_etapa
@@ -797,10 +797,26 @@ def adicionar_livro_epub(caminho_origem: Path) -> dict[str, Any]:
     extraido = pasta / 'extraido'
     arquivo_destino = pasta / caminho_origem.name
     pasta.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(caminho_origem, arquivo_destino)
-    with zipfile.ZipFile(arquivo_destino, 'r') as epub_zip:
-        epub_zip.extractall(extraido)
-    dados = _parsear_epub_extraido(extraido)
+    try:
+        shutil.copy2(caminho_origem, arquivo_destino)
+        with zipfile.ZipFile(arquivo_destino, 'r') as epub_zip:
+            membros = epub_zip.infolist()
+            # EPUBs são ZIPs não confiáveis. Impede caminhos fora da pasta e
+            # pacotes absurdamente grandes antes de criar arquivos em disco.
+            if len(membros) > 20000 or sum(item.file_size for item in membros) > 2 * 1024**3:
+                raise ValueError('EPUB excede o limite seguro de extração.')
+            for item in membros:
+                nome = item.filename.replace('\\', '/')
+                partes = Path(nome).parts
+                if (nome.startswith('/') or '\x00' in nome or '..' in partes
+                        or any(not parte for parte in nome.split('/')[0:-1])
+                        or item.file_size > 1024**3):
+                    raise ValueError('EPUB contém caminho ou arquivo inválido.')
+            epub_zip.extractall(extraido)
+        dados = _parsear_epub_extraido(extraido)
+    except Exception:
+        shutil.rmtree(pasta, ignore_errors=True)
+        raise
     livro = {
         'slug': slug,
         'arquivo_original': caminho_origem.name,
@@ -1513,7 +1529,7 @@ def obter_arquivo_extraido(slug: str, relpath: str) -> Path:
     """
     base = (_pasta_livro(slug) / 'extraido').resolve()
     caminho = (base / _normalizar_relpath(relpath)).resolve()
-    if not str(caminho).startswith(str(base)) or not caminho.exists() or not caminho.is_file():
+    if not caminho.is_relative_to(base) or not caminho.exists() or not caminho.is_file():
         raise FileNotFoundError('Arquivo do livro não encontrado.')
     return caminho
 

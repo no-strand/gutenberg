@@ -124,6 +124,11 @@
         </span>
       </div>
     </div>
+    <label class="coluna-inteira config-particles-intensity">{{ t('settings.particles_intensity') }}
+      <span class="config-particles-intensity-help">{{ t('settings.particles_intensity_desc') }}</span>
+      <input type="range" min="1" max="5" step="1" id="cfgIntensidadeParticulas" name="intensidade_particulas" value="{{ config.intensidade_particulas|default(1) }}" aria-label="{{ t('settings.particles_intensity') }}">
+      <span data-valor="cfgIntensidadeParticulas">{{ config.intensidade_particulas|default(1) }}/5</span>
+    </label>
     <div class="coluna-inteira rodape-formulario"><button class="botao-primario botao-com-icone botao-config-modal" type="submit"><span class="icone-svg">{{ icon_svg('save')|safe }}</span><span>{{ t('settings.save') }}</span></button></div>
   </form>
 

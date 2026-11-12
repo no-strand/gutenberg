@@ -16,7 +16,7 @@ from .logging_config import obter_logger, registrar_etapa
 logger = obter_logger(__name__)
 
 APP_NOME = "Gutenberg"
-APP_VERSAO = "1.0.4"
+APP_VERSAO = "1.0.5"
 RAIZ_PROJETO = Path(__file__).resolve().parent.parent
 RAIZ_RECURSOS = Path(getattr(sys, "_MEIPASS", RAIZ_PROJETO))
 
@@ -121,7 +121,7 @@ def _nomes_candidatos_documentos() -> list[str]:
         Mantém a lógica centralizada e evita que detalhes de implementação vazem
         para quem apenas precisa acionar este comportamento.
     """
-    idioma = (locale.getdefaultlocale()[0] or "").lower() if locale.getdefaultlocale() else ""
+    idioma = (locale.getlocale()[0] or "").lower()
     if idioma.startswith("pt"):
         return ["Documentos", "documentos", "Documents", "documents"]
     if idioma.startswith("es"):
@@ -389,6 +389,7 @@ def configuracao_padrao() -> dict:
         "caminho_biblioteca": str(BIBLIOTECA_PADRAO),
         "modo_browser": False,
         "efeito_editor": True,
+        "intensidade_particulas": 1,
         "gemini_api_key": "",
         "idioma_app": "pt_BR",
         "idioma_tts": "pt_BR",

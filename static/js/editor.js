@@ -12,6 +12,8 @@ const statusAutosave = document.getElementById('statusAutosave');
 const botoesComando = document.querySelectorAll('.barra-ferramentas button[data-comando]');
 const botoesBlocoClasse = document.querySelectorAll('.barra-ferramentas button[data-bloco-classe]');
 const botoesSpanClasse = document.querySelectorAll('.barra-ferramentas button[data-span-classe]');
+const seletorFonteEditor = document.getElementById('seletorFonteEditor');
+const seletorTamanhoFonteEditor = document.getElementById('seletorTamanhoFonteEditor');
 const btnInserirImagem = document.getElementById('btnInserirImagem');
 const inputImagemEditor = document.getElementById('inputImagemEditor');
 const btnLimparEdicao = document.getElementById('btnLimparEdicao');
@@ -73,8 +75,49 @@ const SELECTOR_BLOCOS = 'p,h1,h2,h3,blockquote,li';
 const TAGS_INLINE_FORMATO = ['STRONG', 'EM', 'U'];
 const CLASSES_ALINHAMENTO = ['alinhar-a-esquerda', 'alinhar-centro', 'alinhar-a-direita', 'justificar'];
 const CLASSES_RECUO = ['recuo-a-esquerda', 'recuo-a-direita'];
-const CLASSES_FONTE = ['fonte-sans', 'fonte-serif', 'fonte-mono'];
-const INLINE_FONT_SELECTOR = 'span.fonte-sans, span.fonte-serif, span.fonte-mono';
+const CLASSES_FONTE = ['fonte-sans', 'fonte-serif', 'fonte-mono',
+  'fonte-atkinson-hyperlegible', 'fonte-inter', 'fonte-source-sans-3', 'fonte-noto-sans', 'fonte-ibm-plex-sans', 'fonte-arial', 'fonte-roboto', 'fonte-literata', 'fonte-source-serif-4', 'fonte-noto-serif', 'fonte-georgia', 'fonte-times-new-roman', 'fonte-ibm-plex-mono', 'fonte-jetbrains-mono', 'fonte-source-code-pro', 'fonte-consolas', 'fonte-courier-new'];
+const INLINE_FONT_SELECTOR = CLASSES_FONTE.map((cls) => `span.${cls}`).join(', ');
+const FONTES_EDITOR_LEGADAS = { 'fonte-sans': 'fonte-arial', 'fonte-serif': 'fonte-georgia', 'fonte-mono': 'fonte-consolas' };
+// A escolha do usuário não deve ser revertida por selectionchange/focus/click.
+const STORAGE_FONTE_EDITOR = `editor:fonte-preferida:${editorConfig?.slug || 'global'}`;
+const FONTE_PADRAO_EDITOR = 'fonte-arial';
+let fontePreferidaEditor = FONTE_PADRAO_EDITOR;
+let fonteDefinidaPeloUsuario = false;
+let selecaoAoAbrirFontes = null;
+const tipografiaEditor = window.GutenbergTipografia;
+let tamanhoPreferidoEditor = null;
+let tamanhoDefinidoPeloUsuario = false;
+let selecaoAoAbrirTamanhos = null;
+// A preferência de tamanho só prevalece num cursor vazio até ele ser movido;
+// sobre texto selecionado o menu sempre apresenta a tipografia real.
+let tamanhoPendenteNoCaret = null;
+function selecionarTamanhoPreferido(tamanho) {
+  if (!tipografiaEditor?.sizeClass(tamanho)) return;
+  tamanhoPreferidoEditor = String(tamanho);
+  tamanhoDefinidoPeloUsuario = true;
+  typingState.size = tipografiaEditor.sizeClass(tamanho);
+  const range = getCurrentRange();
+  tamanhoPendenteNoCaret = range?.collapsed ? range.cloneRange() : null;
+  if (seletorTamanhoFonteEditor) seletorTamanhoFonteEditor.value = String(tamanho);
+}
+
+try {
+  const salva = localStorage.getItem(STORAGE_FONTE_EDITOR);
+  if (CLASSES_FONTE.includes(salva)) {
+    fontePreferidaEditor = salva;
+    fonteDefinidaPeloUsuario = true;
+  }
+} catch { /* ambientes com armazenamento indisponível */ }
+
+function selecionarFontePreferida(fonte) {
+  if (!CLASSES_FONTE.includes(fonte)) return;
+  fontePreferidaEditor = fonte;
+  fonteDefinidaPeloUsuario = true;
+  typingState.font = fonte === FONTE_PADRAO_EDITOR ? null : fonte;
+  if (seletorFonteEditor) seletorFonteEditor.value = fonte;
+  try { localStorage.setItem(STORAGE_FONTE_EDITOR, fonte); } catch { /* sem armazenamento */ }
+}
 
 const catalogosLivro = {
   personagens: Array.isArray(editorConfig.catalogoPersonagens) ? editorConfig.catalogoPersonagens : [],
@@ -112,6 +155,7 @@ const typingState = {
   italic: false,
   underline: false,
   font: null,
+  size: null,
 };
 
 const MAPA_ATALHOS = {
@@ -134,9 +178,9 @@ const MAPA_ATALHOS = {
   CTRL_ALT: {
     e: () => alternarClasseDeBloco('recuo-a-esquerda'),
     d: () => alternarClasseDeBloco('recuo-a-direita'),
-    x: () => aplicarFonte('fonte-sans'),
-    s: () => aplicarFonte('fonte-serif'),
-    m: () => aplicarFonte('fonte-mono'),
+    x: () => aplicarFonte('fonte-inter'),
+    s: () => aplicarFonte('fonte-literata'),
+    m: () => aplicarFonte('fonte-ibm-plex-mono'),
     l: () => limparTodaEdicaoEditor(),
     q: () => inserirSeparadorDecorativoNoCursor(),
     i: () => inputImagemEditor?.click(),
@@ -253,12 +297,22 @@ function applyHistorySnapshot(snapshot) {
 }
 
 function undoEditor() {
+  if (historyCommitTimer) {
+    clearTimeout(historyCommitTimer);
+    historyCommitTimer = null;
+    commitHistory('before-undo');
+  }
   if (historyIndex <= 0) return;
   historyIndex -= 1;
   applyHistorySnapshot(historyStack[historyIndex]);
 }
 
 function redoEditor() {
+  if (historyCommitTimer) {
+    clearTimeout(historyCommitTimer);
+    historyCommitTimer = null;
+    commitHistory('before-redo');
+  }
   if (historyIndex >= historyStack.length - 1) return;
   historyIndex += 1;
   applyHistorySnapshot(historyStack[historyIndex]);
@@ -342,10 +396,23 @@ function ensureEditorHasContent() {
   }
 }
 
-function getBlock(node) {
+function getBlock(node, offset = 0) {
   if (!node || !editor) return null;
-  if (node === editor) return editor.querySelector(SELECTOR_BLOCOS);
+  if (node === editor) {
+    // Um Range ancorado no contenteditable aponta para um intervalo entre
+    // filhos. Nunca presumir o primeiro parágrafo: isso teleportava o cursor.
+    const children = editor.childNodes;
+    const index = Math.max(0, Math.min(offset, children.length));
+    const candidate = children[index] || children[index - 1];
+    if (candidate?.nodeType === Node.ELEMENT_NODE) {
+      return candidate.matches?.(SELECTOR_BLOCOS) ? candidate : candidate.querySelector?.(SELECTOR_BLOCOS);
+    }
+    return null;
+  }
   if (node.nodeType === Node.TEXT_NODE) return node.parentElement?.closest(SELECTOR_BLOCOS) || null;
+  if (node.nodeType === Node.ELEMENT_NODE && node.matches?.('ul,ol')) {
+    return node.children[offset] || node.children[offset - 1] || null;
+  }
   return node.closest?.(SELECTOR_BLOCOS) || null;
 }
 
@@ -353,7 +420,7 @@ function getSelectedBlocks() {
   const range = getCurrentRange() || ultimoRangeEditor;
   if (!range || !editor) return [];
   if (range.collapsed) {
-    const block = getBlock(range.startContainer);
+    const block = getBlock(range.startContainer, range.startOffset);
     return block ? [block] : [];
   }
   const blocks = Array.from(editor.querySelectorAll(SELECTOR_BLOCOS)).filter((block) => range.intersectsNode(block));
@@ -414,9 +481,10 @@ function createRangeFromTextOffsets(block, startOffset, endOffset = startOffset)
     current = walker.nextNode();
   }
   if (!startNode) {
-    if (!block.lastChild) block.appendChild(document.createElement('br'));
+    // Parágrafos com <br> não têm nós TEXT; selecionar o início real sem
+    // introduzir nós novos durante a restauração do histórico.
     range.selectNodeContents(block);
-    range.collapse(false);
+    range.collapse(startOffset <= 0);
     return range;
   }
   if (!endNode) {
@@ -431,8 +499,8 @@ function createRangeFromTextOffsets(block, startOffset, endOffset = startOffset)
 function serializeLogicalSelection() {
   const range = getCurrentRange() || ultimoRangeEditor;
   if (!range) return null;
-  const startBlock = getBlock(range.startContainer);
-  const endBlock = getBlock(range.endContainer);
+  const startBlock = getBlock(range.startContainer, range.startOffset);
+  const endBlock = getBlock(range.endContainer, range.endOffset);
   if (!startBlock || !endBlock) return null;
   return {
     startBlockIndex: getBlockIndex(startBlock),
@@ -474,7 +542,7 @@ function getDocumentModel() {
 }
 
 function getInlineStateFromNode(node) {
-  const state = { bold: false, italic: false, underline: false, font: null };
+  const state = { bold: false, italic: false, underline: false, font: null, size: null };
   let current = node?.nodeType === Node.TEXT_NODE ? node.parentElement : node;
   while (current && current !== editor) {
     const tag = current.tagName;
@@ -483,6 +551,8 @@ function getInlineStateFromNode(node) {
     if (tag === 'U') state.underline = true;
     const fontClass = CLASSES_FONTE.find((cls) => current.classList?.contains(cls));
     if (!state.font && fontClass) state.font = fontClass;
+    const sizeClass = [...(current.classList || [])].find((cls) => tipografiaEditor?.isSize(cls));
+    if (!state.size && sizeClass) state.size = sizeClass;
     current = current.parentElement;
   }
   return state;
@@ -517,7 +587,7 @@ function getIntersectingTextNodes(range) {
 }
 
 function getRangeInlineState(range) {
-  if (!range) return { bold: false, italic: false, underline: false, font: null };
+  if (!range) return { bold: false, italic: false, underline: false, font: null, size: null };
   if (range.collapsed) return getInlineStateFromNode(range.startContainer);
 
   const textNodes = getIntersectingTextNodes(range);
@@ -525,22 +595,36 @@ function getRangeInlineState(range) {
 
   const states = textNodes.map(getInlineStateFromNode);
   const font = states.every((state) => state.font === states[0].font) ? states[0].font : null;
+  const size = states.every((state) => state.size === states[0].size) ? states[0].size : null;
   return {
     bold: states.every((state) => state.bold),
     italic: states.every((state) => state.italic),
     underline: states.every((state) => state.underline),
     font,
+    size,
   };
 }
 
 function syncTypingStateFromCaret() {
   const range = getCurrentRange();
   if (!range || !range.collapsed) return;
+  if (tamanhoPendenteNoCaret && (
+      !tamanhoPendenteNoCaret.startContainer?.isConnected ||
+      range.compareBoundaryPoints(Range.START_TO_START, tamanhoPendenteNoCaret) !== 0)) {
+    tamanhoPendenteNoCaret = null;
+    tamanhoDefinidoPeloUsuario = false;
+  }
   const state = getInlineStateFromNode(range.startContainer);
   typingState.bold = state.bold;
   typingState.italic = state.italic;
   typingState.underline = state.underline;
-  typingState.font = state.font;
+  // Respeita a preferência persistente quando há escolha explícita.
+  // Sem escolha manual, preserva a fonte existente no texto/HTML legado.
+  typingState.font = fonteDefinidaPeloUsuario
+    ? (fontePreferidaEditor === FONTE_PADRAO_EDITOR ? null : fontePreferidaEditor)
+    : state.font;
+  typingState.size = tamanhoPendenteNoCaret
+    ? tipografiaEditor?.sizeClass(tamanhoPreferidoEditor) : state.size;
 }
 
 function normalizeInline(root = editor) {
@@ -559,19 +643,20 @@ function normalizeInline(root = editor) {
 
     if (el.matches('b')) {
       const strong = document.createElement('strong');
-      strong.innerHTML = el.innerHTML;
+      while (el.firstChild) strong.appendChild(el.firstChild);
       el.replaceWith(strong);
       el = strong;
     }
     if (el.matches('i')) {
       const em = document.createElement('em');
-      em.innerHTML = el.innerHTML;
+      while (el.firstChild) em.appendChild(el.firstChild);
       el.replaceWith(em);
       el = em;
     }
     if (el.matches('span.editor-formatacao')) {
       const classes = Array.from(el.classList);
       const fontClass = classes.find((cls) => CLASSES_FONTE.includes(cls));
+      const sizeClass = classes.find((cls) => tipografiaEditor?.isSize(cls));
       const parentBlock = getBlock(el);
       const blockClasses = classes.filter((cls) => CLASSES_ALINHAMENTO.includes(cls) || CLASSES_RECUO.includes(cls));
       if (parentBlock && blockClasses.length) {
@@ -579,8 +664,8 @@ function normalizeInline(root = editor) {
           if (blockClasses.includes(cls)) parentBlock.classList.add(cls);
         });
       }
-      if (fontClass) {
-        el.className = fontClass;
+      if (fontClass || sizeClass) {
+        el.className = [fontClass, sizeClass].filter(Boolean).join(' ');
       } else {
         while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
         el.remove();
@@ -594,10 +679,17 @@ function normalizeInline(root = editor) {
       return;
     }
 
-    if (el.matches(INLINE_FONT_SELECTOR)) {
+    if (el.matches(INLINE_FONT_SELECTOR) || [...el.classList].some((cls) => tipografiaEditor?.isSize(cls))) {
       CLASSES_FONTE.forEach((cls) => {
         if (cls !== Array.from(el.classList).find((item) => CLASSES_FONTE.includes(item))) el.classList.remove(cls);
       });
+      let firstSize = null;
+      for (const cls of [...el.classList]) {
+        if (tipografiaEditor?.isSize(cls)) {
+          if (!firstSize) firstSize = cls;
+          else el.classList.remove(cls);
+        }
+      }
       if (!el.textContent && !el.querySelector('img,br')) {
         el.remove();
         return;
@@ -605,15 +697,17 @@ function normalizeInline(root = editor) {
     }
 
     const tag = el.tagName;
-    const isMergeable = tag === 'STRONG' || tag === 'EM' || tag === 'U' || el.matches(INLINE_FONT_SELECTOR);
+    const isStyleSpan = tag === 'SPAN' && (el.matches(INLINE_FONT_SELECTOR) || [...el.classList].some((cls) => tipografiaEditor?.isSize(cls)));
+    const isMergeable = tag === 'STRONG' || tag === 'EM' || tag === 'U' || isStyleSpan;
     if (!isMergeable || !el.parentNode) return;
 
     let next = el.nextSibling;
     while (next && next.nodeType === Node.TEXT_NODE && !next.textContent.length) next = next.nextSibling;
-    const sameFont = el.matches(INLINE_FONT_SELECTOR)
-      ? (next instanceof HTMLElement && next.tagName === 'SPAN' && CLASSES_FONTE.find((c) => el.classList.contains(c)) === CLASSES_FONTE.find((c) => next.classList.contains(c)))
-      : false;
-    const sameTag = !el.matches(INLINE_FONT_SELECTOR) && next instanceof HTMLElement && next.tagName === tag;
+    // Tamanho e família são independentes. Nunca unir spans de tamanhos
+    // distintos apenas por compartilharem a mesma família.
+    const sameFont = isStyleSpan && next instanceof HTMLElement && next.tagName === 'SPAN'
+      && el.className === next.className && el.getAttribute('style') === next.getAttribute('style');
+    const sameTag = !isStyleSpan && next instanceof HTMLElement && next.tagName === tag;
     if (sameTag || sameFont) {
       while (next.firstChild) el.appendChild(next.firstChild);
       next.remove();
@@ -741,9 +835,9 @@ function withSelectionMarkers(callback) {
 
 function buildInlineWrapperChain(text) {
   let node = document.createTextNode(text);
-  if (typingState.font) {
+  if (typingState.font || typingState.size) {
     const span = document.createElement('span');
-    span.className = typingState.font;
+    span.className = [typingState.font, typingState.size].filter(Boolean).join(' ');
     span.appendChild(node);
     node = span;
   }
@@ -765,24 +859,70 @@ function buildInlineWrapperChain(text) {
   return node;
 }
 
+function matchesTypingStyle(node) {
+  if (!node || node.nodeType !== Node.TEXT_NODE || !editor.contains(node)) return false;
+  const state = getInlineStateFromNode(node);
+  return state.bold === typingState.bold && state.italic === typingState.italic &&
+    state.underline === typingState.underline && (state.font || null) === (typingState.font || null)
+    && (state.size || null) === (typingState.size || null);
+}
+
 function insertStyledText(text) {
   const range = getCurrentRange() || (restoreSavedRange() ? getCurrentRange() : null);
-  if (!range) return;
-  range.deleteContents();
-  const node = buildInlineWrapperChain(text);
-  range.insertNode(node);
-  const sel = window.getSelection();
+  if (!range || !text) return;
+  if (!range.collapsed) { range.deleteContents(); range.collapse(true); }
+
+  // Reutiliza o nó TEXT do estilo atual em vez de criar um <span> para
+  // cada tecla. Mantém a composição do texto e evita DOM gigantesco.
+  let target = null;
+  let at = 0;
+  const container = range.startContainer;
+  if (container.nodeType === Node.TEXT_NODE && matchesTypingStyle(container)) {
+    target = container;
+    at = range.startOffset;
+  } else if (container.nodeType === Node.ELEMENT_NODE) {
+    const children = container.childNodes;
+    const before = children[range.startOffset - 1];
+    const after = children[range.startOffset];
+    const lastText = (node) => {
+      while (node?.lastChild) node = node.lastChild;
+      return node?.nodeType === Node.TEXT_NODE ? node : null;
+    };
+    const firstText = (node) => {
+      while (node?.firstChild) node = node.firstChild;
+      return node?.nodeType === Node.TEXT_NODE ? node : null;
+    };
+    const previous = lastText(before);
+    const next = firstText(after);
+    if (matchesTypingStyle(previous)) { target = previous; at = previous.length; }
+    else if (matchesTypingStyle(next)) { target = next; at = 0; }
+  }
+
   const newRange = document.createRange();
-  newRange.setStartAfter(node);
+  if (target) {
+    target.insertData(at, text);
+    newRange.setStart(target, at + text.length);
+  } else {
+    const node = buildInlineWrapperChain(text);
+    range.insertNode(node);
+    // O caret fica DENTRO da última folha de formatação, e não depois
+    // dela; assim negrito/itálico/fonte permanecem ativos na próxima tecla.
+    let textNode = node;
+    while (textNode?.firstChild) textNode = textNode.firstChild;
+    if (textNode?.nodeType === Node.TEXT_NODE) newRange.setStart(textNode, textNode.length);
+    else newRange.setStartAfter(node);
+  }
   newRange.collapse(true);
+  const sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(newRange);
-  if (!isEditorComposing && /\s/u.test(String(text || ''))) capitalizeFirstWordWhenCompleted(newRange);
-  normalizeBlocks();
+  if (!isEditorComposing && /\s/u.test(text)) capitalizeFirstWordWhenCompleted(newRange);
   saveCurrentRange();
   updateToolbarState();
   markEditorDirty();
   scheduleAutosave();
+  scheduleHistoryCommit('formatted-input');
+  maybeBookResourceAutocomplete();
 }
 
 function surroundMarkerContents(startMarker, endMarker, wrapperFactory) {
@@ -1039,7 +1179,7 @@ function capitalizeLeadingCharacterInBlock(block, restoreLogical = null) {
 
 function capitalizeFirstWordWhenCompleted(range = getCurrentRange()) {
   if (!range?.collapsed) return false;
-  const block = getBlock(range.startContainer);
+  const block = getBlock(range.startContainer, range.startOffset);
   if (!block || !['P', 'H1', 'H2', 'H3', 'LI', 'BLOCKQUOTE'].includes(block.tagName)) return false;
   const caretOffset = getTextOffsetWithin(range.startContainer, range.startOffset, block);
   const textBeforeCaret = String(block.textContent || '').slice(0, caretOffset);
@@ -1060,18 +1200,21 @@ function placeCaretAtEnd(node) {
 
 function mergeAdjacentBlocks(previousBlock, currentBlock) {
   if (!previousBlock || !currentBlock) return null;
-  const previousTextLength = String(previousBlock.innerText || previousBlock.textContent || '').length;
-  if (previousBlock.querySelector('br') && !previousBlock.textContent.trim()) previousBlock.innerHTML = '';
-  if (currentBlock.querySelector('br') && !currentBlock.textContent.trim()) {
-    currentBlock.remove();
-    return previousBlock;
-  }
-  while (currentBlock.firstChild) previousBlock.appendChild(currentBlock.firstChild);
+  // A posição de junção pertence ao bloco que continuará no DOM.
+  const boundaryOffset = String(previousBlock.textContent || '').length;
+  const currentIsEmpty = !currentBlock.textContent.trim() && !currentBlock.querySelector('img,hr');
   const listParent = currentBlock.parentElement;
+  if (!currentIsEmpty) {
+    // Só o <br> de um parágrafo realmente vazio pode ser descartado.
+    if (!previousBlock.textContent.trim() && !previousBlock.querySelector('img')) previousBlock.replaceChildren();
+    while (currentBlock.firstChild) previousBlock.appendChild(currentBlock.firstChild);
+  }
   currentBlock.remove();
   if (listParent?.matches('ul,ol') && !listParent.children.length) listParent.remove();
-  normalizeBlocks();
-  const range = createRangeFromTextOffsets(previousBlock, previousTextLength);
+  if (!previousBlock.childNodes.length) previousBlock.appendChild(document.createElement('br'));
+  // Sem reposicionar explicitamente o Range, Backspace repetido pode cair
+  // no começo do contenteditable (e getBlock(editor) escolhia o bloco 1).
+  const range = createRangeFromTextOffsets(previousBlock, boundaryOffset);
   const sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(range);
@@ -1082,7 +1225,7 @@ function mergeAdjacentBlocks(previousBlock, currentBlock) {
 function handleStructuralKeydown(event) {
   const range = getCurrentRange();
   if (!range?.collapsed) return false;
-  const block = getBlock(range.startContainer);
+  const block = getBlock(range.startContainer, range.startOffset);
   if (!block) return false;
 
   if (event.key === 'Enter' && block.tagName !== 'LI') {
@@ -1156,40 +1299,49 @@ function handleStructuralKeydown(event) {
 }
 
 function insertPlainTextAsSemanticBlocks(text) {
-  const normalized = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const paragraphs = normalized.split(/\n{2,}/).map((part) => part.split('\n').join(' '));
+  const paragraphs = String(text || '').replace(/\r\n?/g, '\n').split('\n');
   const range = getCurrentRange() || (restoreSavedRange() ? getCurrentRange() : null);
   if (!range) return;
   focusEditor();
-
-  if (!range.collapsed) {
-    range.deleteContents();
-    range.collapse(true);
+  if (!range.collapsed) { range.deleteContents(); range.collapse(true); }
+  const anchorBlock = getBlock(range.startContainer, range.startOffset);
+  if (!anchorBlock || anchorBlock.tagName === 'LI') {
+    insertStyledText(paragraphs.join(' '));
+    return;
+  }
+  if (paragraphs.length === 1) {
+    if (paragraphs[0]) insertStyledText(paragraphs[0]);
+    return;
   }
 
-  const anchorBlock = getBlock(range.startContainer) || createEmptyParagraph();
-  const blocks = paragraphs.length ? paragraphs : [''];
-  let insertionPoint = anchorBlock;
-
-  blocks.forEach((paragraph, index) => {
-    if (index === 0) {
-      if (paragraph) {
-        range.insertNode(buildInlineWrapperChain(paragraph));
-      } else {
-        range.insertNode(document.createElement('br'));
-      }
-      return;
-    }
-    const newBlock = document.createElement(anchorBlock.tagName.toLowerCase());
-    Array.from(anchorBlock.classList).forEach((cls) => newBlock.classList.add(cls));
-    if (paragraph) newBlock.appendChild(buildInlineWrapperChain(paragraph));
-    else newBlock.appendChild(document.createElement('br'));
-    insertNodeAfter(insertionPoint, newBlock);
-    insertionPoint = newBlock;
-  });
-
-  normalizeBlocks();
-  placeCaretAtEnd(insertionPoint);
+  // Separa o sufixo original ANTES da colagem: o texto depois do caret
+  // deve permanecer depois da última linha colada, sem inverter a ordem.
+  const tail = splitBlockAtRange(anchorBlock, range.cloneRange());
+  insertNodeAfter(anchorBlock, tail);
+  if (!anchorBlock.textContent.trim()) anchorBlock.replaceChildren();
+  if (paragraphs[0]) anchorBlock.appendChild(buildInlineWrapperChain(paragraphs[0]));
+  if (!anchorBlock.childNodes.length) anchorBlock.appendChild(document.createElement('br'));
+  let previous = anchorBlock;
+  for (let i = 1; i < paragraphs.length - 1; i += 1) {
+    const block = document.createElement(anchorBlock.tagName.toLowerCase());
+    Array.from(anchorBlock.attributes).forEach((attr) => { if (attr.name !== 'id') block.setAttribute(attr.name, attr.value); });
+    if (paragraphs[i]) block.appendChild(buildInlineWrapperChain(paragraphs[i]));
+    else block.appendChild(document.createElement('br'));
+    insertNodeAfter(previous, block);
+    previous = block;
+  }
+  const lastLine = paragraphs.at(-1);
+  let caretOffset = 0;
+  if (lastLine) {
+    if (!tail.textContent.trim()) tail.replaceChildren();
+    tail.insertBefore(buildInlineWrapperChain(lastLine), tail.firstChild);
+    caretOffset = lastLine.length;
+  }
+  const endRange = createRangeFromTextOffsets(tail, caretOffset);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(endRange);
+  saveCurrentRange();
   markEditorDirty();
   scheduleAutosave();
   scheduleHistoryCommit('paste');
@@ -1234,7 +1386,7 @@ function limparFormatacaoAtual() {
 
   if (range.collapsed) {
     resetTypingState();
-    const block = getBlock(range.startContainer);
+    const block = getBlock(range.startContainer, range.startOffset);
     if (block) {
       CLASSES_ALINHAMENTO.concat(CLASSES_RECUO).forEach((cls) => block.classList.remove(cls));
     }
@@ -1264,7 +1416,7 @@ function limparFormatacaoAtual() {
 function handleListKeydown(event) {
   const range = getCurrentRange();
   if (!range?.collapsed) return false;
-  const li = getBlock(range.startContainer);
+  const li = getBlock(range.startContainer, range.startOffset);
   if (!li || li.tagName !== 'LI' || li.parentElement?.tagName !== 'UL') return false;
 
   if (event.key === 'Enter') {
@@ -1312,6 +1464,35 @@ function alternarFormatacaoInline(comando) {
     return;
   }
 
+  // Uma seleção atravessando vários parágrafos não pode ser extraída
+  // inteira para um único <strong>/<em>/<u>: o resultado conteria <p>
+  // aninhados em elementos inline, HTML inválido e cursor imprevisível.
+  // O Chromium sabe aplicar a marcação separadamente em cada bloco.
+  const startBlock = getBlock(range.startContainer, range.startOffset);
+  const endBlock = getBlock(range.endContainer, range.endOffset);
+  if (startBlock && endBlock && startBlock !== endBlock) {
+    const logical = serializeLogicalSelection();
+    const nativeCommand = {bold: 'bold', italic: 'italic', underline: 'underline'}[key];
+    if (document.execCommand(nativeCommand, false, null)) {
+      // O comando nativo costuma criar <b>/<i>; padronizar como <strong>/<em>
+      // movendo nós reais (não innerHTML) para conservar o texto e os offsets.
+      const changedBlocks = getEditableBlocks().slice(logical?.startBlockIndex ?? 0,
+        (logical?.endBlockIndex ?? getEditableBlocks().length - 1) + 1);
+      changedBlocks.forEach((block) => block.querySelectorAll('b,i').forEach((oldNode) => {
+        const semantic = document.createElement(oldNode.tagName === 'B' ? 'strong' : 'em');
+        while (oldNode.firstChild) semantic.appendChild(oldNode.firstChild);
+        oldNode.replaceWith(semantic);
+      }));
+      if (logical) restoreLogicalSelection(logical);
+      saveCurrentRange();
+      updateToolbarState();
+      markEditorDirty();
+      scheduleAutosave();
+      scheduleHistoryCommit(`inline-${key}-multi-block`);
+    }
+    return;
+  }
+
   const state = getRangeInlineState(range);
   const isActive = Boolean(state[key]);
   withSelectionMarkers((startMarker, endMarker) => {
@@ -1333,31 +1514,104 @@ function alternarFormatacaoInline(comando) {
   });
 }
 
-function aplicarFonte(nomeClasse) {
-  const range = getCurrentRange() || (restoreSavedRange() ? getCurrentRange() : null);
-  if (!range) return;
-  focusEditor();
+/**
+ * Troca a fonte sem marcadores invisíveis. Aplica uma vez por bloco textual,
+ * inclusive em seleções parciais, com negrito/itálico e em múltiplas páginas.
+ * Não insere caracteres extras e nunca envolve um <p> com um <span>.
+ */
+function aplicarFonteEmSelecao(range, nomeClasse) {
+  if (!range || range.collapsed || !editor) return false;
+  const selection = serializeLogicalSelection();
+  if (!selection || selection.startBlockIndex < 0 || selection.endBlockIndex < 0) return false;
+  const blocos = getEditableBlocks();
+  const antes = editor.textContent;
+  let alterou = false;
 
-  if (range.collapsed) {
-    syncTypingStateFromCaret();
-    typingState.font = typingState.font === nomeClasse ? null : nomeClasse;
-    saveCurrentRange();
-    updateToolbarState();
-    scheduleHistoryCommit('delimiter');
-    return;
-  }
+  // A ordem reversa conserva limites de blocos e offsets existentes.
+  for (let i = selection.endBlockIndex; i >= selection.startBlockIndex; i -= 1) {
+    const bloco = blocos[i];
+    if (!bloco) continue;
+    const tamanho = String(bloco.textContent || '').length;
+    const inicio = i === selection.startBlockIndex ? selection.startTextOffset : 0;
+    const fim = i === selection.endBlockIndex ? selection.endTextOffset : tamanho;
+    if (fim <= inicio) continue;
+    const parte = createRangeFromTextOffsets(bloco, inicio, fim);
+    if (parte.collapsed) continue;
+    const fragmento = parte.extractContents();
+    if (!fragmento.textContent) {
+      parte.insertNode(fragmento);
+      continue;
+    }
 
-  const state = getRangeInlineState(range);
-  const isActive = state.font === nomeClasse;
-  withSelectionMarkers((startMarker, endMarker) => {
-    unwrapSelectionPrecisely(startMarker, endMarker, (node) => node instanceof HTMLElement && node.matches(INLINE_FONT_SELECTOR));
-    if (isActive) return;
-    surroundMarkerContents(startMarker, endMarker, () => {
-      const span = document.createElement('span');
-      span.className = nomeClasse;
-      return span;
+    // Classes antigas são removidas APENAS do fragmento selecionado.
+    // Negrito, itálico, sublinhado, hyperlinks e demais elementos são mantidos.
+    const spans = Array.from(fragmento.querySelectorAll('span')).reverse();
+    for (const span of spans) {
+      for (const cls of CLASSES_FONTE) span.classList.remove(cls);
+      if (!span.classList.length) span.removeAttribute('class');
+      if (!span.classList.length && !span.attributes.length) {
+        while (span.firstChild) span.parentNode.insertBefore(span.firstChild, span);
+        span.remove();
+      }
+    }
+
+    // A extração pode deixar recipientes de estilos sem texto.
+    // Removê-los evita nós mortos e interfere menos com o cursor.
+    bloco.querySelectorAll('strong,em,u,b,i').forEach((node) => {
+      if (!node.textContent && !node.querySelector('img,br')) node.remove();
     });
-  });
+    const novoSpan = document.createElement('span');
+    novoSpan.className = nomeClasse;
+    novoSpan.appendChild(fragmento);
+    parte.insertNode(novoSpan);
+    alterou = true;
+  }
+  if (!alterou) return false;
+  // Remove nós de texto vazios gerados pelo recorte, sem alterar o conteúdo.
+  blocos.forEach((bloco) => bloco.normalize());
+  normalizeBlocks();
+  restoreLogicalSelection(selection);
+  // Nunca permitir perda de caracteres durante uma formatação.
+  if (editor.textContent !== antes) {
+    console.warn('A formatação de fonte alterou o texto; verifique a seleção.');
+  }
+  saveCurrentRange();
+  markEditorDirty();
+  scheduleAutosave();
+  scheduleHistoryCommit('font-selection');
+  return true;
+}
+
+function aplicarFonte(nomeClasse) {
+  if (!CLASSES_FONTE.includes(nomeClasse)) return;
+  const range = getCurrentRange() || (restoreSavedRange() ? getCurrentRange() : null);
+  selecionarFontePreferida(nomeClasse);
+  if (!range) { updateToolbarState(); return; }
+  focusEditor();
+  // O seletor altera a preferência de digitação mesmo quando não há seleção.
+  // Em uma seleção não vazia, modifica somente os caracteres selecionados.
+  if (!range.collapsed) aplicarFonteEmSelecao(range, nomeClasse);
+  saveCurrentRange();
+  updateToolbarState();
+}
+
+
+function aplicarTamanhoFonte(tamanho) {
+  const cls = tipografiaEditor?.sizeClass(tamanho);
+  if (!cls) return;
+  const range = getCurrentRange() || (restoreSavedRange() ? getCurrentRange() : null);
+  selecionarTamanhoPreferido(tamanho);
+  if (!range) { updateToolbarState(); return; }
+  focusEditor();
+  if (!range.collapsed && tipografiaEditor.applyToSelection(editor, range, cls, tipografiaEditor.isSize)) {
+    tamanhoPendenteNoCaret = null;
+    saveCurrentRange();
+    markEditorDirty();
+    scheduleAutosave();
+    scheduleHistoryCommit('font-size-selection');
+  }
+  saveCurrentRange();
+  updateToolbarState();
 }
 
 function substituirTagDoBloco(bloco, novaTag) {
@@ -1472,7 +1726,7 @@ function insertHorizontalRuleAtRange(range) {
     range.deleteContents();
     range.collapse(true);
   }
-  const block = getBlock(range.startContainer);
+  const block = getBlock(range.startContainer, range.startOffset);
   const hr = document.createElement('hr');
   hr.className = 'editor-divider';
 
@@ -1606,7 +1860,7 @@ function inserirDelimitadorDecorativoNoCursorOuSelecao() {
 
 function limparInline(node) {
   if (!(node instanceof HTMLElement)) return;
-  const wrappers = node.querySelectorAll('strong,em,u,b,i,span.fonte-sans,span.fonte-serif,span.fonte-mono,span.editor-formatacao');
+  const wrappers = node.querySelectorAll(`strong,em,u,b,i,span.editor-formatacao,${INLINE_FONT_SELECTOR},span[class*="tamanho-fonte-"]`);
   Array.from(wrappers).reverse().forEach((wrapper) => {
     while (wrapper.firstChild) wrapper.parentNode.insertBefore(wrapper.firstChild, wrapper);
     wrapper.remove();
@@ -1649,7 +1903,7 @@ function insertImageFromFile(file) {
       return;
     }
 
-    let block = getBlock(range.startContainer);
+    let block = getBlock(range.startContainer, range.startOffset);
     let insertionReference = null;
     let trailingBlock = null;
     const localRange = range.cloneRange();
@@ -1701,7 +1955,7 @@ function updateToolbarState() {
   if (!editor) return;
   const range = getCurrentRange() || ultimoRangeEditor;
   const inlineState = range && range.collapsed ? typingState : getRangeInlineState(range);
-  const currentBlock = range ? getBlock(range.startContainer) : null;
+  const currentBlock = range ? getBlock(range.startContainer, range.startOffset) : null;
   const selectedBlocks = range ? getSelectedBlocks() : [];
 
   botoesComando.forEach((btn) => {
@@ -1733,12 +1987,41 @@ function updateToolbarState() {
     btn.classList.toggle('ativo', ativo);
     btn.setAttribute('aria-pressed', ativo ? 'true' : 'false');
   });
+  if (seletorFonteEditor) {
+    const fonteContextual = FONTES_EDITOR_LEGADAS[inlineState.font] || inlineState.font;
+    // Quando o usuário definiu uma fonte, mostrar essa escolha até uma nova
+    // alteração explícita. Antes disso, refletir texto legado, ou Arial.
+    const fonteExibida = fonteDefinidaPeloUsuario ? fontePreferidaEditor : (fonteContextual || FONTE_PADRAO_EDITOR);
+    seletorFonteEditor.value = CLASSES_FONTE.includes(fonteExibida) ? fonteExibida : FONTE_PADRAO_EDITOR;
+  }
+  if (seletorTamanhoFonteEditor && document.activeElement !== seletorTamanhoFonteEditor && tipografiaEditor) {
+    const tamanhos = range && !range.collapsed
+      ? tipografiaEditor.selectionValues(editor, range, 'size') : null;
+    if (tamanhos?.size > 1) {
+      // Como em Recursos: seleção mista não pode exibir só o primeiro tamanho.
+      let option = seletorTamanhoFonteEditor.querySelector('option[value=""]');
+      if (!option) {
+        option = document.createElement('option');
+        option.value = '';
+        option.disabled = true;
+        option.textContent = 'Vários tamanhos';
+        seletorTamanhoFonteEditor.prepend(option);
+      }
+      seletorTamanhoFonteEditor.value = '';
+    } else {
+      const pontos = tamanhos?.size === 1 ? [...tamanhos][0]
+        : (tamanhoPendenteNoCaret && range?.collapsed) ? tamanhoPreferidoEditor
+        : tipografiaEditor.nearestSizeInPoints(range?.startContainer || editor, editor);
+      if (tipografiaEditor.sizeClass(pontos)) seletorTamanhoFonteEditor.value = pontos;
+    }
+  }
 }
 
 function getHtmlEditorNormalizado() {
   if (!editor) return '<p><br></p>';
   if (!htmlCacheDirty) return htmlEditorCache;
-  normalizeBlocks();
+  // Capturar HTML não pode reestruturar o DOM ativo: autosave e histórico
+  // ocorrem enquanto o usuário digita e isso invalidava o caret/IME.
   htmlEditorCache = editor.innerHTML.trim() || '<p><br></p>';
   htmlCacheDirty = false;
   return htmlEditorCache;
@@ -1819,15 +2102,15 @@ function scheduleEnsureCaretVisible(force = false) {
   if (!editor) return;
   const range = getCurrentRange();
   if (!range || (!force && !range.collapsed)) return;
-  const marker = document.createElement('span');
-  marker.style.display = 'inline-block';
-  marker.style.width = '0';
-  marker.style.height = '1px';
-  const clone = range.cloneRange();
-  clone.collapse(true);
-  clone.insertNode(marker);
-  marker.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  marker.remove();
+  // Inserir um <span> temporário para medir o caret modificava a seleção
+  // em todo keyup e acionava novamente a paginação. Usar geometria nativa.
+  const rect = range.getClientRects()[0];
+  const block = getBlock(range.startContainer, range.startOffset);
+  if (!rect && !block) return;
+  const box = rect || block.getBoundingClientRect();
+  if (box.top < 0 || box.bottom > window.innerHeight) {
+    block?.scrollIntoView({block:'nearest', inline:'nearest'});
+  }
 }
 
 function handleToolbarAction(event) {
@@ -1872,27 +2155,16 @@ function handleFontAction(event) {
 }
 
 function handleBeforeInput(event) {
-  if (!editor) return;
+  if (!editor || isEditorComposing || event.isComposing) return;
   const range = getCurrentRange();
   if (!range) return;
-
-  if (event.inputType === 'insertParagraph') {
-    syncTypingStateFromCaret();
-    return;
-  }
-
-  if (event.inputType === 'insertFromPaste') {
-    event.preventDefault();
-    return;
-  }
-
-  const hasTypingStyle = Boolean(typingState.bold || typingState.italic || typingState.underline || typingState.font);
-  if (!hasTypingStyle) return;
-
-  if (event.inputType === 'insertText' && typeof event.data === 'string') {
+  // O evento paste já trata a transferência e o fallback nativo continua
+  // disponível para drag/drop e entradas sem clipboardData.
+  if (event.inputType === 'insertParagraph') return;
+  const hasTypingStyle = Boolean(typingState.bold || typingState.italic || typingState.underline || typingState.font || typingState.size);
+  if (hasTypingStyle && event.inputType === 'insertText' && typeof event.data === 'string') {
     event.preventDefault();
     insertStyledText(event.data);
-    return;
   }
 }
 
@@ -1905,12 +2177,19 @@ function handlePaste(event) {
 }
 
 function handleInput(event) {
-  if (!isEditorComposing && event?.inputType === 'insertText' && /\s/u.test(String(event.data || ''))) {
+  if (isEditorComposing) return;
+  if (event?.inputType === 'insertText' && /\s/u.test(String(event.data || ''))) {
     capitalizeFirstWordWhenCompleted();
   }
-  normalizeBlocks();
-  markEditorDirty();
+  // Normalizar a árvore inteira em CADA tecla transforma nós ativos e
+  // invalida ranges. Comandos estruturais e abertura fazem a normalização.
+  // Se o último conteúdo foi apagado, reinicia somente o bloco vazio.
+  if (!editor.children.length && !editor.textContent.trim()) {
+    ensureEditorHasContent();
+    placeCaretAtStart(editor.firstElementChild);
+  }
   saveCurrentRange();
+  markEditorDirty();
   updateToolbarState();
   scheduleAutosave();
   scheduleHistoryCommit('input');
@@ -1966,7 +2245,7 @@ function allBookResourceItems() {
 function getBookResourceQuery() {
   const range = getCurrentRange();
   if (!range?.collapsed) return null;
-  const block = getBlock(range.startContainer);
+  const block = getBlock(range.startContainer, range.startOffset);
   if (!block) return null;
   const textBefore = getTextUntilCaretInBlock(block, range);
   const match = String(textBefore || '').match(/[\p{L}\p{N}_'’.-]{2,}$/u);
@@ -1995,11 +2274,7 @@ function getSelectionCaretRectForBook() {
   clone.collapse(false);
   let rect = clone.getBoundingClientRect();
   if ((!rect || (!rect.width && !rect.height)) && range.startContainer) {
-    const marker = document.createElement('span');
-    marker.textContent = '\u200b';
-    clone.insertNode(marker);
-    rect = marker.getBoundingClientRect();
-    marker.remove();
+    rect = getBlock(range.startContainer, range.startOffset)?.getBoundingClientRect() || rect;
   }
   return rect && (rect.top || rect.bottom || rect.height || rect.width) ? rect : null;
 }
@@ -2476,6 +2751,66 @@ function initializeEditor() {
     btn.addEventListener('mousedown', preserveEditorSelectionOnPointerDown);
     btn.addEventListener('click', handleFontAction);
   });
+  // A seleção é capturada ANTES do foco sair do editor.
+  // Focar o <select> pode colapsar a seleção em certos WebViews/Chromium.
+  const guardarSelecaoDaFonte = () => {
+    const range = getCurrentRange();
+    if (range) {
+      selecaoAoAbrirFontes = range.cloneRange();
+      ultimoRangeEditor = range.cloneRange();
+    }
+  };
+  seletorFonteEditor?.addEventListener('pointerdown', guardarSelecaoDaFonte);
+  seletorFonteEditor?.addEventListener('focus', () => {
+    if (!selecaoAoAbrirFontes) guardarSelecaoDaFonte();
+  });
+  seletorFonteEditor?.addEventListener('change', () => {
+    const classe = seletorFonteEditor.value;
+    if (!CLASSES_FONTE.includes(classe)) return;
+    const range = selecaoAoAbrirFontes || ultimoRangeEditor || getCurrentRange();
+    selecaoAoAbrirFontes = null;
+    focusEditor();
+    if (range && editor.contains(range.startContainer) && editor.contains(range.endContainer)) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range.cloneRange());
+      ultimoRangeEditor = range.cloneRange();
+    } else if (!ensureEditorSelectionForAction()) {
+      ensureEditorHasContent();
+      placeCaretAtEnd(editor.lastElementChild || editor);
+    }
+    aplicarFonte(classe);
+  });
+  // Guarda seleção ao abrir o menu nativo: trocar o tamanho não deve perder
+  // trecho selecionado nem deslocar o cursor para o primeiro parágrafo.
+  const guardarSelecaoDoTamanho = () => {
+    const range = getCurrentRange();
+    if (range) {
+      selecaoAoAbrirTamanhos = range.cloneRange();
+      ultimoRangeEditor = range.cloneRange();
+    }
+  };
+  seletorTamanhoFonteEditor?.addEventListener('pointerdown', guardarSelecaoDoTamanho);
+  seletorTamanhoFonteEditor?.addEventListener('focus', () => {
+    if (!selecaoAoAbrirTamanhos) guardarSelecaoDoTamanho();
+  });
+  seletorTamanhoFonteEditor?.addEventListener('change', () => {
+    const valor = seletorTamanhoFonteEditor.value;
+    if (!tipografiaEditor?.sizeClass(valor)) return;
+    const range = selecaoAoAbrirTamanhos || ultimoRangeEditor || getCurrentRange();
+    selecaoAoAbrirTamanhos = null;
+    focusEditor();
+    if (range && editor.contains(range.startContainer) && editor.contains(range.endContainer)) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range.cloneRange());
+      ultimoRangeEditor = range.cloneRange();
+    } else if (!ensureEditorSelectionForAction()) {
+      ensureEditorHasContent();
+      placeCaretAtEnd(editor.lastElementChild || editor);
+    }
+    aplicarTamanhoFonte(valor);
+  });
   btnUndoEditor?.addEventListener('click', undoEditor);
   btnRedoEditor?.addEventListener('click', redoEditor);
 
@@ -2504,6 +2839,7 @@ function initializeEditor() {
   editor.addEventListener('keyup', () => { handleSelectionMutation(); scheduleEnsureCaretVisible(true); maybeBookResourceAutocomplete(); });
   editor.addEventListener('mouseup', handleSelectionMutation);
   editor.addEventListener('keydown', (event) => {
+    if (isEditorComposing || event.isComposing) return;
     if (handleBookAutocompleteKeydown(event)) return;
     const isMod = event.ctrlKey || event.metaKey;
     if (isMod && !event.altKey && String(event.key).toLowerCase() === 'z') {

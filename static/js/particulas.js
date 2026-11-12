@@ -9,9 +9,9 @@
 
   const DEFAULTS = {
     canvasId: 'bg-canvas',
-    particleCount: 80,
-    maxDist: 160,
-    baseSpeed: 60,
+    particleCount: 44,
+    maxDist: 145,
+    baseSpeed: 34,
     backgroundColor: 'rgba(18,20,23,1)',
     // rampa de cores (RGB arrays). Ordem: very far (white), blue, yellow, pink (near)
     stops: [
@@ -24,6 +24,8 @@
     particleAlpha: 1.0
   };
 
+  let intensity = Math.max(1, Math.min(5, Number(window.APP_CONFIG?.intensidadeParticulas) || 1));
+
   let canvas = null;
   let ctx = null;
   let DPR = 1;
@@ -32,6 +34,8 @@
   let particles = [];
   let rafId = null;
   let last = 0;
+  let lastPaint = 0;
+  const FRAME_INTERVAL = 1000 / 30;
   let _paused = true;
   let mouse = { x: 0, y: 0, active: false };
   let inited = false;
@@ -56,8 +60,8 @@
     }
     draw(ctxLocal) {
       ctxLocal.beginPath();
-      ctxLocal.fillStyle = rgbaString(this._colorCache, DEFAULTS.particleAlpha);
-      ctxLocal.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctxLocal.fillStyle = rgbaString(this._colorCache, Math.min(1, DEFAULTS.particleAlpha));
+      ctxLocal.arc(this.x, this.y, this.r * (1 + (intensity - 1) * 0.20), 0, Math.PI * 2);
       ctxLocal.fill();
     }
   }
@@ -113,7 +117,7 @@
   /** Resizecanvas. Usada pelo fluxo principal da aplicação. */
   function resizeCanvas() {
     if (!canvas || !ctx) return;
-    DPR = Math.max(1, window.devicePixelRatio || 1);
+    DPR = Math.min(1.5, Math.max(1, window.devicePixelRatio || 1));
     WIDTH = window.innerWidth;
     HEIGHT = window.innerHeight;
     canvas.style.width = WIDTH + 'px';
@@ -166,6 +170,8 @@
     try {
       rafId = requestAnimationFrame(frame);
       if (_paused) return;
+      if (now - lastPaint < FRAME_INTERVAL) return;
+      lastPaint = now;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
 
@@ -190,10 +196,10 @@
           if (d2 <= maxd2) {
             const t = clamp(1 - (d2 / maxd2), 0, 1); // 0 = longe, 1 = perto
             const rgb = colorForT(t);
-            const alpha = Math.max(0.06, DEFAULTS.lineAlphaMult * t);
+            const alpha = Math.min(1, Math.max(0.06, DEFAULTS.lineAlphaMult * t) * (1 + (intensity - 1) * 0.30));
             ctx.beginPath();
             ctx.strokeStyle = rgbaString(rgb, alpha);
-            ctx.lineWidth = 0.8 * (0.4 + 0.6 * t);
+            ctx.lineWidth = 0.8 * (0.4 + 0.6 * t) * (1 + (intensity - 1) * 0.16);
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
             ctx.stroke();
@@ -208,10 +214,10 @@
           if (d2 <= maxd2) {
             const t = clamp(1 - (d2 / maxd2), 0, 1);
             const rgb = colorForT(t);
-            const alpha = Math.max(0.06, DEFAULTS.lineAlphaMult * t);
+            const alpha = Math.min(1, Math.max(0.06, DEFAULTS.lineAlphaMult * t) * (1 + (intensity - 1) * 0.30));
             ctx.beginPath();
             ctx.strokeStyle = rgbaString(rgb, alpha);
-            ctx.lineWidth = 0.9 * (0.4 + 0.6 * t);
+            ctx.lineWidth = 0.9 * (0.4 + 0.6 * t) * (1 + (intensity - 1) * 0.16);
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(mouse.x, mouse.y);
             ctx.stroke();
@@ -236,12 +242,17 @@
   /** Pointermovehandler. Usada pelo fluxo principal da aplicação. */
   function pointerMoveHandler(e) { mouse.x = e.clientX; mouse.y = e.clientY; mouse.active = true; }
   function pointerLeaveHandler() { mouse.active = false; }
+  function visibilityHandler() {
+    if (document.hidden) { stopLoop(); return; }
+    if (!_paused) { last = performance.now(); lastPaint = 0; startLoop(); }
+  }
 
   /** Attachlisteners. Usada pelo fluxo principal da aplicação. */
   function attachListeners() {
     window.addEventListener('resize', resizeCanvas, { passive: true });
     window.addEventListener('pointermove', pointerMoveHandler, { passive: true });
     window.addEventListener('pointerleave', pointerLeaveHandler, { passive: true });
+    document.addEventListener('visibilitychange', visibilityHandler, { passive: true });
   }
 
   /** Detachlisteners. Usada pelo fluxo principal da aplicação. */
@@ -250,6 +261,7 @@
       window.removeEventListener('resize', resizeCanvas);
       window.removeEventListener('pointermove', pointerMoveHandler);
       window.removeEventListener('pointerleave', pointerLeaveHandler);
+      document.removeEventListener('visibilitychange', visibilityHandler);
     } catch (e) { /* noop */ }
   }
 
@@ -327,8 +339,20 @@
     inited = false;
   }
 
+  function setIntensity(value) {
+    const parsed = Number(value);
+    intensity = Number.isFinite(parsed) ? Math.max(1, Math.min(5, parsed)) : 1;
+    // O padrão .08 não muda no nível 1; os níveis superiores também
+    // ajustam a transparência do canvas para tornar a melhora perceptível.
+    document.documentElement.style.setProperty('--particle-canvas-opacity',
+      String(0.08 + (intensity - 1) * 0.075));
+    return intensity;
+  }
+  setIntensity(intensity);
+
   window.bgParticles = {
     init,
+    setIntensity,
     setPaused,
     isPaused,
     destroy
@@ -368,6 +392,10 @@
   function tryAutoInit() {
     try {
       if (shouldDisableForCurrentPage()) {
+        applyDisabledState();
+        return;
+      }
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         applyDisabledState();
         return;
       }

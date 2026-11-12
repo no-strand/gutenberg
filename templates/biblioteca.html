@@ -6,7 +6,11 @@
 <section class="hero hero-compacto">
   <div class="hero-texto">
     <div class="hero-linha-topo">
-      <span class="pill">{{ t('library.hero_pill') }}</span>
+      <div class="hero-title-group">
+        <span class="pill">{{ t('library.hero_pill') }}</span>
+        <h1>{{ t('library.page_title') }}</h1>
+        <p>{{ t('library.workspace_desc') }}</p>
+      </div>
       <div class="hero-acoes">
         <a class="botao-secundario botao-com-icone" href="{{ url_for('pagina_configuracoes') }}"><img class="icone-img" src="{{ url_for('static', filename='img/configurar.png') }}" alt=""><span>{{ t('nav.settings') }}</span></a>
         <a class="botao-secundario botao-destaque-navegacao" href="{{ url_for('pagina_inicial') }}">{{ t('nav.editor') }}</a>
@@ -61,7 +65,7 @@
     <a class="link-card-livro" href="{{ url_for('abrir_livro_biblioteca', slug=livro.slug) }}">
       <div class="thumb-projeto thumb-livro {% if not livro.tem_capa %}thumb-vazia{% endif %}">
         {% if livro.tem_capa %}
-        <img class="imagem-card-projeto" src="{{ url_for('capa_livro_biblioteca', slug=livro.slug) }}" alt="{{ t('library.cover_of', title=livro.titulo) }}">
+        <img class="imagem-card-projeto" loading="lazy" decoding="async" src="{{ url_for('capa_livro_biblioteca', slug=livro.slug) }}" alt="{{ t('library.cover_of', title=livro.titulo) }}">
         {% else %}
         <div class="thumb-placeholder">{{ t('library.no_cover') }}</div>
         {% endif %}

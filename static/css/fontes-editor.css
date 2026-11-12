@@ -1,0 +1,146 @@
+/* Opções equivalentes às fontes do leitor. Fontes externas seguem com fallback local. */
+@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;700&family=Inter:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Literata:wght@400;700&family=Noto+Sans:wght@400;700&family=Noto+Serif:wght@400;700&family=Roboto:wght@400;700&family=Source+Code+Pro:wght@400;700&family=Source+Sans+3:wght@400;700&family=Source+Serif+4:wght@400;700&display=swap");
+.pagina-editor-app .painel-word #editorTexto span.fonte-atkinson-hyperlegible,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-atkinson-hyperlegible { font-family:'Atkinson Hyperlegible', Arial, sans-serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-inter,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-inter { font-family:Inter, Arial, sans-serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-source-sans-3,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-source-sans-3 { font-family:'Source Sans 3', Arial, sans-serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-noto-sans,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-noto-sans { font-family:'Noto Sans', Arial, sans-serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-ibm-plex-sans,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-ibm-plex-sans { font-family:'IBM Plex Sans', Arial, sans-serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-arial,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-arial { font-family:Arial, Helvetica, sans-serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-roboto,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-roboto { font-family:Roboto, Arial, sans-serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-literata,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-literata { font-family:Literata, Georgia, serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-source-serif-4,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-source-serif-4 { font-family:'Source Serif 4', Georgia, serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-noto-serif,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-noto-serif { font-family:'Noto Serif', Georgia, serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-georgia,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-georgia { font-family:Georgia, 'Times New Roman', serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-times-new-roman,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-times-new-roman { font-family:'Times New Roman', Times, serif!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-ibm-plex-mono,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-ibm-plex-mono { font-family:'IBM Plex Mono', Consolas, monospace!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-jetbrains-mono,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-jetbrains-mono { font-family:'JetBrains Mono', Consolas, monospace!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-source-code-pro,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-source-code-pro { font-family:'Source Code Pro', Consolas, monospace!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-consolas,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-consolas { font-family:Consolas, 'Courier New', monospace!important; }
+.pagina-editor-app .painel-word #editorTexto span.fonte-courier-new,
+.pagina-recursos-projeto-shell #editorInfoPagina span.fonte-courier-new { font-family:'Courier New', Courier, monospace!important; }
+
+.pagina-editor-app .barra-word .editor-font-picker {
+  display:inline-flex; align-items:center; gap:8px; flex:0 0 auto;
+  padding:0; margin:0; border:0; background:transparent;
+}
+.pagina-editor-app .barra-word .editor-font-picker-label {
+  color:#b6c4d8; font-size:12px; font-weight:700; letter-spacing:.015em;
+}
+.pagina-editor-app .barra-word select.editor-font-select {
+  width:190px; max-width:32vw; min-height:38px; flex:0 0 auto;
+  padding:7px 30px 7px 10px; border-radius:9px;
+  border:1px solid rgba(160,180,204,.3); background-color:#e7ebf1;
+  color:#182536; font-size:13px; font-weight:650;
+  cursor:pointer; outline:none;
+}
+.pagina-editor-app .barra-word select.editor-font-select:focus-visible {
+  border-color:#92b1ff;box-shadow:0 0 0 3px rgba(146,177,255,.21);
+}
+@media (max-width:740px) {
+  .pagina-editor-app .barra-word .editor-font-picker-label {display:none;}
+  .pagina-editor-app .barra-word select.editor-font-select {width:158px;max-width:56vw;}
+}
+
+/* Tipografia compartilhada EPUB / Informações. Pontos são preservados no HTML e na exportação. */
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-6pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-6pt {font-size:6pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-7pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-7pt {font-size:7pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-8pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-8pt {font-size:8pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-9pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-9pt {font-size:9pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-10pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-10pt {font-size:10pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-10-5pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-10-5pt {font-size:10.5pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-11pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-11pt {font-size:11pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-12pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-12pt {font-size:12pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-13pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-13pt {font-size:13pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-14pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-14pt {font-size:14pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-15pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-15pt {font-size:15pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-16pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-16pt {font-size:16pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-18pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-18pt {font-size:18pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-20pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-20pt {font-size:20pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-21pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-21pt {font-size:21pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-22pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-22pt {font-size:22pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-24pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-24pt {font-size:24pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-26pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-26pt {font-size:26pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-28pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-28pt {font-size:28pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-32pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-32pt {font-size:32pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-36pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-36pt {font-size:36pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-40pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-40pt {font-size:40pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-42pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-42pt {font-size:42pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-44pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-44pt {font-size:44pt!important;}
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-48pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-48pt {font-size:48pt!important;}
+
+/* Selects com a mesma linguagem visual da barra EPUB, inclusive em Recursos. */
+.pagina-editor-app .barra-word .editor-size-picker,
+.pagina-recursos-projeto-shell .info-format-toolbar :is(.editor-font-picker,.editor-size-picker) {
+  display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;
+  padding:0;margin:0;border:0;background:transparent;
+}
+.pagina-editor-app .barra-word .editor-size-picker-label,
+.pagina-recursos-projeto-shell .info-format-toolbar :is(.editor-font-picker-label,.editor-size-picker-label) {
+  color:#b6c4d8;font-size:12px;font-weight:700;letter-spacing:.015em;
+}
+.pagina-editor-app .barra-word select.editor-size-select,
+.pagina-recursos-projeto-shell .info-format-toolbar select.editor-size-select,
+.pagina-recursos-projeto-shell .info-format-toolbar select.editor-font-select {
+  box-sizing:border-box;min-height:38px;height:38px;flex:0 0 auto;
+  padding:7px 28px 7px 10px;border-radius:9px;
+  border:1px solid rgba(160,180,204,.3);background-color:#e7ebf1;
+  color:#182536;font-family:inherit;font-size:13px;font-weight:650;
+  cursor:pointer;outline:none;
+}
+.pagina-editor-app .barra-word select.editor-size-select,
+.pagina-recursos-projeto-shell .info-format-toolbar select.editor-size-select {width:92px;max-width:26vw;}
+.pagina-recursos-projeto-shell .info-format-toolbar select.editor-font-select {width:160px;max-width:36vw;}
+.pagina-editor-app .barra-word select.editor-size-select:focus-visible,
+.pagina-recursos-projeto-shell .info-format-toolbar :is(select.editor-font-select,select.editor-size-select):focus-visible {
+  border-color:#92b1ff;box-shadow:0 0 0 3px rgba(146,177,255,.21);
+}
+@media(max-width:740px){
+  .pagina-editor-app .barra-word .editor-size-picker-label,
+  .pagina-recursos-projeto-shell .info-format-toolbar :is(.editor-font-picker-label,.editor-size-picker-label) {display:none;}
+  .pagina-recursos-projeto-shell .info-format-toolbar select.editor-font-select {width:145px;max-width:58vw;}
+}
+
+/* Tamanho grande adicional, também suportado pelo exportador EPUB. */
+.pagina-editor-app .painel-word #editorTexto span.tamanho-fonte-60pt,
+.pagina-recursos-projeto-shell #editorInfoPagina span.tamanho-fonte-60pt {font-size:60pt!important;}

@@ -183,9 +183,9 @@ class RecursosProjetoFlaskTests(IsolatedProjectTestCase):
 
         resposta = self.client.get("/projetos/world/capitulos/1/editar")
         html = resposta.get_data(as_text=True)
-        self.assertIn("Project resources", html)
+        self.assertIn("Project outline", html)
         self.assertIn("Open panel", html)
-        self.assertIn("Resources", html)
+        self.assertIn("Outline", html)
 
     def test_documentacao_inclui_recursos_do_projeto_nos_dois_idiomas(self):
         raiz = utilidades.RAIZ_PROJETO
@@ -193,6 +193,6 @@ class RecursosProjetoFlaskTests(IsolatedProjectTestCase):
         readme = (raiz / "README.md").read_text(encoding="utf-8")
 
         self.assertIn("recursos-projeto", script)
-        self.assertIn("Project resources", script)
-        self.assertIn("Recursos do projeto", script)
-        self.assertIn("Painel Recursos do projeto", readme)
+        self.assertIn("Project outline", script)
+        self.assertIn("Rascunho do projeto", script)
+        self.assertIn("Painel Rascunho do projeto", readme)

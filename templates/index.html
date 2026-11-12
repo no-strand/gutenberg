@@ -5,7 +5,11 @@
 <section class="hero hero-compacto">
   <div class="hero-texto">
     <div class="hero-linha-topo">
-      <span class="pill">{{ t('index.hero_pill') }}</span>
+      <div class="hero-title-group">
+        <span class="pill">{{ t('index.hero_pill') }}</span>
+        <h1>{{ t('index.workspace_title') }}</h1>
+        <p>{{ t('index.workspace_desc') }}</p>
+      </div>
       <div class="hero-acoes">
         <div class="alternador-visualizacao" aria-label="{{ t('index.toggle_projects_view') }}" role="group">
           <button type="button" class="botao-visualizacao" data-modo-visualizacao="grid" aria-label="{{ t('index.view_grid') }}" title="{{ t('index.view_grid') }}"><img class="icone-visualizacao" src="{{ url_for('static', filename='img/grid.png') }}" alt=""></button>

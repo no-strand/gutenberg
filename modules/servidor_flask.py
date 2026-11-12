@@ -20,6 +20,7 @@ import requests
 from flask import Flask, abort, g, jsonify, redirect, render_template, request, send_file, send_from_directory, url_for
 from werkzeug.exceptions import HTTPException
 
+from .fontes_editor import CLASSES_FONTES_EDITOR
 from .exportador_documentos import (
     exportar_projeto_docx,
     exportar_estatisticas_epub_pdf,
@@ -1489,6 +1490,7 @@ def criar_app() -> Flask:
             "caminho_biblioteca": request.form.get("caminho_biblioteca", config_atual.get("caminho_biblioteca", "")).strip() or str(config_atual.get("caminho_biblioteca", "")),
             "modo_browser": request.form.get("modo_browser") == "on",
             "efeito_editor": request.form.get("efeito_editor") == "on",
+            "intensidade_particulas": max(1, min(5, int(request.form.get("intensidade_particulas") or 1))),
             "gemini_api_key": request.form.get("gemini_api_key", config_atual.get("gemini_api_key", "")).strip(),
             "idioma_app": normalizar_idioma_app(request.form.get("idioma_app", config_atual.get("idioma_app", "pt_BR"))),
             "idioma_tts": "en_US" if str(request.form.get("idioma_tts", config_atual.get("idioma_tts", "pt_BR"))).strip().lower().replace("-", "_") == "en_us" else "pt_BR",
@@ -1759,7 +1761,7 @@ def criar_app() -> Flask:
                         continue
                     for attr in list(tag.attrs):
                         if tag.name == "span" and attr == "class":
-                            classes = [c for c in (tag.get("class") or []) if c in {"fonte-sans", "fonte-serif", "fonte-mono"}]
+                            classes = [c for c in (tag.get("class") or []) if c in CLASSES_FONTES_EDITOR]
                             if classes:
                                 tag["class"] = classes
                             else:

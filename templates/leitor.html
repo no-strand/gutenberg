@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block body_class %}pagina-leitor-app{% endblock %}
 {% block titulo %}{{ t('reader.page_title') }} - {{ capitulo.titulo }}{% endblock %}
 {% block classe_pagina %}pagina-leitor{% endblock %}
 {% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/leitor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/biblioteca.css') }}">{% endblock %}
@@ -99,7 +100,7 @@
   };
 </script>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/leitor.js') }}"></script><script src="{{ url_for('static', filename='js/leitor_tts.js') }}?v=1.0.4-hw-rua-4"></script><script src="{{ url_for('static', filename='js/leitor_dicionario.js') }}"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/leitor.js') }}"></script><script src="{{ url_for('static', filename='js/leitor_tts.js') }}?v=1.0.5-hw-rua-4"></script><script src="{{ url_for('static', filename='js/leitor_dicionario.js') }}"></script>{% endblock %}
 
 {% block skeleton %}
 <section class="skeleton-topo"><section class="sk-leitor-topo"><div class="sk-leitor-header"><div class="sk-botao sk-bloco"></div><div class="sk-titulo curto sk-bloco"></div><div class="sk-acoes"><div class="sk-botao sk-bloco"></div><div class="sk-botao sk-bloco"></div><div class="sk-botao sk-bloco"></div></div></div></section><div class="sk-frame-estendido sk-bloco"></div></section>

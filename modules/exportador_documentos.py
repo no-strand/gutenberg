@@ -29,6 +29,7 @@ from reportlab.lib.units import cm, inch
 from reportlab.platypus import Image as RLImage
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from .fontes_editor import FONTES_DOCX_EDITOR, FONTES_CATEGORIAS_EDITOR
 from .manipulador_capitulos import ler_capitulo
 from .manipulador_roteiros import ler_roteiro
 from .manipulador_projetos import caminho_capa_projeto, obter_pasta_projeto, obter_projeto
@@ -45,6 +46,7 @@ FONTES_DOCX = {
     "fonte-serif": "Times New Roman",
     "fonte-sans": "Arial",
     "fonte-mono": "Consolas",
+    **FONTES_DOCX_EDITOR,
 }
 
 FONTES_RL = {
@@ -61,6 +63,12 @@ FONTES_RL = {
     ("fonte-mono", False, True): "Courier-Oblique",
     ("fonte-mono", True, True): "Courier-BoldOblique",
 }
+
+# PDF usa substitutos nativos por categoria quando a fonte não está embutida.
+for nome, categoria in FONTES_CATEGORIAS_EDITOR.items():
+    for negrito in (False, True):
+        for italico in (False, True):
+            FONTES_RL[(nome, negrito, italico)] = FONTES_RL[(categoria, negrito, italico)]
 
 # Padrão profissional de roteiro: papel Letter, Courier 12 pt, margens
 # 1,5" à esquerda e 1" nas demais bordas. Os recuos abaixo são
@@ -324,7 +332,7 @@ def _classe_fonte(classes: set[str]) -> str:
         Mantém a lógica centralizada e evita que detalhes de implementação vazem
         para quem apenas precisa acionar este comportamento.
     """
-    for nome in ["fonte-sans", "fonte-serif", "fonte-mono"]:
+    for nome in FONTES_DOCX:
         if nome in classes:
             return nome
     return "fonte-serif"
@@ -622,7 +630,7 @@ def _docx_adicionar_inline(paragrafo, no, estado: dict, largura_max_pol: float):
         prox["italic"] = True
     if nome == "u":
         prox["underline"] = True
-    for fonte in ["fonte-sans", "fonte-serif", "fonte-mono"]:
+    for fonte in FONTES_DOCX:
         if fonte in classes:
             prox["font_class"] = fonte
 
@@ -943,7 +951,7 @@ def _inline_para_pdf(no, estado: dict) -> str:
         prox["italic"] = True
     if nome == "u":
         prox["underline"] = True
-    for fonte in ["fonte-sans", "fonte-serif", "fonte-mono"]:
+    for fonte in FONTES_DOCX:
         if fonte in classes:
             prox["font_class"] = fonte
 

@@ -173,6 +173,8 @@ def criar_projeto(titulo: str, descricao: str = "", autor: str = "", tags: list[
     """
     garantir_pasta_projetos()
     safe = nome_seguro(titulo)
+    if not str(titulo or '').strip() or not safe:
+        raise ValueError('Informe um título válido para o projeto.')
     pasta = PASTA_PROJETOS / safe
     if pasta.exists():
         raise FileExistsError(t("backend.project_exists"))
@@ -313,7 +315,7 @@ def obter_projeto(slug: str) -> dict[str, Any]:
         Mantém a lógica centralizada e evita que detalhes de implementação vazem
         para quem apenas precisa acionar este comportamento.
     """
-    pasta = PASTA_PROJETOS / slug
+    pasta = obter_pasta_projeto(slug)
     projeto = ler_json(pasta / "projeto.json", {})
     if not projeto:
         raise FileNotFoundError(t("backend.project_not_found"))
@@ -353,8 +355,9 @@ def obter_pasta_projeto(slug: str) -> Path:
         Mantém a lógica centralizada e evita que detalhes de implementação vazem
         para quem apenas precisa acionar este comportamento.
     """
-    pasta = PASTA_PROJETOS / slug
-    if not pasta.exists():
+    base = PASTA_PROJETOS.resolve()
+    pasta = (base / str(slug or '')).resolve()
+    if pasta == base or not pasta.is_relative_to(base) or not pasta.is_dir():
         raise FileNotFoundError(t("backend.project_not_found"))
     return pasta
 

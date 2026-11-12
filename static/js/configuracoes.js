@@ -487,3 +487,17 @@ document.addEventListener('DOMContentLoaded', atualizarPreview);
   });
   buscarStatus();
 })();
+
+// A intensidade é pré-visualizada sem recarregar a página; persiste no envio do formulário.
+(function configurarIntensidadeParticulas(){
+  const slider = document.getElementById('cfgIntensidadeParticulas');
+  if (!slider) return;
+  const label = document.querySelector('[data-valor="cfgIntensidadeParticulas"]');
+  const atualizar = () => {
+    const valor = Math.max(1, Math.min(5, Number(slider.value) || 1));
+    if (label) label.textContent = `${valor}/5`;
+    window.bgParticles?.setIntensity?.(valor);
+  };
+  slider.addEventListener('input', atualizar);
+  atualizar();
+})();
