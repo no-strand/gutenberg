@@ -858,3 +858,31 @@
   line-height:1.5;
   margin:0;
 }
+
+/* Aviso de recuperação local de Informações — não altera as folhas. */
+.pagina-recursos-projeto-shell .info-recuperacao-aviso {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+  margin: 0 0 14px;
+  border: 1px solid var(--borda, #c9d0d8);
+  border-radius: 12px;
+  background: var(--surface, #f8fafc);
+  color: var(--texto, #273241);
+  box-shadow: 0 2px 12px rgba(16, 31, 48, .08);
+}
+.pagina-recursos-projeto-shell .info-recuperacao-aviso p { margin: 0; }
+.pagina-recursos-projeto-shell .info-recuperacao-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.pagina-recursos-projeto-shell .info-recuperacao-acoes button {
+  padding: 8px 13px;
+  border-radius: 8px;
+  border: 1px solid #a8b8c7;
+  background: rgba(132, 152, 176, .10);
+  color: inherit;
+  cursor: pointer;
+}
+.pagina-recursos-projeto-shell .info-recuperacao-acoes button:first-child {
+  border-color: #5a8ea1;
+  background: rgba(66, 134, 162, .12);
+}

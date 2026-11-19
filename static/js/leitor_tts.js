@@ -729,8 +729,12 @@ function limparTextoParaTts(texto) {
     return indiceVisivel;
   }
 
+  let trechoDestacado = null;
   function limparDestaque() {
-    trechos.forEach((el) => el.classList.remove('tts-atual'));
+    // Só um trecho recebe a classe de reprodução por vez. Não precisamos
+    // percorrer milhares de trechos a cada mudança do áudio.
+    trechoDestacado?.classList.remove('tts-atual');
+    trechoDestacado = null;
   }
 
   function atualizarBotao() {
@@ -944,6 +948,7 @@ function limparTextoParaTts(texto) {
 
     const trecho = trechos[indice];
     trecho.classList.add('tts-atual');
+    trechoDestacado = trecho;
     trecho.scrollIntoView({behavior: 'smooth', block: 'center'});
 
     preparando = true;
@@ -1209,6 +1214,7 @@ function limparTextoParaTts(texto) {
   if (frame) {
     frame.addEventListener('load', () => {
       enviarLogTts('iframe_load_reset', {tokenAtual: tokenExecucao});
+      limparDestaque();
       pararAudio();
       tokenExecucao++;
       liberarCacheAudio();

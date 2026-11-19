@@ -82,7 +82,7 @@
 </div>
 
 <section class="area-leitura area-leitura-epub area-leitura-estendida {{ config_global.leitor_tema or 'light' }} modo-ampliado" id="areaLeitura">
-  <iframe id="epubFrame" data-posicao-inicial="{{ posicao_inicial or 0 }}" class="epub-frame" src="{{ conteudo_url }}" title="{{ capitulo.titulo }}"></iframe>
+  <iframe id="epubFrame" sandbox="allow-same-origin" data-posicao-inicial="{{ posicao_inicial or 0 }}" class="epub-frame" src="{{ conteudo_url }}" title="{{ capitulo.titulo }}"></iframe>
 </section>
 
 <nav class="navegacao-capitulos navegacao-capitulos-inferior" aria-label="{{ t('reader.chapter_navigation') }}">
@@ -121,7 +121,7 @@
   };
 </script>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/leitor_alt.js') }}"></script><script src="{{ url_for('static', filename='js/leitor_tts.js') }}?v=1.0.5-hw-rua-4"></script><script src="{{ url_for('static', filename='js/leitor_dicionario.js') }}"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/leitor_alt.js') }}"></script><script src="{{ url_for('static', filename='js/leitor_tts.js') }}?v=1.0.6-hw-rua-4"></script><script src="{{ url_for('static', filename='js/leitor_dicionario.js') }}"></script>{% endblock %}
 
 {% block skeleton %}
 <section class="skeleton-topo">

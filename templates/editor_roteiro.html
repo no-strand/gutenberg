@@ -163,6 +163,10 @@
 {% endblock %}
 {% block scripts %}
 <script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|default('', true)|tojson }}, numero: {{ numero|default(1, true)|tojson }}, catalogoPersonagens: {{ roteiro.get('catalogo_personagens', [])|tojson }}, catalogoLocais: {{ roteiro.get('catalogo_locais', [])|tojson }}, catalogoAnotacoes: {{ roteiro.get('catalogo_anotacoes', [])|tojson }}, roteiroTitulo: {{ roteiro.get('titulo', t('script.no_title'))|tojson }}, prefixoCena: {{ roteiro.get('prefixo_cena', '0')|tojson }}, numeracaoInicial: {{ roteiro.get('numeracao_inicial', 1)|tojson }}, cabecalho: {{ roteiro.get('cabecalho', '')|tojson }}, rodape: {{ roteiro.get('rodape', '')|tojson }}, tipoRoteiro: {{ roteiro.get('tipo_roteiro', 'spec_script')|tojson }}, tipoRoteiroLabel: {{ roteiro.get('tipo_roteiro_label', t('script.spec_script'))|tojson }}, idioma: {{ projeto.idioma|tojson }}};</script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/editor_recuperacao.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/editor_sessao.css') }}">
+<script src="{{ url_for('static', filename='js/editor_sessao.js') }}"></script>
+<script src="{{ url_for('static', filename='js/editor_recuperacao.js') }}"></script>
 <script src="{{ url_for('static', filename='js/editor_roteiro.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ia_editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/recursos_visualizacao.js') }}"></script>

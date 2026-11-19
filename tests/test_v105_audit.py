@@ -27,7 +27,7 @@ class Gutenberg105AuditTests(IsolatedProjectTestCase):
         super().tearDown()
 
     def test_versao_e_intensidade_padrao(self):
-        self.assertEqual(utilidades.APP_VERSAO, '1.0.5')
+        self.assertEqual(utilidades.APP_VERSAO, '1.0.6')
         self.assertEqual(utilidades.obter_configuracoes()['intensidade_particulas'], 1)
         cfg = utilidades.obter_configuracoes()
         cfg['intensidade_particulas'] = 5
@@ -151,7 +151,7 @@ class Gutenberg105AuditTests(IsolatedProjectTestCase):
         manipulador_recursos_projeto.salvar_recursos_projeto(folder, dados)
         gut = exportador_gut.exportar_gut_capitulos(original['slug'])
         gutr = exportador_gut.exportar_gutr_recursos(original['slug'])
-        self.assertEqual(exportador_gut.ler_payload_gut(gut)['app_versao'], '1.0.5')
+        self.assertEqual(exportador_gut.ler_payload_gut(gut)['app_versao'], '1.0.6')
         self.assertEqual(exportador_gut.ler_payload_gutr(gutr)['tipo_arquivo'], 'recursos')
         novo = manipulador_projetos.criar_projeto('Livro Backup Destino', tipo='livro')
         resultado = exportador_gut.importar_gut_em_projeto(novo['slug'], gut)

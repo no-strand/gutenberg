@@ -142,6 +142,30 @@ let htmlCacheDirty = true;
 let htmlEditorCache = '<p><br></p>';
 let ultimaCargaEnviada = null;
 let ultimaAssinaturaCargaEnviada = '';
+const sessaoEpub = window.GutenbergSessaoEditor?.criar({
+  tipo: 'epub', slug: editorConfig.slug, numero: editorConfig.numero,
+  editor, titulo: campoTituloCapitulo, status: statusAutosave,
+  antesDeLiberar: () => rascunhoLocalEpub?.copiarAgora(),
+}) || null;
+const rascunhoLocalEpub = window.GutenbergRascunhoLocal?.criar({
+  tipo: 'epub', slug: editorConfig.slug, numero: editorConfig.numero,
+  lerPayload: () => JSON.stringify({ titulo: String(campoTituloCapitulo?.value || '').trim(), html: getHtmlEditorNormalizado() }),
+  restaurar: ({ titulo, html }) => {
+    // Recuperar só por escolha explícita; a árvore editável é a original.
+    editor.innerHTML = html || '<p><br></p>';
+    if (campoTituloCapitulo) campoTituloCapitulo.value = titulo;
+    normalizeBlocks();
+    ensureEditorHasContent();
+    markEditorDirty();
+    commitHistory('recuperacao-local', true);
+    syncTypingStateFromCaret();
+    updateToolbarState();
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    scheduleAutosave();
+  },
+  aoRetomar: () => { if (editor && (!sessaoEpub || sessaoEpub.podeSalvar())) void executarAutosave(); },
+  podeGravar: () => !sessaoEpub || sessaoEpub.podeSalvar(),
+}) || null;
 let isEditorComposing = false;
 let estadoRevisaoOrtografica = { blocos: [], indice: -1, carregando: false };
 let historyStack = [];
@@ -757,17 +781,19 @@ function normalizeBlocks() {
 
     if (node.matches(SELECTOR_BLOCOS)) {
       if (!node.textContent.trim() && !node.querySelector('img,br')) node.appendChild(document.createElement('br'));
-      CLASSES_FONTE.forEach((cls) => {
-        if (node.classList.contains(cls)) {
-          node.classList.remove(cls);
-          if (node.textContent.trim()) {
-            const span = document.createElement('span');
-            span.className = cls;
-            while (node.firstChild) span.appendChild(node.firstChild);
-            node.appendChild(span);
+      if (node.classList.length) {
+        CLASSES_FONTE.forEach((cls) => {
+          if (node.classList.contains(cls)) {
+            node.classList.remove(cls);
+            if (node.textContent.trim()) {
+              const span = document.createElement('span');
+              span.className = cls;
+              while (node.firstChild) span.appendChild(node.firstChild);
+              node.appendChild(span);
+            }
           }
-        }
-      });
+        });
+      }
     }
   });
 
@@ -1321,15 +1347,20 @@ function insertPlainTextAsSemanticBlocks(text) {
   if (!anchorBlock.textContent.trim()) anchorBlock.replaceChildren();
   if (paragraphs[0]) anchorBlock.appendChild(buildInlineWrapperChain(paragraphs[0]));
   if (!anchorBlock.childNodes.length) anchorBlock.appendChild(document.createElement('br'));
-  let previous = anchorBlock;
+  // Uma única inserção para colagens extensas. Mantém a ordem, as classes
+  // e a seleção final, sem modificar a estratégia de blocos do editor.
+  const pastedBlocks = document.createDocumentFragment();
+  const inheritedAttributes = Array.from(anchorBlock.attributes).filter((attr) => attr.name !== 'id');
   for (let i = 1; i < paragraphs.length - 1; i += 1) {
     const block = document.createElement(anchorBlock.tagName.toLowerCase());
-    Array.from(anchorBlock.attributes).forEach((attr) => { if (attr.name !== 'id') block.setAttribute(attr.name, attr.value); });
+    inheritedAttributes.forEach((attr) => block.setAttribute(attr.name, attr.value));
     if (paragraphs[i]) block.appendChild(buildInlineWrapperChain(paragraphs[i]));
     else block.appendChild(document.createElement('br'));
-    insertNodeAfter(previous, block);
-    previous = block;
+    pastedBlocks.appendChild(block);
   }
+  // O sufixo já está depois do parágrafo original: inserir antes dele
+  // preserva o texto que estava à direita do cursor.
+  tail.parentNode.insertBefore(pastedBlocks, tail);
   const lastLine = paragraphs.at(-1);
   let caretOffset = 0;
   if (lastLine) {
@@ -1882,10 +1913,17 @@ function limparTodaEdicaoEditor() {
 
 function insertImageFromFile(file) {
   if (!file || !editor) return;
+  // A leitura é assíncrona. Capturar o destino antes de iniciá-la evita
+  // inserir a imagem em outro parágrafo quando o cursor muda nesse intervalo.
+  const insertionRange = (getCurrentRange() || ultimoRangeEditor)?.cloneRange() || null;
   const reader = new FileReader();
   reader.onload = () => {
+    if (!editor.isConnected) return;
+    const capturedRangeValid = insertionRange && editor.contains(insertionRange.startContainer)
+      && editor.contains(insertionRange.endContainer);
     focusEditor();
-    const range = getCurrentRange() || (restoreSavedRange() ? getCurrentRange() : null);
+    const range = capturedRangeValid ? insertionRange.cloneRange()
+      : (getCurrentRange() || (restoreSavedRange() ? getCurrentRange() : null));
     const img = document.createElement('img');
     img.src = String(reader.result || '');
     img.alt = file.name || 'imagem';
@@ -2029,35 +2067,37 @@ function getHtmlEditorNormalizado() {
 
 function setStatusAutosave(tipo, texto) {
   if (!statusAutosave) return;
-  statusAutosave.textContent = texto;
-  statusAutosave.classList.remove('status-salvando', 'status-salvo', 'status-erro');
-  if (tipo) statusAutosave.classList.add(tipo);
+  if (statusAutosave.textContent !== texto) statusAutosave.textContent = texto;
+  for (const cls of ['status-salvando', 'status-salvo', 'status-erro']) {
+    statusAutosave.classList.toggle(cls, cls === tipo);
+  }
 }
 
 function markEditorDirty() {
   htmlCacheDirty = true;
+  rascunhoLocalEpub?.agendarCopia();
   setStatusAutosave('status-salvando', i18n('js.saving'));
 }
 
 async function executarAutosave() {
-  if (!editor || autosaveEmAndamento) {
+  if (!editor || (sessaoEpub && !sessaoEpub.podeSalvar())) return;
+  if (autosaveEmAndamento) {
     tentativaPendente = true;
     return;
   }
 
-  autosaveEmAndamento = true;
-  const payload = {
+  const payloadSerializado = JSON.stringify({
     titulo: String(campoTituloCapitulo?.value || '').trim(),
     html: getHtmlEditorNormalizado(),
-  };
-  const payloadSerializado = JSON.stringify(payload);
-
-  if (ultimaAssinaturaCargaEnviada && payloadSerializado === ultimaAssinaturaCargaEnviada) {
-    autosaveEmAndamento = false;
+  });
+  if (payloadSerializado === ultimaAssinaturaCargaEnviada) {
+    rascunhoLocalEpub?.confirmarSalvamento(payloadSerializado);
     setStatusAutosave('status-salvo', i18n('js.saved'));
     return;
   }
 
+  autosaveEmAndamento = true;
+  let salvoComSucesso = false;
   try {
     const resposta = await fetch(`/api/projetos/${window.EDITOR_CONFIG.slug}/capitulos/${window.EDITOR_CONFIG.numero}/autosave`, {
       method: 'POST',
@@ -2066,14 +2106,18 @@ async function executarAutosave() {
     });
     const dados = await resposta.json().catch(() => ({}));
     if (!resposta.ok || dados?.ok === false) throw new Error(dados?.erro || i18n('js.api_consult_error_now'));
-    ultimaCargaEnviada = payload;
+    salvoComSucesso = true;
+    ultimaCargaEnviada = JSON.parse(payloadSerializado);
     ultimaAssinaturaCargaEnviada = payloadSerializado;
-    setStatusAutosave('status-salvo', dados?.mensagem || i18n('js.saved'));
-    if (autosaveRetryTimer) {
-      clearTimeout(autosaveRetryTimer);
-      autosaveRetryTimer = null;
-    }
+    rascunhoLocalEpub?.confirmarSalvamento(payloadSerializado);
+    if (autosaveRetryTimer) { clearTimeout(autosaveRetryTimer); autosaveRetryTimer = null; }
+    // A edição pode ter mudado durante a resposta. Não exibir "salvo" antes
+    // da confirmação da versão realmente presente na tela.
+    const atual = JSON.stringify({ titulo: String(campoTituloCapitulo?.value || '').trim(), html: getHtmlEditorNormalizado() });
+    if (atual === payloadSerializado) setStatusAutosave('status-salvo', dados?.mensagem || i18n('js.saved'));
+    else { setStatusAutosave('status-salvando', i18n('js.saving')); tentativaPendente = true; }
   } catch (erro) {
+    rascunhoLocalEpub?.copiarAgora();
     setStatusAutosave('status-erro', erro?.message || i18n('js.api_consult_error_now'));
     if (!autosaveRetryTimer) {
       autosaveRetryTimer = setTimeout(() => {
@@ -2085,7 +2129,11 @@ async function executarAutosave() {
     autosaveEmAndamento = false;
     if (tentativaPendente) {
       tentativaPendente = false;
-      executarAutosave();
+      // Se houver edições novas, a fila serializa os saves. Uma falha sem
+      // alterações posteriores aguarda o retry, evitando ciclo de rede.
+      if (salvoComSucesso || JSON.stringify({ titulo: String(campoTituloCapitulo?.value || '').trim(), html: getHtmlEditorNormalizado() }) !== payloadSerializado) {
+        void executarAutosave();
+      }
     }
   }
 }
@@ -2170,6 +2218,7 @@ function handleBeforeInput(event) {
 
 
 function handlePaste(event) {
+  if (isEditorComposing || event.isComposing) return;
   const text = event.clipboardData?.getData('text/plain');
   if (typeof text !== 'string') return;
   event.preventDefault();
@@ -2729,6 +2778,13 @@ function initializeEditor() {
   updateToolbarState();
   setStatusAutosave('status-salvo', i18n('common.ready'));
   commitHistory('init', true);
+  // Comparar a cópia pendente somente depois que a versão do servidor foi
+  // carregada e normalizada. O usuário decide se deseja recuperá-la.
+  ultimaAssinaturaCargaEnviada = JSON.stringify({
+    titulo: String(campoTituloCapitulo?.value || '').trim(), html: getHtmlEditorNormalizado(),
+  });
+  if (sessaoEpub) sessaoEpub.aoAdquirir(() => rascunhoLocalEpub?.iniciar(ultimaAssinaturaCargaEnviada));
+  else rascunhoLocalEpub?.iniciar(ultimaAssinaturaCargaEnviada);
 
   const preserveEditorSelectionOnPointerDown = (event) => {
     if (!editor) return;

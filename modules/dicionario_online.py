@@ -22,7 +22,7 @@ DATAMUSE_INGLES_URL = "https://api.datamuse.com/words"
 DICIONARIO_PORTUGUES_URL = "https://api.dicionario-aberto.net/word/{word}"
 DICIONARIO_PORTUGUES_NEAR_URL = "https://api.dicionario-aberto.net/near/{word}"
 TRADUCAO_URL = "https://api.mymemory.translated.net/get"
-USER_AGENT = "Gutenberg/1.0.5 (dictionary lookup; local reader application)"
+USER_AGENT = "Gutenberg/1.0.6 (dictionary lookup; local reader application)"
 # O timeout curto é intencional: cada consulta possui fallback e não deve prender a UI.
 TIMEOUT_HTTP = (1.8, 3.2)
 TIMEOUT_TRADUCAO = (1.5, 2.6)

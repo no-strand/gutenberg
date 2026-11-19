@@ -32,6 +32,174 @@
   let imageCatalogoAtual = '';
   let detalheCatalogoAtual = null;
   let lastInfoRange = null;
+  // Persistência serial por recurso: um POST obsoleto não pode terminar
+  // depois de um POST novo e sobrescrever uma versão mais recente.
+  const resourceWrites = new Map();
+  function writeState(channel){
+    if (!resourceWrites.has(channel)) resourceWrites.set(channel, {revision:0, savedRevision:0, task:null});
+    return resourceWrites.get(channel);
+  }
+  function markResourceDirty(channel){
+    writeState(channel).revision += 1;
+  }
+  async function persistResource(channel, send, successText){
+    const entry = writeState(channel);
+    if (entry.task) return entry.task;
+    const task = (async () => {
+      while (entry.savedRevision < entry.revision) {
+        const revision = entry.revision;
+        try {
+          await send();
+          entry.savedRevision = revision;
+          if (entry.savedRevision === entry.revision) setStatus(successText);
+        } catch (err) {
+          setStatus(err?.message || String(err), 'erro');
+          throw err;
+        }
+      }
+    })();
+    entry.task = task;
+    try { await task; } finally { if (entry.task === task) entry.task = null; }
+  }
+
+  // Backup local independente para cada folha de Informações. Cópias só
+  // são oferecidas ao reabrir a página, nunca restauradas silenciosamente.
+  const infoRecovery = (() => {
+    const prefix = `gutenberg:recursos-info:v1:${encodeURIComponent(slug)}:`;
+    const isPortuguese = (document.documentElement.lang || 'pt').toLowerCase().startsWith('pt');
+    const storageWarnings = {
+      tooLarge: isPortuguese ? 'A cópia local desta página excedeu o limite do navegador.' : 'The local copy of this page exceeds the browser storage limit.',
+      unavailable: isPortuguese ? 'Não foi possível armazenar uma cópia local da página.' : 'Unable to store a local copy of this page.'
+    };
+    const checked = new Set();
+    const baselines = new Map();
+    let timer = 0;
+    let notice = null;
+    let pending = null;
+    const pendingWrites = new Map();
+    const keyFor = (tabId, pageId) => `${prefix}${encodeURIComponent(tabId)}:${encodeURIComponent(pageId)}`;
+    const signature = (page) => JSON.stringify([page?.titulo || '', page?.html || '']);
+    function findPage(tabId, pageId) {
+      return state.informacoes_abas.find(tab => tab.id === tabId)?.paginas?.find(page => page.id === pageId);
+    }
+    (state.informacoes_abas || []).forEach(tab => (tab.paginas || []).forEach(page => {
+      baselines.set(keyFor(tab.id, page.id), signature(page));
+    }));
+    function read(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        const value = raw ? JSON.parse(raw) : null;
+        return value?.version === 1 && typeof value.html === 'string' && typeof value.title === 'string' ? value : null;
+      } catch (_) { return null; }
+    }
+    function clearNotice(){
+      if (pending) checked.delete(pending.key); // Permite decidir ao voltar à página.
+      notice?.remove(); notice = null; pending = null;
+    }
+    function writeNow(){
+      clearTimeout(timer); timer = 0;
+      for (const [key, saved] of pendingWrites) {
+        pendingWrites.delete(key);
+        if (pending?.key === key) continue; // Não sobrepor uma decisão pendente.
+        if (saved.signature === baselines.get(key)) {
+          try { localStorage.removeItem(key); } catch (_) {}
+          continue;
+        }
+        const payload = JSON.stringify({version:1, title:saved.title, html:saved.html, time:Date.now()});
+        if (payload.length > 3 * 1024 * 1024) {
+          setStatus(storageWarnings.tooLarge, 'erro');
+          continue;
+        }
+        try { localStorage.setItem(key, payload); }
+        catch (_) { setStatus(storageWarnings.unavailable, 'erro'); }
+      }
+    }
+    function schedule(){
+      const page=findPage(activeInfoTabId,activeInfoId);
+      if (page) pendingWrites.set(keyFor(activeInfoTabId,activeInfoId), {
+        title:page.titulo, html:page.html, signature:signature(page)
+      });
+      clearTimeout(timer); timer = setTimeout(writeNow, 260);
+    }
+    function show(page){
+      clearNotice();
+      if (!page || !activeInfoTabId) return;
+      const tabId=activeInfoTabId, pageId=page.id, key=keyFor(tabId,pageId);
+      if (checked.has(key)) return;
+      checked.add(key);
+      const copy=read(key);
+      if (!copy) return;
+      const savedCopy = JSON.stringify([copy.title,copy.html]);
+      if (savedCopy === baselines.get(key)) {
+        // Só eliminar quando a mesma versão já foi confirmada pelo servidor.
+        try { localStorage.removeItem(key); } catch (_) {}
+        return;
+      }
+      if (savedCopy === signature(page)) return; // Já recuperada nesta sessão, ainda não confirmada.
+      pending = {key, tabId, pageId, copy};
+      const pt=isPortuguese;
+      const box=document.createElement('aside');
+      box.className='info-recuperacao-aviso';
+      box.setAttribute('role','status');
+      const message=document.createElement('p');
+      message.textContent=pt ? 'Há uma cópia local não confirmada desta página de Informações.' : 'An unsaved local copy of this Information page is available.';
+      const actions=document.createElement('div');
+      actions.className='info-recuperacao-acoes';
+      const recover=document.createElement('button');
+      recover.type='button';recover.textContent=pt ? 'Recuperar cópia' : 'Restore copy';
+      const discard=document.createElement('button');
+      discard.type='button';discard.textContent=pt ? 'Descartar cópia' : 'Discard copy';
+      recover.addEventListener('click',()=>{
+        if (!pending || pending.key!==key || activeInfoTabId!==tabId || activeInfoId!==pageId) return;
+        const current=findPage(tabId,pageId);
+        if (!current) return;
+        const title=$('#tituloPaginaInfo'), editor=$('#editorInfoPagina');
+        if (!title || !editor) return;
+        if (signature({titulo:title.value,html:editor.innerHTML}) !== signature(page) &&
+            !confirm(pt ? 'Substituir as mudanças desta sessão pela cópia local?' : 'Replace the changes in this session with the local copy?')) return;
+        current.titulo=copy.title;current.html=copy.html;
+        title.value=copy.title;editor.innerHTML=copy.html;
+        clearNotice();
+        infoVisualPagination?.schedule(true);
+        scheduleInfoSave({rerenderSidebar:true});
+      });
+      discard.addEventListener('click',()=>{
+        if (!pending || pending.key!==key) return;
+        try { localStorage.removeItem(key); } catch (_) {}
+        clearNotice();
+        // Mudanças feitas após a abertura continuam protegidas.
+        schedule();
+      });
+      actions.append(recover,discard);box.append(message,actions);
+      ($('#infoPaperStage')?.parentElement || document.body).prepend(box);
+      notice=box;
+    }
+    function confirm(snapshot){
+      snapshot.forEach(({key, value})=>{
+        baselines.set(key,value);
+        const copy=read(key);
+        if (copy && JSON.stringify([copy.title,copy.html])===value) {
+          try { localStorage.removeItem(key); } catch (_) {}
+        }
+      });
+    }
+    function snapshot(){
+      return (state.informacoes_abas || []).flatMap(tab => (tab.paginas || []).map(page => ({
+        key:keyFor(tab.id,page.id),value:signature(page)
+      })));
+    }
+    // Em fechamento/ocultação, sincronizar o editor visível antes da cópia.
+    function emergency(){
+      if (!$('#editorInfoPagina')) return;
+      saveCurrentInfoToState();
+      schedule();
+      writeNow();
+    }
+    window.addEventListener('pagehide', emergency);
+    document.addEventListener('visibilitychange',()=>{if (document.hidden) emergency();});
+    window.addEventListener('online',()=>{if (writeState('informacoes').revision > writeState('informacoes').savedRevision) scheduleInfoSave({captureEditor:true,rerenderSidebar:false});});
+    return {schedule,writeNow,show,confirm,snapshot,emergency};
+  })();
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -241,11 +409,20 @@
     renderFlow();
     renderCatalogs();
   }
-  async function postJSON(url, payload){
-    const resp = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload || {})});
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || data.ok === false) throw new Error(data.erro || tr('editor.save_failed', {}, 'Não foi possível salvar.'));
-    return data;
+  // Todas as seções de Rascunho compartilham um mesmo registro no SQLite.
+  // Ordenar os POSTs de Informações, Fluxo e Catálogos evita que operações
+  // read-modify-write concorrentes sobrescrevam outras seções do projeto.
+  let projectWriteQueue = Promise.resolve();
+  function postJSON(url, payload){
+    const body = JSON.stringify(payload || {});
+    const request = projectWriteQueue.then(async () => {
+      const resp = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body});
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || data.ok === false) throw new Error(data.erro || tr('editor.save_failed', {}, 'Não foi possível salvar.'));
+      return data;
+    });
+    projectWriteQueue = request.catch(() => {});
+    return request;
   }
   function switchTab(tab){
     if (tab !== 'fluxo') resetFlowCanvasPan();
@@ -512,13 +689,16 @@
   }
   function scheduleCatalogPagesSave(tipo){
     clearTimeout(catalogPagesSaveTimers[tipo]);
+    markResourceDirty(`catalogo:${tipo}`);
     setStatus(tr('resources.saving', {}, 'Salvando...'));
-    catalogPagesSaveTimers[tipo] = setTimeout(async () => {
-      try {
-        const data = await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/catalogo/${encodeURIComponent(tipo)}/paginas`, {paginas: state[catalogPagesKey(tipo)], items: projectCatalogItems(tipo)});
-        absorbServer(data);
-        setStatus(tr('resources.catalog_saved', {}, 'Catálogo salvo'));
-      } catch (err) { setStatus(err.message, 'erro'); }
+    catalogPagesSaveTimers[tipo] = setTimeout(() => {
+      void persistResource(`catalogo:${tipo}`, async () => {
+        // Absorver somente quando não houve outra edição durante o POST.
+        const revision=writeState(`catalogo:${tipo}`).revision;
+        const data=await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/catalogo/${encodeURIComponent(tipo)}/paginas`, {paginas: state[catalogPagesKey(tipo)], items: projectCatalogItems(tipo)});
+        if (revision===writeState(`catalogo:${tipo}`).revision &&
+            [...resourceWrites].every(([name, write]) => name === `catalogo:${tipo}` || write.savedRevision === write.revision)) absorbServer(data);
+      },tr('resources.catalog_saved', {}, 'Catálogo salvo')).catch(()=>{});
     }, 520);
   }
   function loadActiveInfo(){
@@ -533,6 +713,7 @@
     infoTyping.size = null;
     refreshInfoTypographyControls();
     infoVisualPagination?.schedule?.(true);
+    infoRecovery.show(page);
     updateInfoToolbarState();
   }
   function saveCurrentInfoToState(){
@@ -552,13 +733,16 @@
     const {captureEditor = true, rerenderSidebar = true} = options;
     if (captureEditor) saveCurrentInfoToState();
     if (rerenderSidebar) renderInfoList();
+    infoRecovery.schedule();
+    markResourceDirty('informacoes');
     clearTimeout(infoSaveTimer);
     setStatus(tr('resources.info_saving', {}, 'Salvando informações...'));
-    infoSaveTimer = setTimeout(async () => {
-      try {
+    infoSaveTimer = setTimeout(() => {
+      void persistResource('informacoes', async () => {
+        const snapshot=infoRecovery.snapshot();
         await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/informacoes`, infoPayload());
-        setStatus(tr('resources.info_saved', {}, 'Informações salvas'));
-      } catch (err) { setStatus(err.message, 'erro'); }
+        infoRecovery.confirm(snapshot);
+      },tr('resources.info_saved', {}, 'Informações salvas')).catch(()=>{});
     }, 620);
   }
   $('#btnNovaPaginaInfo')?.addEventListener('click', () => addResourcePage('informacoes'));
@@ -570,14 +754,21 @@
   $('#btnExcluirPaginaInfo')?.addEventListener('click', () => deleteInfoSidePage(activeInfoId));
   $('#tituloPaginaInfo')?.addEventListener('input', scheduleInfoSave);
   $('#editorInfoPagina')?.addEventListener('input', () => scheduleInfoSave({rerenderSidebar:false}));
-  $('#btnInserirImagemInfo')?.addEventListener('click', () => $('#inputImagemInfo')?.click());
+  let imageInfoDestination = null;
+  $('#btnInserirImagemInfo')?.addEventListener('click', () => {
+    const range = getInfoSelectionRange() || lastInfoRange;
+    imageInfoDestination = {
+      tabId: activeInfoTabId, pageId: activeInfoId,
+      range: range?.cloneRange() || null,
+    };
+    $('#inputImagemInfo')?.click();
+  });
   function initInfoVisualPagination(){
     const editor = $('#editorInfoPagina');
     const stage = $('#infoPaperStage');
     const layers = $('#infoPaperLayers');
     if (!editor || !stage || !layers) return null;
     stage.classList.add('info-paginated');
-    const MAX_PAGES = 250;
     const GAP = 32;
     const DEBOUNCE_MS = 90;
     let pages = 0;
@@ -604,19 +795,27 @@
       pageBoxes = boxes;
       geometryKey = key;
       lastActiveIndex = -1;
-      const fragment = document.createDocumentFragment();
+      // Reutilizar as folhas já existentes; substituir 300+ elementos em cada
+      // recálculo causava custo de DOM e perda do destaque ativo.
+      const existing = Array.from(layers.children);
+      const extra = document.createDocumentFragment();
       boxes.forEach((box, i) => {
-        const item = document.createElement('div');
-        item.className = 'info-paper-sheet';
-        item.style.top = `${box.top}px`;
-        item.style.height = `${box.height}px`;
-        const folio = document.createElement('span');
-        folio.className = 'info-paper-folio';
-        folio.textContent = String(i + 1).padStart(2, '0');
-        item.appendChild(folio);
-        fragment.appendChild(item);
+        let item = existing[i];
+        if (!item) {
+          item = document.createElement('div');
+          item.className = 'info-paper-sheet';
+          const folio = document.createElement('span');
+          folio.className = 'info-paper-folio';
+          folio.textContent = String(i + 1).padStart(2, '0');
+          item.appendChild(folio);
+          extra.appendChild(item);
+        }
+        if (item.style.top !== `${box.top}px`) item.style.top = `${box.top}px`;
+        if (item.style.height !== `${box.height}px`) item.style.height = `${box.height}px`;
+        item.classList.remove('is-active');
       });
-      layers.replaceChildren(fragment);
+      if (extra.childNodes.length) layers.appendChild(extra);
+      while (layers.children.length > pages) layers.lastElementChild.remove();
       const last = boxes[boxes.length - 1];
       stage.style.minHeight = `${last.top + last.height}px`;
     }
@@ -635,8 +834,11 @@
       const located = pageBoxes.findIndex((box) => offset < box.top + box.height + GAP / 2);
       const index = located < 0 ? pages - 1 : located;
       if (index === lastActiveIndex) return;
+      const previousIndex = lastActiveIndex;
       lastActiveIndex = index;
-      Array.from(layers.children).forEach((item, i) => item.classList.toggle('is-active', i === index));
+      // Atualiza apenas a folha anterior e a atual, não todas as folhas.
+      if (previousIndex >= 0) layers.children[previousIndex]?.classList.remove('is-active');
+      layers.children[index]?.classList.add('is-active');
     }
     const blocksSheet = document.createElement('style');
     blocksSheet.id = 'info-visual-page-breaks';
@@ -656,21 +858,17 @@
         const boxes = [{top: 0, height: metrics.paperHeight}];
         let pageIndex = 0;
         let extraBefore = 0;
-        let previousBottomMargin = 0;
         const rules = [];
         for (let i = 0; i < blocks.length; i += 1) {
           const block = blocks[i];
           const rect = block.getBoundingClientRect();
           const height = rect.height;
-          const css = getComputedStyle(block);
-          const ownMargin = parseFloat(css.marginTop) || 0;
-          const bottomMargin = parseFloat(css.marginBottom) || 0;
           let top = rect.top - editorTop + extraBefore;
           let bottom = rect.bottom - editorTop + extraBefore;
           let box = boxes[pageIndex];
           const bottomLimit = box.top + box.height - metrics.padding;
           const oversized = height > metrics.contentHeight + 2;
-          if (bottom > bottomLimit + 2 && boxes.length < MAX_PAGES &&
+          if (bottom > bottomLimit + 2 &&
               (!oversized || top > box.top + metrics.padding + 3)) {
             // Parágrafos que cabem numa folha são movidos por inteiro.
             // Parágrafos maiores que a folha ganham uma folha elástica:
@@ -682,6 +880,11 @@
             const push = Math.max(0, box.top + metrics.padding - top);
             if (push > 0) {
               // Considerar colapso de margens adjacentes no HTML original.
+              // Consultar margem só nas quebras de folha, sem alterar
+              // a regra original de colapso das margens adjacentes.
+              const ownMargin = parseFloat(getComputedStyle(block).marginTop) || 0;
+              const previous = blocks[i - 1];
+              const previousBottomMargin = previous ? (parseFloat(getComputedStyle(previous).marginBottom) || 0) : 0;
               const margin = Math.max(ownMargin, previousBottomMargin) + push;
               rules.push(`.pagina-recursos-projeto-shell #editorInfoPagina > :nth-child(${i + 1}) { margin-top: ${Math.ceil(margin)}px !important; }`);
               extraBefore += push;
@@ -695,7 +898,6 @@
           if (bottom > box.top + box.height - metrics.padding) {
             box.height = Math.max(box.height, Math.ceil(bottom - box.top + metrics.padding + 2));
           }
-          previousBottomMargin = bottomMargin;
         }
         blocksSheet.textContent = rules.join('\n');
         const actualBottom = blocks.length
@@ -756,11 +958,27 @@
     const file = ev.target.files?.[0];
     ev.target.value = '';
     if (!file) return;
-    const dataUrl = await fileToDataUrl(file);
-    const editor = $('#editorInfoPagina');
-    editor?.focus();
-    document.execCommand('insertImage', false, dataUrl);
-    scheduleInfoSave();
+    const destination = imageInfoDestination;
+    imageInfoDestination = null;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const editor = $('#editorInfoPagina');
+      if (!editor || !destination || activeInfoTabId !== destination.tabId || activeInfoId !== destination.pageId) {
+        const message = (document.documentElement.lang || 'pt').toLowerCase().startsWith('pt')
+          ? 'A página mudou antes da imagem terminar de carregar; selecione a imagem novamente.'
+          : 'The page changed before the image finished loading; please select the image again.';
+        setStatus(message, 'erro');
+        return;
+      }
+      if (destination.range && editor.contains(destination.range.startContainer) && editor.contains(destination.range.endContainer)) {
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(destination.range);
+      }
+      editor.focus({preventScroll:true});
+      document.execCommand('insertImage', false, dataUrl);
+      scheduleInfoSave();
+    } catch (err) { setStatus(err.message || String(err),'erro'); }
   });
 
   function fileToDataUrl(file){
@@ -779,10 +997,18 @@
     Object.values(catalogPagesSaveTimers).forEach(clearTimeout);
     saveCurrentInfoToState();
     setStatus(tr('resources.saving', {}, 'Salvando...'));
-    await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/informacoes`, infoPayload());
-    await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/fluxo`, {fluxos: state.fluxos});
+    infoRecovery.writeNow();
+    markResourceDirty('informacoes');
+    await persistResource('informacoes', async () => {
+      const snapshot=infoRecovery.snapshot();
+      await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/informacoes`, infoPayload());
+      infoRecovery.confirm(snapshot);
+    },tr('resources.info_saved', {}, 'Informações salvas'));
+    markResourceDirty('fluxo');
+    await persistResource('fluxo',()=>postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/fluxo`, {fluxos: state.fluxos}),tr('resources.flow_saved', {}, 'Fluxo salvo'));
     for (const tipo of CATALOG_TYPES) {
-      await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/catalogo/${encodeURIComponent(tipo)}/paginas`, {paginas: state[catalogPagesKey(tipo)], items: projectCatalogItems(tipo)});
+      markResourceDirty(`catalogo:${tipo}`);
+      await persistResource(`catalogo:${tipo}`,()=>postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/catalogo/${encodeURIComponent(tipo)}/paginas`, {paginas: state[catalogPagesKey(tipo)], items: projectCatalogItems(tipo)}),tr('resources.catalog_saved', {}, 'Catálogo salvo'));
     }
   }
 
@@ -1290,6 +1516,14 @@
     });
     window.addEventListener('blur', resetFlowCanvasPan);
   }
+  let flowLinesFrame = 0;
+  function scheduleFlowLines(){
+    if (flowLinesFrame) return;
+    flowLinesFrame = requestAnimationFrame(() => {
+      flowLinesFrame = 0;
+      renderFlowLines();
+    });
+  }
   function createNodeElement(node){
     const el = document.createElement('article');
     el.className = 'fluxo-node';
@@ -1309,7 +1543,7 @@
       ${['n','e','s','w','ne','nw','se','sw'].map(dir => `<span class="fluxo-resize-handle" data-resize="${dir}" title="${tr('resources.resize', {}, 'Redimensionar')}"></span>`).join('')}`;
     el.querySelector('.fluxo-node-delete')?.addEventListener('click', (ev) => { ev.stopPropagation(); deleteNode(node.id); });
     el.querySelector('.fluxo-node-title')?.addEventListener('input', (ev) => { node.titulo = ev.target.value; scheduleFlowSave(); });
-    el.querySelector('.fluxo-node-text')?.addEventListener('input', (ev) => { node.texto = ev.target.value; scheduleFlowSave(); renderFlowLines(); });
+    el.querySelector('.fluxo-node-text')?.addEventListener('input', (ev) => { node.texto = ev.target.value; scheduleFlowSave(); scheduleFlowLines(); });
     el.querySelectorAll('.flow-handle').forEach(handle => handle.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); onHandleClick(node.id, handle.dataset.side, handle, ev); }));
     el.querySelectorAll('.fluxo-resize-handle').forEach(handle => handle.addEventListener('pointerdown', (ev) => beginNodeResize(ev, node, el, handle.dataset.resize || 'se')));
     el.addEventListener('pointerdown', (ev) => {
@@ -1327,7 +1561,7 @@
       node.x = Math.max(0, dragState.origX + ev.clientX - dragState.startX);
       node.y = Math.max(0, dragState.origY + ev.clientY - dragState.startY);
       el.style.left = `${node.x}px`; el.style.top = `${node.y}px`;
-      renderFlowLines();
+      scheduleFlowLines();
     });
     const finalizarPointer = () => {
       if (resizeState?.id === node.id) {
@@ -1399,7 +1633,7 @@
     el.style.top = `${node.y}px`;
     el.style.width = `${node.width}px`;
     el.style.height = `${node.height}px`;
-    renderFlowLines();
+    scheduleFlowLines();
   }
   function renderFlow(){
     const wrap = $('#fluxoNodes');
@@ -1419,12 +1653,17 @@
     const svg = $('#fluxoSvg');
     if (!svg) return;
     svg.innerHTML = '';
-    currentFlow().nodes.forEach(node => {
-      const el = $(`[data-node-id="${CSS.escape(node.id)}"]`);
+    const flow = currentFlow();
+    const elements = new Map($$('.fluxo-node', $('#fluxoNodes')).map(el => [el.dataset.nodeId, el]));
+    const nodes = new Map();
+    flow.nodes.forEach(node => {
+      const el = elements.get(node.id);
       if (el) { node.width = el.offsetWidth || node.width || 240; node.height = el.offsetHeight || node.height || 150; }
+      nodes.set(node.id,node);
     });
-    currentFlow().edges.forEach(edge => {
-      const a = nodeById(edge.from), b = nodeById(edge.to);
+    const fragment = document.createDocumentFragment();
+    flow.edges.forEach(edge => {
+      const a = nodes.get(edge.from), b = nodes.get(edge.to);
       if (!a || !b) return;
       const p1 = sidePoint(a, edge.fromSide || 'right');
       const p2 = sidePoint(b, edge.toSide || 'left');
@@ -1434,8 +1673,9 @@
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('class','fluxo-edge');
       path.setAttribute('d', `M ${p1.x} ${p1.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`);
-      svg.appendChild(path);
+      fragment.appendChild(path);
     });
+    svg.appendChild(fragment);
     updateFlowHandleStates();
   }
   function edgeUsesHandle(edge, nodeId, side){
@@ -1515,12 +1755,10 @@
   }
   function scheduleFlowSave(){
     clearTimeout(flowSaveTimer);
+    markResourceDirty('fluxo');
     setStatus(tr('resources.flow_saving', {}, 'Salvando fluxo...'));
-    flowSaveTimer = setTimeout(async () => {
-      try {
-        await postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/fluxo`, {fluxos: state.fluxos});
-        setStatus(tr('resources.flow_saved', {}, 'Fluxo salvo'));
-      } catch (err) { setStatus(err.message, 'erro'); }
+    flowSaveTimer = setTimeout(() => {
+      void persistResource('fluxo',()=>postJSON(`/api/projetos/${encodeURIComponent(slug)}/recursos/fluxo`, {fluxos: state.fluxos}),tr('resources.flow_saved', {}, 'Fluxo salvo')).catch(()=>{});
     }, 520);
   }
 

@@ -39,6 +39,26 @@ let autosaveRetryTimer = null;
 let salvando = false;
 let salvarDepois = false;
 let payloadAnterior = '';
+const sessaoRoteiro = window.GutenbergSessaoEditor?.criar({
+  tipo: 'roteiro', slug: cfg.slug, numero: cfg.numero,
+  editor, titulo: campoTituloCapitulo, status: statusAutosave,
+  antesDeLiberar: () => rascunhoLocalRoteiro?.copiarAgora(),
+}) || null;
+const rascunhoLocalRoteiro = window.GutenbergRascunhoLocal?.criar({
+  tipo: 'roteiro', slug: cfg.slug, numero: cfg.numero,
+  lerPayload: () => JSON.stringify({ titulo: campoTituloCapitulo?.value?.trim() || i18n('script.no_title'), html: serialize() }),
+  restaurar: ({ titulo, html }) => {
+    editor.innerHTML = html || '<div class="roteiro-bloco" data-block-type="neutral"><br></div>';
+    if (campoTituloCapitulo) campoTituloCapitulo.value = titulo;
+    serializedBlockCache = new WeakMap();
+    invalidateStructureCaches();
+    serializationDirty = true;
+    normalizeEditor({ preserveSelection: false });
+    scheduleAutosave();
+  },
+  aoRetomar: () => { if (!sessaoRoteiro || sessaoRoteiro.podeSalvar()) void doAutosave(false); },
+  podeGravar: () => !sessaoRoteiro || sessaoRoteiro.podeSalvar(),
+}) || null;
 let autocompleteState = { items: [], active: -1, block: null, mode: '', context: {} };
 let catalogos = {
   personagens: Array.isArray(cfg.catalogoPersonagens) ? [...cfg.catalogoPersonagens] : [],
@@ -80,8 +100,9 @@ let cachedBlockPageIndexMap = null;
 let cachedBlockToSceneMap = null;
 let savedSelectionSignature = '';
 let lastChangedBlock = null;
+let simpleEditBeforeInput = null;
 let autoCorretorSimples = null;
-const serializedBlockCache = new WeakMap();
+let serializedBlockCache = new WeakMap();
 const SPLIT_BOUNDARY_REGEX = /\s|[,.!?;:-]/;
 
 function performNativeUndo() {
@@ -711,9 +732,9 @@ function applySceneNumbers() {
 /** Setstatus. Usada pelo fluxo principal da aplicação. */
 function setStatus(text, kind = '') {
   if (!statusAutosave) return;
-  statusAutosave.textContent = text;
-  statusAutosave.className = 'status-chip';
-  if (kind) statusAutosave.classList.add(kind);
+  if (statusAutosave.textContent !== text) statusAutosave.textContent = text;
+  const nextClass = kind ? `status-chip ${kind}` : 'status-chip';
+  if (statusAutosave.className !== nextClass) statusAutosave.className = nextClass;
 }
 /** Getblockrawtext. Usada pelo fluxo principal da aplicação. */
 function getBlockRawText(block) { return String(block?.textContent || block?.innerText || '').replace(/ /g, ' '); }
@@ -732,15 +753,17 @@ function formatScriptPageNumber(pageNumber) {
 /** Renderpagechrome. Usada pelo fluxo principal da aplicação. */
 function renderPageChrome(page, pageNumber) {
   if (!page) return;
-  page.dataset.pageNumber = String(pageNumber);
+  const numberText = String(pageNumber);
+  if (page.dataset.pageNumber !== numberText) page.dataset.pageNumber = numberText;
   const headerText = normalizeSpaces(cfg.cabecalho || '');
   const footerText = normalizeSpaces(cfg.rodape || '');
   const headerLabel = page.querySelector('.roteiro-page-header-label');
   const headerNumber = page.querySelector('.roteiro-page-number');
   const footerLabel = page.querySelector('.roteiro-page-footer-label');
-  if (headerLabel) headerLabel.textContent = headerText;
-  if (headerNumber) headerNumber.textContent = formatScriptPageNumber(pageNumber);
-  if (footerLabel) footerLabel.textContent = footerText;
+  if (headerLabel && headerLabel.textContent !== headerText) headerLabel.textContent = headerText;
+  const pageNumberText = formatScriptPageNumber(pageNumber);
+  if (headerNumber && headerNumber.textContent !== pageNumberText) headerNumber.textContent = pageNumberText;
+  if (footerLabel && footerLabel.textContent !== footerText) footerLabel.textContent = footerText;
 }
 /** Createpage. Usada pelo fluxo principal da aplicação. */
 function createPage(pageNumber = 1) {
@@ -789,15 +812,14 @@ function ensureBlockMaps() {
   cachedBlockPageIndexMap = new WeakMap();
   cachedBlockToSceneMap = new WeakMap();
   let currentScene = null;
+  const pageIndexes = new WeakMap();
+  getPageElements().forEach((page, index) => pageIndexes.set(page, index));
   blocks.forEach((block, idx) => {
     cachedBlockIndexMap.set(block, idx);
     if (block?.dataset?.blockType === 'scene_heading') currentScene = block;
     cachedBlockToSceneMap.set(block, currentScene);
     const page = block?.closest('.roteiro-page');
-    if (page) {
-      const pageIndex = getPageElements().indexOf(page);
-      cachedBlockPageIndexMap.set(block, pageIndex);
-    }
+    if (page) cachedBlockPageIndexMap.set(block, pageIndexes.get(page) ?? -1);
   });
 }
 /** Getpagecontents. Usada pelo fluxo principal da aplicação. */
@@ -990,8 +1012,8 @@ function sanitizeContainerNodes(container) {
       node.replaceWith(block);
       return;
     }
-    node.setAttribute('contenteditable', 'true');
-    node.setAttribute('spellcheck', 'false');
+    if (node.getAttribute('contenteditable') !== 'true') node.setAttribute('contenteditable', 'true');
+    if (node.getAttribute('spellcheck') !== 'false') node.setAttribute('spellcheck', 'false');
   });
 }
 /** Sanitizetoplevelnodes. Usada pelo fluxo principal da aplicação. */
@@ -1051,7 +1073,8 @@ function updateNeutralState(block) {
       delete block.dataset.initialNeutral;
     }
   }
-  block.dataset.placeholder = Object.prototype.hasOwnProperty.call(BLOCK_PLACEHOLDERS, block.dataset.blockType) ? BLOCK_PLACEHOLDERS[block.dataset.blockType] : i18n('common.type_here');
+  const placeholder = Object.prototype.hasOwnProperty.call(BLOCK_PLACEHOLDERS, block.dataset.blockType) ? BLOCK_PLACEHOLDERS[block.dataset.blockType] : i18n('common.type_here');
+  if (block.dataset.placeholder !== placeholder) block.dataset.placeholder = placeholder;
 }
 /** Repaginateeditor. Usada pelo fluxo principal da aplicação. */
 function repaginateEditor({ preserveSelection = true } = {}) {
@@ -1097,8 +1120,8 @@ function repaginateEditor({ preserveSelection = true } = {}) {
     content.appendChild(createBlock('neutral', '<br>'));
   } else {
     for (const block of blocks) {
-      block.setAttribute('contenteditable', 'true');
-      block.setAttribute('spellcheck', 'false');
+      if (block.getAttribute('contenteditable') !== 'true') block.setAttribute('contenteditable', 'true');
+      if (block.getAttribute('spellcheck') !== 'false') block.setAttribute('spellcheck', 'false');
       content.appendChild(block);
 
       if (!pageIsOverflowing(content)) continue;
@@ -1172,8 +1195,8 @@ function normalizeEditor({ preserveSelection = true, deferSceneSummary = false, 
   blocks.forEach((child) => {
     if (!(child instanceof HTMLElement)) return;
     if (!child.dataset.blockType) child.dataset.blockType = 'action';
-    child.setAttribute('contenteditable', 'true');
-    child.setAttribute('spellcheck', 'false');
+    if (child.getAttribute('contenteditable') !== 'true') child.setAttribute('contenteditable', 'true');
+    if (child.getAttribute('spellcheck') !== 'false') child.setAttribute('spellcheck', 'false');
     if (!child.hasChildNodes()) child.replaceChildren(document.createElement('br'));
     updateNeutralState(child);
     updateDialogueTime(child);
@@ -1724,24 +1747,32 @@ function serialize() {
   return serializedHtmlCache;
 }
 async function doAutosave(force = false) {
+  if (sessaoRoteiro && !sessaoRoteiro.podeSalvar()) return;
   if (salvando) { salvarDepois = true; return; }
   const payload = JSON.stringify({ titulo: campoTituloCapitulo?.value?.trim() || i18n('script.no_title'), html: serialize() });
-  if (!force && payload === payloadAnterior) return;
+  if (payload === payloadAnterior) {
+    rascunhoLocalRoteiro?.confirmarSalvamento(payload);
+    setStatus(i18n('js.saved'), 'status-salvo');
+    return;
+  }
   salvando = true;
   setStatus(i18n('js.saving'), 'status-salvando');
+  let salvoComSucesso = false;
   try {
     const resp = await fetch(`/api/projetos/${cfg.slug}/capitulos/${cfg.numero}/autosave`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload,
     });
     const data = await resp.json();
     if (!resp.ok || !data.ok) throw new Error(data.erro || i18n('editor.save_failed'));
+    salvoComSucesso = true;
     payloadAnterior = payload;
-    if (autosaveRetryTimer) {
-      clearTimeout(autosaveRetryTimer);
-      autosaveRetryTimer = null;
-    }
-    setStatus(i18n('js.saved'), 'status-salvo');
+    rascunhoLocalRoteiro?.confirmarSalvamento(payload);
+    if (autosaveRetryTimer) { clearTimeout(autosaveRetryTimer); autosaveRetryTimer = null; }
+    const atual = JSON.stringify({ titulo: campoTituloCapitulo?.value?.trim() || i18n('script.no_title'), html: serialize() });
+    if (atual === payload) setStatus(i18n('js.saved'), 'status-salvo');
+    else { setStatus(i18n('js.pending_changes'), 'status-salvando'); salvarDepois = true; }
   } catch (err) {
+    rascunhoLocalRoteiro?.copiarAgora();
     setStatus(err.message || i18n('js.save_error'), 'status-erro');
     if (!autosaveRetryTimer) {
       autosaveRetryTimer = setTimeout(() => {
@@ -1751,9 +1782,16 @@ async function doAutosave(force = false) {
     }
   } finally {
     salvando = false;
-    if (salvarDepois) { salvarDepois = false; doAutosave(true); }
+    if (salvarDepois) {
+      salvarDepois = false;
+      // Após falha sem edição nova, aguardar o temporizador de tentativa.
+      if (salvoComSucesso || JSON.stringify({ titulo: campoTituloCapitulo?.value?.trim() || i18n('script.no_title'), html: serialize() }) !== payload) {
+        void doAutosave(true);
+      }
+    }
   }
 }
+
 /** Scheduleautosave. Usada pelo fluxo principal da aplicação. */
 function scheduleAutosave() {
   clearTimeout(autosaveTimer);
@@ -1762,6 +1800,7 @@ function scheduleAutosave() {
     autosaveRetryTimer = null;
   }
   if (idleAutosaveHandle) { cancelIdle(idleAutosaveHandle); idleAutosaveHandle = 0; }
+  rascunhoLocalRoteiro?.agendarCopia();
   setStatus(i18n('js.pending_changes'), 'status-salvando');
   autosaveTimer = setTimeout(() => {
     idleAutosaveHandle = requestIdle(() => {
@@ -2586,6 +2625,27 @@ function applyVisualization() {
 
 selectTemaRoteiro?.addEventListener('change', () => applyScriptTheme(selectTemaRoteiro.value));
 campoTituloCapitulo?.addEventListener('input', () => { upperInputValue(campoTituloCapitulo); scheduleAutosave(); });
+// Captura a geometria ANTES de uma tecla comum. Se a edição não alterar
+// a altura, a largura nem a ocupação da folha, não há nada a redistribuir.
+// Enter, colagem, seleção de múltiplos blocos e IME continuam usando
+// a repaginação integral existente.
+editor?.addEventListener('beforeinput', (event) => {
+  simpleEditBeforeInput = null;
+  if (isEditorComposing || event.isComposing ||
+      !['insertText', 'deleteContentBackward', 'deleteContentForward'].includes(event.inputType)) return;
+  const selection = window.getSelection();
+  if (!selection?.isCollapsed) return;
+  const block = getCurrentBlock();
+  const content = block?.closest('.roteiro-page-content');
+  if (!block || !content || !editor.contains(block)) return;
+  const rect = block.getBoundingClientRect();
+  simpleEditBeforeInput = {
+    block, content, type: event.inputType,
+    height: rect.height, width: rect.width,
+    scrollHeight: content.scrollHeight,
+    blockCount: content.childElementCount,
+  };
+}, true);
 editor?.addEventListener('compositionstart', () => { isEditorComposing = true; });
 editor?.addEventListener('compositionend', () => {
   isEditorComposing = false;
@@ -2606,8 +2666,20 @@ editor?.addEventListener('compositionend', () => {
   if (block?.dataset?.blockType === 'scene_heading') scheduleDeferredUiRefresh({ sceneSummary: true });
   scheduleAutosave();
 });
-editor?.addEventListener('input', () => {
+editor?.addEventListener('input', (event) => {
+  const previousGeometry = simpleEditBeforeInput;
+  simpleEditBeforeInput = null;
   if (isEditorComposing) return;
+  // Uma colagem, corte, drop ou desfazer nativo pode modificar VÁRIOS blocos
+  // de uma vez, inclusive blocos diferentes daquele sob o cursor no final.
+  // A invalidação comum só descarta o bloco corrente; preservar os demais
+  // caches nesses casos fazia o texto aparecer na tela, mas sumir do save.
+  const bulkInput = !event?.inputType || [
+    'insertFromPaste', 'insertFromPasteAsQuotation', 'insertFromDrop',
+    'insertReplacementText', 'deleteByCut', 'deleteByDrag',
+    'historyUndo', 'historyRedo',
+  ].includes(event.inputType);
+  if (bulkInput) serializedBlockCache = new WeakMap();
   invalidateStructureCaches({ pages: false });
   const block = getCurrentBlock();
   if (block) {
@@ -2626,7 +2698,25 @@ editor?.addEventListener('input', () => {
     preserveSelection: true,
     after: () => ensureCaretFlowsAcrossPages(block, caretOffset),
   };
-  if (needsImmediateRepagination) scheduleRepagination(repaginationOptions);
+  // A maior parte das teclas em um bloco não cria outra linha. Nesse caso,
+  // os blocos e suas posições não mudam: evitar reconstruir todas as páginas
+  // posteriores (até segundos em roteiros com centenas de folhas).
+  // Eventos estruturais, seleção substituída ou mudança de altura/ocupação
+  // mantêm o caminho de repaginação original, sem aproximações de tamanho.
+  const rect = previousGeometry?.block === block ? block.getBoundingClientRect() : null;
+  const unchangedLayout = !!(previousGeometry && rect &&
+    previousGeometry.type === event.inputType &&
+    block.parentElement === previousGeometry.content &&
+    previousGeometry.content.childElementCount === previousGeometry.blockCount &&
+    Math.abs(rect.height - previousGeometry.height) < 0.5 &&
+    Math.abs(rect.width - previousGeometry.width) < 0.5 &&
+    previousGeometry.content.scrollHeight === previousGeometry.scrollHeight &&
+    !needsImmediateRepagination);
+  if (unchangedLayout) {
+    // Se uma tecla anterior já agendou a paginação (ex.: criou outra
+    // linha), conservar o debounce original enquanto a pessoa digita.
+    if (softRepaginationTimer) scheduleSoftRepagination(repaginationOptions);
+  } else if (needsImmediateRepagination) scheduleRepagination(repaginationOptions);
   else scheduleSoftRepagination(repaginationOptions);
 
   handleBlockFocus(block);
@@ -2684,6 +2774,9 @@ document.addEventListener('selectionchange', () => {
   });
 });
 editor?.addEventListener('keydown', (ev) => {
+  // Enter/Escape/Backspace podem integrar a composição de um caractere
+  // (IME, teclado virtual ou sugestões). Nunca tratá-los como comandos.
+  if (isEditorComposing || ev.isComposing || ev.keyCode === 229) return;
   const block = getCurrentBlock();
   if (!block) return;
 
@@ -2792,6 +2885,7 @@ editor?.addEventListener('keydown', (ev) => {
   }
 });
 document.addEventListener('keydown', (ev) => {
+  if (isEditorComposing || ev.isComposing || ev.keyCode === 229) return;
   if (ev.key === 'Alt') syncAltLinkModeState(true);
   const key = (ev.key || '').toLowerCase();
   const target = ev.target;
@@ -2939,7 +3033,9 @@ requestAnimationFrame(() => {
   updateSceneSummary();
   updateSidebarStickyOffset();
 });
-payloadAnterior = JSON.stringify({ titulo: campoTituloCapitulo?.value?.trim() || i18n('editor.no_title'), html: serialize() });
+payloadAnterior = JSON.stringify({ titulo: campoTituloCapitulo?.value?.trim() || i18n('script.no_title'), html: serialize() });
+if (sessaoRoteiro) sessaoRoteiro.aoAdquirir(() => rascunhoLocalRoteiro?.iniciar(payloadAnterior));
+  else rascunhoLocalRoteiro?.iniciar(payloadAnterior);
 
 document.getElementById('btnNovoItemCatalogo')?.addEventListener('click', ()=> openCatalogEditor(catalogoTipo.value));
 
@@ -2955,7 +3051,9 @@ editor?.addEventListener('keyup', (ev) => { if (['ArrowUp','ArrowDown','ArrowLef
 window.addEventListener('blur', () => syncAltLinkModeState(false));
 document.addEventListener('visibilitychange', () => { if (document.hidden) syncAltLinkModeState(false); });
 syncAltLinkModeState(false);
-window.addEventListener('beforeunload', () => doAutosave(true));
+// A cópia de segurança é persistida de forma síncrona pelo módulo de recuperação.
+// fetch() disparado em beforeunload não tem garantia de execução e pode correr
+// contra uma requisição já em andamento, sobrescrevendo dados novos.
 
 
 const btnAbrirRevisaoOrtografica = document.getElementById('btnAbrirRevisaoOrtografica');

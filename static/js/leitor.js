@@ -26,6 +26,14 @@ let ultimaPosicaoSalva = null;
 let ultimoPercentualSalvo = null;
 let enviandoPosicaoAgora = false;
 let timeoutRestauracao = null;
+// O documento do iframe permanece o mesmo enquanto o leitor muda de fonte,
+// tema ou largura. Reaproveitamos seus observadores entre esses ajustes.
+let documentoObservado = null;
+let ajusteAlturaAgendado = false;
+let ultimoCssAplicado = '';
+let ultimaPreferenciaPersistida = null;
+let posicaoPendente = null;
+let rolagemProgressoAgendada = false;
 
 
 const TEMAS_LEITOR = ['light','dark','serpia','dark-blue','terminal-calm','warm-brown','sunset-mode','frost','pastel-pink','code-like'];
@@ -128,19 +136,23 @@ function obterPreferencias() {
 
 /** Salvarpreferenciaslocal. Usada pelo fluxo principal da aplicação. */
 function salvarPreferenciasLocal() {
-  localStorage.setItem(chave, JSON.stringify(obterPreferencias()));
+  try { localStorage.setItem(chave, JSON.stringify(obterPreferencias())); } catch (_) { /* Armazenamento pode estar bloqueado. */ }
 }
 
 /** Persistirpreferenciasnoservidor. Usada pelo fluxo principal da aplicação. */
 function persistirPreferenciasNoServidor() {
-  const preferencias = obterPreferencias();
+  const payload = JSON.stringify(obterPreferencias());
+  // Cargas do iframe, mudanças de tamanho da janela e eventos input/change
+  // não devem gravar repetidamente a mesma configuração no servidor.
+  if (payload === ultimaPreferenciaPersistida) return;
+  ultimaPreferenciaPersistida = payload;
   clearTimeout(timeoutPersistencia);
   timeoutPersistencia = setTimeout(() => {
     fetch('/api/configuracoes/leitor', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(preferencias),
-    }).catch(() => {});
+      body: payload,
+    }).catch(() => { ultimaPreferenciaPersistida = null; });
   }, 180);
 }
 
@@ -325,34 +337,57 @@ function ajustarAlturaIframe() {
   const docEl = doc.documentElement;
   const altura = Math.max(body?.scrollHeight || 0, body?.offsetHeight || 0, docEl?.scrollHeight || 0, docEl?.offsetHeight || 0, docEl?.clientHeight || 0);
   if (altura > 0) {
-    epubFrame.style.height = `${Math.ceil(altura)}px`;
-    areaLeitura?.style.setProperty('--epub-frame-height', `${Math.ceil(altura)}px`);
+    const novaAltura = `${Math.ceil(altura)}px`;
+    if (epubFrame.style.height !== novaAltura) epubFrame.style.height = novaAltura;
+    if (areaLeitura?.style.getPropertyValue('--epub-frame-height') !== novaAltura) {
+      areaLeitura?.style.setProperty('--epub-frame-height', novaAltura);
+    }
   }
   return altura;
 }
 
-/** Observarmudancasnoiframe. Usada pelo fluxo principal da aplicação. */
+/** Agrega mudanças de layout do conteúdo em no máximo uma medição por quadro. */
+function agendarAjusteAlturaIframe() {
+  if (ajusteAlturaAgendado) return;
+  ajusteAlturaAgendado = true;
+  requestAnimationFrame(() => {
+    ajusteAlturaAgendado = false;
+    ajustarAlturaIframe();
+  });
+}
+
+/** Observa cada documento carregado uma única vez, inclusive imagens tardias. */
 function observarMudancasNoIframe() {
   const doc = obterDocumentoIframe();
-  if (!doc) return;
+  if (!doc?.documentElement || !doc.body) return;
+  if (documentoObservado === doc) return;
   resizeObserverIframe?.disconnect?.();
   mutationObserverIframe?.disconnect?.();
+  resizeObserverIframe = null;
+  mutationObserverIframe = null;
+  documentoObservado = doc;
+
   if (window.ResizeObserver) {
-    resizeObserverIframe = new ResizeObserver(() => ajustarAlturaIframe());
-    if (doc.body) resizeObserverIframe.observe(doc.body);
-    if (doc.documentElement) resizeObserverIframe.observe(doc.documentElement);
+    resizeObserverIframe = new ResizeObserver(agendarAjusteAlturaIframe);
+    resizeObserverIframe.observe(doc.body);
+    resizeObserverIframe.observe(doc.documentElement);
+  } else if (window.MutationObserver) {
+    // Fallback para motores mais antigos: a API de resize já observa as
+    // alterações de tamanho sem precisar inspecionar cada atributo do texto.
+    mutationObserverIframe = new MutationObserver(agendarAjusteAlturaIframe);
+    mutationObserverIframe.observe(doc.documentElement, {
+      childList: true, subtree: true, characterData: true, attributes: true,
+      attributeFilter: ['class', 'style', 'width', 'height', 'src']
+    });
   }
-  if (window.MutationObserver) {
-    mutationObserverIframe = new MutationObserver(() => ajustarAlturaIframe());
-    mutationObserverIframe.observe(doc.documentElement || doc.body, { childList: true, subtree: true, attributes: true, characterData: false });
-  }
-  doc.querySelectorAll('img').forEach((img) => {
-    if (!img.__epubPlusResizeHook) {
-      img.__epubPlusResizeHook = true;
-      img.addEventListener('load', ajustarAlturaIframe, { passive: true });
-      img.addEventListener('error', ajustarAlturaIframe, { passive: true });
-    }
-  });
+  // Captura eventos load/error de imagens inclusive adicionadas pelo TTS ou
+  // carregadas depois, sem criar um listener individual em cada imagem.
+  doc.addEventListener('load', (evento) => {
+    if (evento.target?.tagName === 'IMG') agendarAjusteAlturaIframe();
+  }, true);
+  doc.addEventListener('error', (evento) => {
+    if (evento.target?.tagName === 'IMG') agendarAjusteAlturaIframe();
+  }, true);
 }
 
 /** Aplicarpreferenciasnoiframe. Usada pelo fluxo principal da aplicação. */
@@ -395,7 +430,12 @@ function aplicarPreferenciasNoIframe() {
     styleEl.id = 'epubplus-overrides';
     doc.head.appendChild(styleEl);
   }
-  styleEl.textContent = montarCssOverride();
+  const cssAtual = montarCssOverride();
+  const visualMudou = ultimoCssAplicado !== cssAtual || styleEl.textContent !== cssAtual;
+  if (visualMudou) {
+    styleEl.textContent = cssAtual;
+    ultimoCssAplicado = cssAtual;
+  }
 
   const tema = temaAtual();
   doc.documentElement.style.background = tema.fundo;
@@ -403,7 +443,8 @@ function aplicarPreferenciasNoIframe() {
   body.style.color = tema.texto;
   doc.documentElement.style.overflow = 'hidden';
   body.style.overflow = 'hidden';
-  ajustarAlturaIframe();
+  // Alterações apenas de voz/volume não mudam a geometria do capítulo.
+  if (visualMudou || documentoObservado !== doc) ajustarAlturaIframe();
   observarMudancasNoIframe();
 }
 
@@ -455,34 +496,62 @@ function obterPosicaoAtualLeitura() {
   return Math.max(0, Math.round((window.scrollY || window.pageYOffset || 0) - topoAbsolutoAreaLeitura()));
 }
 
+/** Envia as posições em ordem; a posição mais recente não se perde
+ * enquanto uma gravação anterior ainda aguarda resposta do servidor. */
+function processarFilaPosicao() {
+  if (enviandoPosicaoAgora || !posicaoPendente) return;
+  const envio = posicaoPendente;
+  posicaoPendente = null;
+  if (ultimaPosicaoSalva === envio.posicao && ultimoPercentualSalvo === envio.percentualInteiro) return;
+  enviandoPosicaoAgora = true;
+  let sucesso = false;
+  fetch(envio.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: envio.payload,
+    keepalive: true,
+  }).then((resposta) => {
+    if (!resposta.ok) throw new Error('Não foi possível salvar a posição de leitura.');
+    sucesso = true;
+    ultimaPosicaoSalva = envio.posicao;
+    ultimoPercentualSalvo = envio.percentualInteiro;
+  }).catch(() => {
+    // Não registra como salva uma posição que o servidor não confirmou.
+    if (!posicaoPendente) posicaoPendente = envio;
+  }).finally(() => {
+    enviandoPosicaoAgora = false;
+    // Em falha, tenta uma versão MAIS NOVA que aguardava na fila; se não há
+    // nova edição de posição, espera outro scroll para não criar retry infinito.
+    if (posicaoPendente && (sucesso || posicaoPendente !== envio)) processarFilaPosicao();
+  });
+}
+
 /** Enviarposicaoleitura. Usada pelo fluxo principal da aplicação. */
 function enviarPosicaoLeitura(imediato = false) {
   const url = window.LEITOR_CONFIG?.salvarPosicaoUrl;
-  if (!url || enviandoPosicaoAgora) return;
+  if (!url) return;
   const posicao = obterPosicaoAtualLeitura();
   const percentual = calcularPercentualIframe();
+  const percentualInteiro = Math.round(percentual);
   atualizarIndicadorProgresso(percentual);
-  if (!imediato && ultimaPosicaoSalva === posicao && ultimoPercentualSalvo === Math.round(percentual)) return;
-  ultimaPosicaoSalva = posicao;
-  ultimoPercentualSalvo = Math.round(percentual);
+  if (!imediato && ultimaPosicaoSalva === posicao && ultimoPercentualSalvo === percentualInteiro && !posicaoPendente) return;
   const payload = JSON.stringify({ posicao, percentual });
 
-  if (imediato && navigator.sendBeacon) {
-    try {
-      const ok = navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
-      if (ok) return;
-    } catch (_) {}
+  if (imediato) {
+    // Ao fechar a aba, tenta enviar o valor atual mesmo que haja uma requisição
+    // anterior pendente. A entrega do beacon depende do navegador/rede.
+    if (ultimaPosicaoSalva === posicao && ultimoPercentualSalvo === percentualInteiro && !posicaoPendente) return;
+    if (navigator.sendBeacon) {
+      try {
+        if (navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }))) return;
+      } catch (_) {}
+    }
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(() => {});
+    return;
   }
 
-  enviandoPosicaoAgora = true;
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: payload,
-    keepalive: true,
-  }).catch(() => {}).finally(() => {
-    enviandoPosicaoAgora = false;
-  });
+  posicaoPendente = { url, posicao, percentualInteiro, payload };
+  processarFilaPosicao();
 }
 
 /** Salvarposicaoleitura. Usada pelo fluxo principal da aplicação. */
@@ -567,8 +636,18 @@ epubFrame?.addEventListener('load', () => {
   atualizarIndicadorProgresso(window.LEITOR_CONFIG?.progressoInicial || 0);
 });
 
-window.addEventListener('scroll', salvarPosicaoLeitura, { passive: true });
-window.addEventListener('scroll', () => atualizarIndicadorProgresso(calcularPercentualIframe()), { passive: true });
+window.addEventListener('scroll', () => {
+  // Eventos disparados pelo ajuste do iframe não devem sobrescrever a posição
+  // persistida antes de terminar a restauração do capítulo.
+  if (!restaurouPosicao) return;
+  salvarPosicaoLeitura();
+  if (rolagemProgressoAgendada) return;
+  rolagemProgressoAgendada = true;
+  requestAnimationFrame(() => {
+    rolagemProgressoAgendada = false;
+    atualizarIndicadorProgresso(calcularPercentualIframe());
+  });
+}, { passive: true });
 window.addEventListener('resize', () => {
   atualizarLimitesControleLargura();
   aplicarPreferenciasNoIframe();
@@ -629,8 +708,7 @@ function sincronizarLeitorAltComLayout() {
       rolarViewportParaAreaLeitura();
       aplicarPreferenciasNoIframe();
       conectarEventosDoIframe();
-      restaurouPosicao = false;
-      restaurarPosicaoLeitura();
+      if (!restaurouPosicao) restaurarPosicaoLeitura();
       atualizarIndicadorProgresso(window.LEITOR_CONFIG?.progressoInicial || 0);
     });
   });

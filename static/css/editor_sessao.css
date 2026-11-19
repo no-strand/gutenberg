@@ -1,0 +1,20 @@
+/* A segunda aba fica somente para leitura até ser recarregada do servidor. */
+.editor-sessao-bloqueada #editorTexto { cursor: default; }
+.editor-sessao-bloqueada .barra-word-sticky,
+.editor-sessao-bloqueada .barra-roteiro-sticky,
+.editor-sessao-bloqueada .barra-ferramentas { pointer-events: none; opacity: .7; }
+.editor-sessao-bloqueada .editor-recuperacao-aviso { display: none !important; }
+.editor-sessao-aviso {
+  position: fixed; inset: auto 20px 20px auto; z-index: 10020;
+  box-sizing: border-box; max-width: min(450px, calc(100vw - 40px));
+  padding: 16px 18px; border: 1px solid rgba(145, 97, 43, .28);
+  border-radius: 12px; background: #fff8ec; color: #44331d;
+  box-shadow: 0 9px 28px rgba(25, 30, 40, .16);
+  font: 14px/1.45 system-ui, sans-serif;
+}
+.editor-sessao-aviso p { margin: 0 0 11px; }
+.editor-sessao-aviso button {
+  border: 0; border-radius: 7px; padding: 8px 12px;
+  color: white; background: #665038; cursor: pointer; font: inherit;
+}
+.editor-sessao-aviso button:hover { background: #4c3a28; }

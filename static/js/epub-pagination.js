@@ -18,7 +18,6 @@
   sheet.id = 'epub-visual-page-breaks';
   document.head.appendChild(sheet);
 
-  const MAX_PAGES = 250;
   const GAP = 32;
   const DEBOUNCE_MS = 90;
   let pages = 0;
@@ -45,22 +44,30 @@
     pages = boxes.length;
     pageBoxes = boxes;
     pageGeometryKey = key;
-    lastActiveIndex = -1;
-    const fragment = document.createDocumentFragment();
+    // Reutilizar folhas existentes evita destruir/recriar centenas de nós
+    // quando a digitação perto do início desloca a paginação adiante.
+    // A árvore contenteditable continua intocada.
     boxes.forEach((box, i) => {
-      const item = document.createElement('div');
-      item.className = 'epub-paper-sheet';
-      item.style.top = `${box.top}px`;
-      item.style.height = `${box.height}px`;
-      const folio = document.createElement('span');
-      folio.className = 'epub-paper-folio';
-      folio.textContent = String(i + 1).padStart(2, '0');
-      item.appendChild(folio);
-      fragment.appendChild(item);
+      let item = layers.children[i];
+      if (!item) {
+        item = document.createElement('div');
+        item.className = 'epub-paper-sheet';
+        const folio = document.createElement('span');
+        folio.className = 'epub-paper-folio';
+        folio.textContent = String(i + 1).padStart(2, '0');
+        item.appendChild(folio);
+        layers.appendChild(item);
+      }
+      const top = `${box.top}px`;
+      const height = `${box.height}px`;
+      if (item.style.top !== top) item.style.top = top;
+      if (item.style.height !== height) item.style.height = height;
     });
-    layers.replaceChildren(fragment);
+    while (layers.children.length > boxes.length) layers.lastElementChild.remove();
+    if (lastActiveIndex >= boxes.length) lastActiveIndex = -1;
     const last = boxes[boxes.length - 1];
-    paper.style.minHeight = `${last.top + last.height}px`;
+    const minHeight = `${last.top + last.height}px`;
+    if (paper.style.minHeight !== minHeight) paper.style.minHeight = minHeight;
   }
   function updateActiveSheet() {
     if (running || !pages) return;
@@ -77,8 +84,10 @@
     const located = pageBoxes.findIndex((box) => offset < box.top + box.height + GAP / 2);
     const index = located < 0 ? pages - 1 : located;
     if (index === lastActiveIndex) return;
+    const previousIndex = lastActiveIndex;
     lastActiveIndex = index;
-    Array.from(layers.children).forEach((item, i) => item.classList.toggle('is-active', i === index));
+    if (previousIndex >= 0) layers.children[previousIndex]?.classList.remove('is-active');
+    layers.children[index]?.classList.add('is-active');
   }
 
   function recalculate() {
@@ -96,21 +105,17 @@
       const boxes = [{top: 0, height: metrics.paperHeight}];
       let pageIndex = 0;
       let extraBefore = 0;
-      let previousBottomMargin = 0;
       const rules = [];
       for (let i = 0; i < blocks.length; i += 1) {
         const block = blocks[i];
         const rect = block.getBoundingClientRect();
         const height = rect.height;
-        const css = getComputedStyle(block);
-        const ownMargin = parseFloat(css.marginTop) || 0;
-        const bottomMargin = parseFloat(css.marginBottom) || 0;
         let top = rect.top - editorTop + extraBefore;
         let bottom = rect.bottom - editorTop + extraBefore;
         let box = boxes[pageIndex];
         const bottomLimit = box.top + box.height - metrics.padding;
         const oversized = height > metrics.contentHeight + 2;
-        if (bottom > bottomLimit + 2 && boxes.length < MAX_PAGES &&
+        if (bottom > bottomLimit + 2 &&
             (!oversized || top > box.top + metrics.padding + 3)) {
           // Parágrafos que cabem numa folha são movidos por inteiro.
           // Parágrafos maiores que a folha ganham uma folha elástica:
@@ -121,7 +126,14 @@
           box = next;
           const push = Math.max(0, box.top + metrics.padding - top);
           if (push > 0) {
-            // Considerar colapso de margens adjacentes no HTML original.
+            // As margens só são necessárias nos pontos em que uma folha
+            // realmente quebra. Consultar getComputedStyle em cada bloco
+            // tornava toda digitação mais cara em capítulos extensos.
+            // Preservar os mesmos valores e a mesma regra de colapso.
+            const ownMargin = parseFloat(getComputedStyle(block).marginTop) || 0;
+            const previousBlock = blocks[i - 1];
+            const previousBottomMargin = previousBlock
+              ? (parseFloat(getComputedStyle(previousBlock).marginBottom) || 0) : 0;
             const margin = Math.max(ownMargin, previousBottomMargin) + push;
             rules.push(`.pagina-editor-app .painel-word #editorTexto > :nth-child(${i + 1}) { margin-top: ${Math.ceil(margin)}px !important; }`);
             extraBefore += push;
@@ -135,7 +147,6 @@
         if (bottom > box.top + box.height - metrics.padding) {
           box.height = Math.max(box.height, Math.ceil(bottom - box.top + metrics.padding + 2));
         }
-        previousBottomMargin = bottomMargin;
       }
       sheet.textContent = rules.join('\n');
       const actualBottom = blocks.length

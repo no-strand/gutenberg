@@ -1,0 +1,32 @@
+/* Recuperação não invasiva: nenhuma sobreposição sobre a região editável. */
+.editor-recuperacao-aviso {
+  position: fixed;
+  z-index: 1100;
+  bottom: 20px;
+  right: 20px;
+  width: min(405px, calc(100vw - 32px));
+  padding: 15px 18px;
+  border: 1px solid rgba(118, 94, 60, .26);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(19, 30, 42, .18);
+  background: #fffdf8;
+  color: #242424;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.editor-recuperacao-aviso p { margin: 0 0 12px; }
+.editor-recuperacao-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.editor-recuperacao-acoes button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 7px;
+  padding: 8px 11px;
+  border: 1px solid #887962;
+  background: #fff;
+  color: #222;
+}
+.editor-recuperacao-acoes .editor-recuperacao-restaurar { background: #243448; color: #fff; border-color: #243448; }
+.editor-recuperacao-erro { position: fixed; right: 14px; bottom: 14px; max-width: 350px;
+  border: 1px solid #a84c4c; border-radius: 8px; padding: 11px; z-index: 1101;
+  color: #742020; background: #fff5f2; box-shadow: 0 4px 14px #0002; font-size: 13px; }
+@media (max-width: 520px) { .editor-recuperacao-aviso { right: 16px; bottom: 16px; } }

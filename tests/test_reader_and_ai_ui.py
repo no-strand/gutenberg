@@ -245,7 +245,7 @@ class ReaderTtsEnhancementsTests(unittest.TestCase):
 class Release104Tests(unittest.TestCase):
     def test_versao_do_aplicativo_e_104(self):
         py = (ROOT / 'modules' / 'utilidades.py').read_text(encoding='utf-8')
-        self.assertIn('APP_VERSAO = "1.0.4"', py)
+        self.assertIn('APP_VERSAO = "1.0.6"', py)
 
     def test_seletor_idioma_tts_tem_espaco_ampliado(self):
         css = (ROOT / 'static' / 'css' / 'leitor.css').read_text(encoding='utf-8')

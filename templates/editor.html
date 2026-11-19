@@ -185,6 +185,10 @@
 {% block scripts %}
 <script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|tojson }}, numero: {{ numero|tojson }}, idioma: {{ projeto.idioma|tojson }}, catalogoPersonagens: {{ (recursos_editor.personagens if recursos_editor is defined else [])|tojson }}, catalogoLocais: {{ (recursos_editor.locais if recursos_editor is defined else [])|tojson }}, catalogoAnotacoes: {{ (recursos_editor.anotacoes if recursos_editor is defined else [])|tojson }}};</script>
 <script src="{{ url_for('static', filename='js/editor_tipografia.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/editor_recuperacao.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/editor_sessao.css') }}">
+<script src="{{ url_for('static', filename='js/editor_sessao.js') }}"></script>
+<script src="{{ url_for('static', filename='js/editor_recuperacao.js') }}"></script>
 <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/epub-pagination.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ia_editor.js') }}"></script>
