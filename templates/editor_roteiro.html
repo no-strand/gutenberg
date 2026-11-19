@@ -2,7 +2,7 @@
 {% block titulo %}{{ t('script.page_title_edit', title=roteiro.titulo) }}{% endblock %}
 {% block body_class %}pagina-editor-app{% if not config_global.efeito_editor %} editor-sem-efeito{% endif %}{% endblock %}
 {% block body_attrs %}data-editor-page="true" data-editor-effects-enabled="{{ 'true' if config_global.efeito_editor else 'false' }}"{% endblock %}
-{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/editor_roteiro.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}">{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/editor_roteiro.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/navegacao_folhas.css') }}">{% endblock %}
 {% block conteudo %}
 <section class="editor-topo">
   <div class="cabecalho-editor-grid">
@@ -20,9 +20,9 @@
     <button type="button" class="botao-secundario botao-apenas-icone btn-toolbar" id="btnUndo" title="{{ t('editor.undo') }} (Ctrl+Z)" aria-label="{{ t('editor.undo') }} (Ctrl+Z)">↶</button>
     <button type="button" class="botao-secundario botao-apenas-icone btn-toolbar" id="btnRedo" title="{{ t('editor.redo') }} (Ctrl+Shift+Z)" aria-label="{{ t('editor.redo') }} (Ctrl+Shift+Z)">↷</button>
     <div class="separador-toolbar"></div>
-    {% set blocos = [("scene_heading",t("script.editor_block_scene_heading"),"Cena","Alt+C"),("action",t("script.editor_block_action"),"Ação","Alt+A"),("character",t("script.editor_block_character"),"Personagem","Alt+P"),("dialogue",t("script.editor_block_dialogue"),"Diálogo","Alt+D"),("parenthetical",t("script.editor_block_parenthetical"),t("script.editor_block_parenthetical"),"Alt+S"),("shot",t("script.editor_block_shot"),"Plano","Alt+L"),("transition",t("script.editor_block_transition"),"Transição","Alt+T"),("comment",t("script.editor_block_comment"),"Nota","Alt+N"),("music",t("script.editor_block_music"),"Música","Alt+M"),("neutral",t("script.editor_block_neutral"),"Livre","Alt+E")] %}
+    {% set blocos = [("scene_heading",t("script.editor_block_scene_heading"),t("script.toolbar_scene_heading"),"Alt+C"),("action",t("script.editor_block_action"),t("script.toolbar_action"),"Alt+A"),("character",t("script.editor_block_character"),t("script.toolbar_character"),"Alt+P"),("dialogue",t("script.editor_block_dialogue"),t("script.toolbar_dialogue"),"Alt+D"),("parenthetical",t("script.editor_block_parenthetical"),t("script.editor_block_parenthetical"),"Alt+S"),("shot",t("script.editor_block_shot"),t("script.toolbar_shot"),"Alt+L"),("transition",t("script.editor_block_transition"),t("script.toolbar_transition"),"Alt+T"),("comment",t("script.editor_block_comment"),t("script.toolbar_comment"),"Alt+N"),("music",t("script.editor_block_music"),t("script.toolbar_music"),"Alt+M"),("neutral",t("script.editor_block_neutral"),t("script.toolbar_neutral"),"Alt+E")] %}
     {% for tipo,nome,sigla,atalho in blocos %}
-    <button type="button" class="botao-secundario btn-toolbar btn-tipo-bloco" data-block-type="{{ tipo }}" title="{{ nome }} ({{ atalho }})"><span>{{ sigla }}</span></button>
+    <button type="button" class="botao-secundario btn-toolbar btn-tipo-bloco" data-block-type="{{ tipo }}" title="{{ nome }} ({{ atalho }})" aria-label="{{ nome }} ({{ atalho }})"><span>{{ sigla }}</span></button>
     {% endfor %}
     <button type="button" class="botao-secundario botao-apenas-icone btn-toolbar btn-toggle-visualizacao" id="btnToggleVisualizacaoRoteiro" title="{{ t('common.hide_comments') }} (Alt+O)">
       <input type="checkbox" id="toggleVisualizacaoRoteiro" hidden>
@@ -47,6 +47,7 @@
     </div>
     <span class="tipo-atual-label">{{ t("common.type_current") }}</span>
     <strong id="indicadorTipoBloco" class="indicador-tipo-bloco">{{ t("script.editor_block_action") }}</strong>
+
   </div>
 </section>
 
@@ -160,8 +161,10 @@
   </div>
 </div>
 {% include '_recursos_visualizacao_modal.html' %}
+{% include '_navegacao_folhas_modal.html' %}
 {% endblock %}
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/navegacao_folhas.js') }}" defer></script>
 <script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|default('', true)|tojson }}, numero: {{ numero|default(1, true)|tojson }}, catalogoPersonagens: {{ roteiro.get('catalogo_personagens', [])|tojson }}, catalogoLocais: {{ roteiro.get('catalogo_locais', [])|tojson }}, catalogoAnotacoes: {{ roteiro.get('catalogo_anotacoes', [])|tojson }}, roteiroTitulo: {{ roteiro.get('titulo', t('script.no_title'))|tojson }}, prefixoCena: {{ roteiro.get('prefixo_cena', '0')|tojson }}, numeracaoInicial: {{ roteiro.get('numeracao_inicial', 1)|tojson }}, cabecalho: {{ roteiro.get('cabecalho', '')|tojson }}, rodape: {{ roteiro.get('rodape', '')|tojson }}, tipoRoteiro: {{ roteiro.get('tipo_roteiro', 'spec_script')|tojson }}, tipoRoteiroLabel: {{ roteiro.get('tipo_roteiro_label', t('script.spec_script'))|tojson }}, idioma: {{ projeto.idioma|tojson }}};</script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/editor_recuperacao.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/editor_sessao.css') }}">

@@ -406,7 +406,7 @@ function aplicarPreferenciasNoIframe() {
   if (controleVelocidadeTts) {
     controleVelocidadeTts.value = normalizarVelocidadeTts(controleVelocidadeTts.value || window.LEITOR_CONFIG?.ttsSpeed || 1);
     const indicadorVelocidade = document.getElementById('valorVelocidadeTts');
-    if (indicadorVelocidade) indicadorVelocidade.textContent = `${Number(controleVelocidadeTts.value).toFixed(2).replace('.', ',')}×`;
+    if (indicadorVelocidade) indicadorVelocidade.textContent = `${Number(controleVelocidadeTts.value).toLocaleString(window.APP_CONFIG?.idiomaApp === 'en_US' ? 'en-US' : 'pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}×`;
     if (window.LEITOR_CONFIG) window.LEITOR_CONFIG.ttsSpeed = Number(controleVelocidadeTts.value);
   }
   if (controleVolumeTts) {
@@ -511,7 +511,7 @@ function processarFilaPosicao() {
     body: envio.payload,
     keepalive: true,
   }).then((resposta) => {
-    if (!resposta.ok) throw new Error('Não foi possível salvar a posição de leitura.');
+    if (!resposta.ok) throw new Error(window.t ? window.t('reader.save_position_error') : 'Could not save the reading position.');
     sucesso = true;
     ultimaPosicaoSalva = envio.posicao;
     ultimoPercentualSalvo = envio.percentualInteiro;

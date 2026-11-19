@@ -2042,7 +2042,7 @@ function updateToolbarState() {
         option = document.createElement('option');
         option.value = '';
         option.disabled = true;
-        option.textContent = 'Vários tamanhos';
+        option.textContent = window.t ? i18n('editor.mixed_font_sizes') : 'Vários tamanhos';
         seletorTamanhoFonteEditor.prepend(option);
       }
       seletorTamanhoFonteEditor.value = '';
@@ -2331,12 +2331,12 @@ function getSelectionCaretRectForBook() {
 function bookResourceTypeLabel(tipo) {
   if (tipo === 'personagens') return 'Personagem';
   if (tipo === 'locais') return 'Local';
-  if (tipo === 'anotacoes') return 'Anotação';
+  if (tipo === 'anotacoes') return i18n('resources.note');
   return 'Recurso';
 }
 
 function bookResourceFieldLabel(tipo, field) {
-  if (tipo === 'anotacoes') return field === 'description' ? 'Anotação' : 'Título';
+  if (tipo === 'anotacoes') return field === 'description' ? i18n('resources.note') : i18n('resources.title_label');
   return field === 'description' ? i18n('common.description') : i18n('common.name');
 }
 
@@ -2482,7 +2482,7 @@ function getBookResourceInfoFromLink(link) {
   const item = findBookResourceItem(tipo, nome);
   return {
     catalogoTipo: tipo,
-    tipo: tipo === 'locais' ? i18n('common.location_singular') : (tipo === 'anotacoes' ? 'Anotação' : i18n('common.character_singular')),
+    tipo: tipo === 'locais' ? i18n('common.location_singular') : (tipo === 'anotacoes' ? i18n('resources.note') : i18n('common.character_singular')),
     nome: item?.nome || nome,
     descricao: normalizeBookSpaces(item?.descricao || '') || i18n('common.no_description'),
     item: item || { nome, descricao: '' },
@@ -2525,8 +2525,8 @@ function openBookCatalogEditor(tipo, item = {}, link = null) {
   const nome = item?.nome || link?.dataset?.recursoNome || link?.textContent || '';
   if (catalogoLivroNomeLabel && catalogoLivroNome) catalogoLivroNomeLabel.firstChild.textContent = bookResourceFieldLabel(safeTipo, 'name');
   if (catalogoLivroDescricaoLabel && catalogoLivroDescricao) catalogoLivroDescricaoLabel.firstChild.textContent = bookResourceFieldLabel(safeTipo, 'description');
-  if (catalogoLivroNome) catalogoLivroNome.placeholder = safeTipo === 'anotacoes' ? 'Título da anotação' : '';
-  if (catalogoLivroDescricao) catalogoLivroDescricao.placeholder = safeTipo === 'anotacoes' ? 'Texto da anotação' : '';
+  if (catalogoLivroNome) catalogoLivroNome.placeholder = safeTipo === 'anotacoes' ? i18n('resources.note_title_placeholder') : '';
+  if (catalogoLivroDescricao) catalogoLivroDescricao.placeholder = safeTipo === 'anotacoes' ? i18n('resources.note_placeholder') : '';
   catalogoLivroTipo.value = safeTipo;
   catalogoLivroId.value = item?.id || '';
   catalogoLivroNomeOriginal.value = nome || '';
@@ -2534,7 +2534,7 @@ function openBookCatalogEditor(tipo, item = {}, link = null) {
   catalogoLivroDescricao.value = item?.descricao || '';
   catalogoLivroLinkAtivo = link || null;
   catalogoLivroItemAtivo = item || null;
-  if (tituloModalCatalogoLivro) tituloModalCatalogoLivro.textContent = `${i18n('common.edit_item')} — ${safeTipo === 'locais' ? i18n('common.location_singular') : (safeTipo === 'anotacoes' ? 'Anotação' : i18n('common.character_singular'))}`;
+  if (tituloModalCatalogoLivro) tituloModalCatalogoLivro.textContent = `${i18n('common.edit_item')} — ${safeTipo === 'locais' ? i18n('common.location_singular') : (safeTipo === 'anotacoes' ? i18n('resources.note') : i18n('common.character_singular'))}`;
   if (statusCatalogoLivro) statusCatalogoLivro.textContent = '';
   modalCatalogoLivro.classList.remove('oculto');
   setTimeout(() => catalogoLivroNome?.focus(), 30);
@@ -2624,7 +2624,7 @@ formCatalogoLivro?.addEventListener('submit', async (event) => {
       catalogoLivroLinkAtivo.textContent = nome;
       catalogoLivroLinkAtivo.dataset.recursoNome = nome;
       catalogoLivroLinkAtivo.dataset.recursoTipo = tipo;
-      catalogoLivroLinkAtivo.title = `${tipo === 'locais' ? i18n('common.location_singular') : (tipo === 'anotacoes' ? 'Anotação' : i18n('common.character_singular'))}: ${nome}`;
+      catalogoLivroLinkAtivo.title = `${tipo === 'locais' ? i18n('common.location_singular') : (tipo === 'anotacoes' ? i18n('resources.note') : i18n('common.character_singular'))}: ${nome}`;
       markEditorDirty();
       scheduleAutosave();
       scheduleHistoryCommit('resource-link-edit');

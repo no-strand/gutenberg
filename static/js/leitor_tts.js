@@ -744,8 +744,8 @@ function limparTextoParaTts(texto) {
       botao.dataset.estado = 'loading';
       botao.setAttribute('aria-pressed', 'true');
       botao.setAttribute('aria-busy', 'true');
-      botao.title = 'Preparando primeiro áudio...';
-      botao.setAttribute('aria-label', 'Preparando primeiro áudio. Clique para cancelar.');
+      botao.title = traduzir('reader.tts_preparing_first', 'Preparing first audio...');
+      botao.setAttribute('aria-label', traduzir('reader.tts_preparing_cancel', 'Preparing first audio. Click to cancel.'));
 
       const icon = botao.querySelector('.icone-svg');
       if (icon) {
@@ -757,7 +757,7 @@ function limparTextoParaTts(texto) {
     botao.dataset.estado = tocando ? 'playing' : 'paused';
     botao.setAttribute('aria-pressed', ativo ? 'true' : 'false');
     botao.removeAttribute('aria-busy');
-    botao.title = tocando ? 'Pausar leitura em voz alta' : 'Ler em voz alta';
+    botao.title = tocando ? traduzir('reader.pause_aloud', 'Pause read aloud') : traduzir('reader.read_aloud', 'Read aloud');
     botao.setAttribute('aria-label', botao.title);
 
     const icon = botao.querySelector('.icone-svg');
@@ -839,7 +839,7 @@ function limparTextoParaTts(texto) {
     }
 
     if (!resposta.ok) {
-      let mensagem = 'Não foi possível gerar o áudio.';
+      let mensagem = traduzir('reader.tts_generate_error', 'Could not generate audio.');
       let caminhoLog = '';
       try {
         const dadosErro = await resposta.json();
@@ -847,7 +847,7 @@ function limparTextoParaTts(texto) {
         caminhoLog = String(dadosErro?.log || '').trim();
       } catch (_) {}
       if (caminhoLog) {
-        mensagem += `\n\nLog de diagnóstico: ${caminhoLog}`;
+        mensagem += `\n\n${traduzir('reader.tts_diagnostic_log', 'Diagnostic log')}: ${caminhoLog}`;
       }
       enviarLogTts('fetch_erro_http', {indice: idx, status: resposta.status, mensagem});
       throw new Error(mensagem);
@@ -1022,7 +1022,7 @@ function limparTextoParaTts(texto) {
         carregandoPrimeiroAudio = false;
         atualizarBotao();
         const mediaErro = audioAtual?.error;
-        erroTts(new Error(`Falha ao reproduzir o áudio${mediaErro?.code ? ` (MediaError ${mediaErro.code})` : ''}.`));
+        erroTts(new Error(`${traduzir('reader.tts_playback_error', 'Could not play the audio')}${mediaErro?.code ? ` (MediaError ${mediaErro.code})` : ''}.`));
       };
 
       enviarLogTts('audio_play_chamada', estadoAudio({indice, token}, audioAtual));

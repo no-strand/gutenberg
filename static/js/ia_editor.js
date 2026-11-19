@@ -54,12 +54,12 @@
         modo: isRoteiro ? 'roteiro' : 'epub', prompt: pedido, idioma: cfg.idioma || 'pt-BR', contexto: contextoAtual(), recursos: recursosAtual()
       })});
       const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.html) throw new Error(d.erro || 'Falha ao gerar conteúdo.');
+      if (!r.ok || !d.html) throw new Error(d.erro || window.t?.('editor.ai_generation_error') || 'Could not generate content.');
       htmlGerado = d.html;
       preview.innerHTML = htmlGerado;
       btnInserir.disabled = false;
       status.textContent = window.t?.('editor.ai_ready') || 'Conteúdo pronto para inserir.';
-    } catch (e) { status.textContent = e.message || 'Falha ao gerar conteúdo.'; }
+    } catch (e) { status.textContent = e.message || window.t?.('editor.ai_generation_error') || 'Could not generate content.'; }
     finally { btnGerar.disabled = false; }
   }
   function dispararInput() {
@@ -109,7 +109,7 @@
   function inserirRoteiro() {
     const root = fragmentoSeguro(htmlGerado);
     let blocos = normalizarBlocosGerados(root);
-    if (!blocos.length) throw new Error('A IA não retornou blocos de roteiro válidos. Gere novamente.');
+    if (!blocos.length) throw new Error(window.t?.('editor.ai_invalid_script_blocks') || 'AI did not return valid screenplay blocks. Please generate again.');
 
     // O editor de roteiro possui páginas e cada página possui seu próprio
     // .roteiro-page-content. Nunca inserimos diretamente em #editorRoteiro.

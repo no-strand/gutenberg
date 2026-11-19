@@ -1246,7 +1246,7 @@
     const option = document.createElement('option');
     option.value = '';
     option.disabled = true;
-    option.textContent = kind === 'font' ? 'Várias fontes' : 'Vários tamanhos';
+    option.textContent = tr(kind === 'font' ? 'editor.mixed_fonts' : 'editor.mixed_font_sizes', {}, kind === 'font' ? 'Várias fontes' : 'Vários tamanhos');
     select.prepend(option);
   }
   function refreshInfoTypographyControls(){

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block titulo %}{{ t('resources.page_title', project=projeto.titulo) }}{% endblock %}
 {% block classe_pagina %}pagina-recursos-projeto-shell{% endblock %}
-{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-editor.css') }}">{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/navegacao_folhas.css') }}">{% endblock %}
 {% block conteudo %}
 <section class="recursos-topo topo-projeto">
   <div class="recursos-topo-info">
@@ -55,17 +55,18 @@
               <button type="button" class="botao-secundario info-format-btn" data-info-bloco="h3" title="{{ t('resources.heading3') }}">H3</button>
               <button type="button" class="botao-secundario info-format-btn" data-info-comando="insertUnorderedList" title="{{ t('resources.list') }}">•</button>
               <label class="editor-font-picker info-font-picker" for="seletorFonteInfo">
-                <span class="editor-font-picker-label">Fonte</span>
-                <select id="seletorFonteInfo" class="editor-font-select" aria-label="Fonte do texto em informações">
+                <span class="editor-font-picker-label">{{ t('reader.font') }}</span>
+                <select id="seletorFonteInfo" class="editor-font-select" aria-label="{{ t('resources.info_font_select') }}">
                   {% include '_editor_font_options.html' %}
                 </select>
               </label>
               <label class="editor-size-picker info-size-picker" for="seletorTamanhoFonteInfo">
-                <span class="editor-size-picker-label">Tamanho</span>
-                <select id="seletorTamanhoFonteInfo" class="editor-size-select" aria-label="Tamanho da fonte em informações">
+                <span class="editor-size-picker-label">{{ t('reader.font_size') }}</span>
+                <select id="seletorTamanhoFonteInfo" class="editor-size-select" aria-label="{{ t('resources.info_font_size_select') }}">
                   {% include '_editor_font_size_options.html' %}
                 </select>
               </label>
+
             </div>
             <div class="info-editor-toolbar">
               <input id="tituloPaginaInfo" class="info-title-input" maxlength="90" placeholder="{{ t('resources.page_title_placeholder') }}">
@@ -179,10 +180,10 @@
       <button class="botao-fechar" type="button" data-fechar-ia-recursos="true" aria-label="{{ t('resources.ai_close') }}">×</button>
     </div>
     <div class="ia-recursos-alvos" role="radiogroup" aria-label="{{ t('resources.ai_target') }}">
-      <label class="ia-recurso-alvo ativo"><input type="radio" name="iaRecursoAlvo" value="informacoes" checked><strong>📚 {{ t('resources.ai_target_info') }}</strong><span>Texto estruturado para a página de informações.</span></label>
-      <label class="ia-recurso-alvo"><input type="radio" name="iaRecursoAlvo" value="personagens"><strong>👤 {{ t('resources.ai_target_character') }}</strong><span>Nome e descrição para um personagem.</span></label>
-      <label class="ia-recurso-alvo"><input type="radio" name="iaRecursoAlvo" value="lugares"><strong>📍 {{ t('resources.ai_target_place') }}</strong><span>Nome e descrição para um lugar.</span></label>
-      <label class="ia-recurso-alvo"><input type="radio" name="iaRecursoAlvo" value="anotacoes"><strong>📝 {{ t('resources.ai_target_note') }}</strong><span>Título e texto para uma anotação.</span></label>
+      <label class="ia-recurso-alvo ativo"><input type="radio" name="iaRecursoAlvo" value="informacoes" checked><strong>📚 {{ t('resources.ai_target_info') }}</strong><span>{{ t('resources.ai_target_info_desc') }}</span></label>
+      <label class="ia-recurso-alvo"><input type="radio" name="iaRecursoAlvo" value="personagens"><strong>👤 {{ t('resources.ai_target_character') }}</strong><span>{{ t('resources.ai_target_character_desc') }}</span></label>
+      <label class="ia-recurso-alvo"><input type="radio" name="iaRecursoAlvo" value="lugares"><strong>📍 {{ t('resources.ai_target_place') }}</strong><span>{{ t('resources.ai_target_place_desc') }}</span></label>
+      <label class="ia-recurso-alvo"><input type="radio" name="iaRecursoAlvo" value="anotacoes"><strong>📝 {{ t('resources.ai_target_note') }}</strong><span>{{ t('resources.ai_target_note_desc') }}</span></label>
     </div>
     <label class="ia-recursos-prompt"><span>{{ t('resources.ai_prompt') }}</span><textarea id="iaRecursosPrompt" rows="6" maxlength="8000" placeholder="{{ t('resources.ai_prompt_placeholder') }}"></textarea></label>
     <div class="ia-recursos-preview-wrap"><div class="ia-recursos-preview-title">{{ t('resources.ai_preview') }}</div><div id="iaRecursosPreview" class="ia-recursos-preview"></div></div>
@@ -217,8 +218,10 @@
     </div>
   </div>
 </div>
+{% include '_navegacao_folhas_modal.html' %}
 {% endblock %}
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/navegacao_folhas.js') }}" defer></script>
 <script>window.PROJETO_SLUG = {{ projeto.slug|tojson }}; window.PROJETO_RECURSOS_INITIAL = {{ recursos|tojson }};</script>
 <script src="{{ url_for('static', filename='js/editor_tipografia.js') }}"></script>
 <script src="{{ url_for('static', filename='js/recursos_projeto.js') }}"></script><script src="{{ url_for('static', filename='js/ia_recursos.js') }}"></script>

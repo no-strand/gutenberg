@@ -2,7 +2,7 @@
 {% block titulo %}{{ t('common.edit_label') }} {{ capitulo.titulo }}{% endblock %}
 {% block body_class %}pagina-editor-app{% if not config_global.efeito_editor %} editor-sem-efeito{% endif %}{% endblock %}
 {% block body_attrs %}data-editor-page="true" data-editor-effects-enabled="{{ 'true' if config_global.efeito_editor else 'false' }}"{% endblock %}
-{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}">{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/navegacao_folhas.css') }}">{% endblock %}
 {% block conteudo %}
 <section class="editor-topo">
   <div class="cabecalho-editor-grid">
@@ -22,11 +22,11 @@
     <button type="button" class="botao-branco" data-bloco-classe="recuo-a-direita" title="{{ t('editor.indent_right') }} (Ctrl+Alt+D)" aria-label="{{ t('editor.indent_right') }} (Ctrl+Alt+D)"><img src="{{ url_for('static', filename='img/editor_icons/recuo-a-esquerda.png') }}" alt=""></button>
   </div>
   <div class="grupo-ferramenta">
-    <button type="button" class="botao-branco texto-preto" id="btnUndoEditor" title="Desfazer (Ctrl+Z)" aria-label="Desfazer (Ctrl+Z)">↶</button>
-    <button type="button" class="botao-branco texto-preto" id="btnRedoEditor" title="Refazer (Ctrl+Y / Ctrl+Shift+Z)" aria-label="Refazer (Ctrl+Y / Ctrl+Shift+Z)">↷</button>
-    <button type="button" class="botao-branco texto-preto" data-comando="bold" title="{{ t('editor.bold') }} (Alt+B)" aria-label="{{ t('editor.bold') }} (Alt+B)"><strong>N</strong></button>
-    <button type="button" class="botao-branco texto-preto" data-comando="italic" title="{{ t('editor.italic') }} (Alt+I)" aria-label="{{ t('editor.italic') }} (Alt+I)"><em>I</em></button>
-    <button type="button" class="botao-branco texto-preto" data-comando="underline" title="{{ t('editor.underline') }} (Alt+U)" aria-label="{{ t('editor.underline') }} (Alt+U)"><u>S</u></button>
+    <button type="button" class="botao-branco texto-preto" id="btnUndoEditor" title="{{ t('editor.undo') }} (Ctrl+Z)" aria-label="{{ t('editor.undo') }} (Ctrl+Z)">↶</button>
+    <button type="button" class="botao-branco texto-preto" id="btnRedoEditor" title="{{ t('editor.redo') }} (Ctrl+Y / Ctrl+Shift+Z)" aria-label="{{ t('editor.redo') }} (Ctrl+Y / Ctrl+Shift+Z)">↷</button>
+    <button type="button" class="botao-branco texto-preto" data-comando="bold" title="{{ t('editor.bold') }} (Alt+B)" aria-label="{{ t('editor.bold') }} (Alt+B)"><strong>{{ t('editor.bold')[:1] }}</strong></button>
+    <button type="button" class="botao-branco texto-preto" data-comando="italic" title="{{ t('editor.italic') }} (Alt+I)" aria-label="{{ t('editor.italic') }} (Alt+I)"><em>{{ t('editor.italic')[:1] }}</em></button>
+    <button type="button" class="botao-branco texto-preto" data-comando="underline" title="{{ t('editor.underline') }} (Alt+U)" aria-label="{{ t('editor.underline') }} (Alt+U)"><u>{{ t('editor.underline')[:1] }}</u></button>
     <button type="button" class="botao-branco texto-preto" data-comando="formatBlock" data-valor="p" title="{{ t('editor.paragraph') }} (Alt+P)" aria-label="{{ t('editor.paragraph') }} (Alt+P)">P</button>
     <button type="button" class="botao-branco texto-preto" data-comando="formatBlock" data-valor="h1" title="{{ t('editor.h1') }} (Alt+1)" aria-label="{{ t('editor.h1') }} (Alt+1)">H1</button>
     <button type="button" class="botao-branco texto-preto" data-comando="formatBlock" data-valor="h2" title="{{ t('editor.h2') }} (Alt+2)" aria-label="{{ t('editor.h2') }} (Alt+2)">H2</button>
@@ -69,10 +69,10 @@
   </div>
   <div class="grupo-ferramenta">
       <label class="editor-font-picker" for="seletorFonteEditor">
-        <span class="editor-font-picker-label">Fonte</span>
-        <select id="seletorFonteEditor" class="editor-font-select" aria-label="Fonte do texto selecionado" title="Fonte do texto selecionado">
+        <span class="editor-font-picker-label">{{ t('reader.font') }}</span>
+        <select id="seletorFonteEditor" class="editor-font-select" aria-label="{{ t('editor.selected_font') }}" title="{{ t('editor.selected_font') }}">
           
-          <optgroup label="Sem serifa">
+          <optgroup label="{{ t('reader.font_sans') }}">
             <option value="fonte-atkinson-hyperlegible">Atkinson Hyperlegible</option>
             <option value="fonte-inter">Inter</option>
             <option value="fonte-source-sans-3">Source Sans 3</option>
@@ -81,14 +81,14 @@
             <option value="fonte-arial" selected>Arial</option>
             <option value="fonte-roboto">Roboto</option>
           </optgroup>
-          <optgroup label="Serifadas">
+          <optgroup label="{{ t('reader.font_serif') }}">
             <option value="fonte-literata">Literata</option>
             <option value="fonte-source-serif-4">Source Serif 4</option>
             <option value="fonte-noto-serif">Noto Serif</option>
             <option value="fonte-georgia">Georgia</option>
             <option value="fonte-times-new-roman">Times New Roman</option>
           </optgroup>
-          <optgroup label="Monoespaçadas">
+          <optgroup label="{{ t('reader.font_mono') }}">
             <option value="fonte-ibm-plex-mono">IBM Plex Mono</option>
             <option value="fonte-jetbrains-mono">JetBrains Mono</option>
             <option value="fonte-source-code-pro">Source Code Pro</option>
@@ -98,8 +98,8 @@
         </select>
       </label>
       <label class="editor-size-picker" for="seletorTamanhoFonteEditor">
-        <span class="editor-size-picker-label">Tamanho</span>
-        <select id="seletorTamanhoFonteEditor" class="editor-size-select" aria-label="Tamanho da fonte do texto selecionado" title="Tamanho da fonte">
+        <span class="editor-size-picker-label">{{ t('reader.font_size') }}</span>
+        <select id="seletorTamanhoFonteEditor" class="editor-size-select" aria-label="{{ t('editor.selected_font_size') }}" title="{{ t('reader.font_size') }}">
           {% include '_editor_font_size_options.html' %}
         </select>
       </label>
@@ -109,6 +109,7 @@
     <button type="button" class="botao-branco botao-apenas-icone" id="btnAbrirRevisaoOrtografica" title="{{ t('editor.review') }} (Ctrl+Alt+R)" aria-label="{{ t('editor.review') }} (Ctrl+Alt+R)"><img src="{{ url_for('static', filename='img/revisar_epub.png') }}" alt="{{ t('editor.review') }}"></button>
     <input type="file" id="inputImagemEditor" accept="image/*" hidden>
   </div>
+
 </section>
 
 <section class="painel-editor painel-word">
@@ -181,8 +182,10 @@
   </div>
 </div>
 {% include '_recursos_visualizacao_modal.html' %}
+{% include '_navegacao_folhas_modal.html' %}
 {% endblock %}
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/navegacao_folhas.js') }}" defer></script>
 <script>window.EDITOR_CONFIG = {slug: {{ projeto.slug|tojson }}, numero: {{ numero|tojson }}, idioma: {{ projeto.idioma|tojson }}, catalogoPersonagens: {{ (recursos_editor.personagens if recursos_editor is defined else [])|tojson }}, catalogoLocais: {{ (recursos_editor.locais if recursos_editor is defined else [])|tojson }}, catalogoAnotacoes: {{ (recursos_editor.anotacoes if recursos_editor is defined else [])|tojson }}};</script>
 <script src="{{ url_for('static', filename='js/editor_tipografia.js') }}"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/editor_recuperacao.css') }}">
