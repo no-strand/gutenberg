@@ -70,3 +70,25 @@ def test_browser_inner_shadows_and_pages_unmodified():
                 assert 'inset' not in data[sel]['shadow'], (sel, data[sel])
         finally:
             browser.close()
+
+def test_nome_revisao_editorial_e_visual_do_modal_rascunho():
+    pt = json.loads((ROOT / 'locales' / 'pt_BR.json').read_text(encoding='utf-8'))
+    en = json.loads((ROOT / 'locales' / 'en_US.json').read_text(encoding='utf-8'))
+    assert pt['editorial.open'] == 'Revisão Editorial'
+    assert pt['editorial.title'] == 'Revisão Editorial'
+    assert en['editorial.open'] == 'Editorial Review'
+    assert en['editorial.title'] == 'Editorial Review'
+    for template_name in ('editor.html', 'editor_roteiro.html'):
+        template = (ROOT / 'templates' / template_name).read_text(encoding='utf-8')
+        assert "t('editorial.open')" in template
+    css = (ROOT / 'static/css/rascunho_modal_visual.css').read_text(encoding='utf-8')
+    assert 'modal-recursos-visualizacao .modal-recursos-projeto-card' in css
+    assert 'modal-recursos-visualizacao .recursos-tabs-modal .recursos-tab.ativo' in css
+    base = (ROOT / 'templates/base.html').read_text(encoding='utf-8')
+    assert 'css/rascunho_modal_visual.css' in base
+    assert base.index('css/atelier-ui.css') < base.index('css/rascunho_modal_visual.css')
+    modal = (ROOT / 'templates/_recursos_visualizacao_modal.html').read_text(encoding='utf-8')
+    assert 'id="modalRecursosProjeto"' in modal
+    js = (ROOT / 'static/js/recursos_visualizacao.js').read_text(encoding='utf-8')
+    assert "ev.ctrlKey && ev.altKey && String(ev.key || '').toLowerCase() === 'u'" in js
+

@@ -886,3 +886,57 @@
   border-color: #5a8ea1;
   background: rgba(66, 134, 162, .12);
 }
+/* Visualização segura do planejamento nos editores (etapa 2). */
+.planejamento-read-card{white-space:pre-wrap;overflow-wrap:anywhere;max-height:none;min-height:130px}
+.planejamento-read-card p{margin:8px 0;color:#d9e2ee;line-height:1.5}
+.planejamento-read-card strong{color:#9ae7f3}
+.planejamento-read-card a{color:#9ae7f3;font-weight:700;display:inline-block;margin-top:8px}
+
+/* Correção: fotos de referência inteiras nos detalhes de Personagens e Lugares.
+   O tamanho não deve depender da altura intrínseca da foto, pois o corpo do
+   modal podia encolher com overflow:hidden e cortar fotos verticais. */
+#modalDetalheCatalogoRecursos .detalhe-catalogo-corpo,
+#modalRecursosCatalogoDetalhe .recursos-catalogo-detail-body {
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+#modalDetalheCatalogoRecursos .detalhe-catalogo-imagem-wrap,
+#modalRecursosCatalogoDetalhe .recursos-catalogo-detail-image-wrap {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: min(46vh, 430px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#modalDetalheCatalogoRecursos .detalhe-catalogo-imagem-wrap img,
+#modalRecursosCatalogoDetalhe .recursos-catalogo-detail-image-wrap img {
+  display: block;
+  flex: 0 1 auto;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: contain;
+  object-position: center;
+}
+#modalDetalheCatalogoRecursos .detalhe-catalogo-imagem-wrap img.oculto,
+#modalRecursosCatalogoDetalhe .recursos-catalogo-detail-image-wrap img.oculto {
+  display: none;
+}
+@media(max-width:720px) {
+  #modalDetalheCatalogoRecursos .detalhe-catalogo-corpo,
+  #modalRecursosCatalogoDetalhe .recursos-catalogo-detail-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    overflow-y: auto;
+  }
+}

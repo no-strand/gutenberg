@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ livro.titulo }} — {{ t('pdf_reader.title') }} · Gutenberg{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/leitor_pdf.css') }}">
+{% endblock %}
+{% block conteudo %}
+<main class="pdf-reader" id="pdfReader">
+  <header class="pdf-head">
+    <a class="pdf-back" href="{{ url_for('pagina_biblioteca') }}" aria-label="{{ t('pdf_reader.back') }}">← <span>{{ t('pdf_reader.back') }}</span></a>
+    <div class="pdf-title-group">
+      <span class="pdf-kicker">PDF · {{ t('pdf_reader.original_layout') }}</span>
+      <h1 title="{{ livro.titulo }}">{{ livro.titulo }}</h1>
+      <span class="pdf-author">{{ livro.autor or t('pdf_reader.unknown_author') }}</span>
+    </div>
+  </header>
+
+  <div class="pdf-toolbar" role="toolbar" aria-label="{{ t('pdf_reader.controls') }}">
+    <div class="pdf-toolbar-group">
+      <button type="button" id="pdfPrev" class="pdf-tool" aria-label="{{ t('pdf_reader.previous') }}" title="{{ t('pdf_reader.previous') }}">‹</button>
+      <label class="pdf-page-control"><span>{{ t('pdf_reader.page') }}</span><input id="pdfPageInput" type="number" min="1" max="{{ livro.pdf_total_paginas }}" value="{{ pagina }}" inputmode="numeric" aria-label="{{ t('pdf_reader.page') }}"><span>/ {{ livro.pdf_total_paginas }}</span></label>
+      <button type="button" id="pdfNext" class="pdf-tool" aria-label="{{ t('pdf_reader.next') }}" title="{{ t('pdf_reader.next') }}">›</button>
+    </div>
+    <div class="pdf-toolbar-group pdf-zoom-group">
+      <button type="button" class="pdf-tool" id="pdfZoomOut" aria-label="{{ t('pdf_reader.zoom_out') }}">−</button>
+      <output id="pdfZoomValue" aria-live="polite">100%</output>
+      <button type="button" class="pdf-tool" id="pdfZoomIn" aria-label="{{ t('pdf_reader.zoom_in') }}">+</button>
+      <button type="button" class="pdf-tool pdf-fit-tool" id="pdfFit" title="{{ t('pdf_reader.fit') }}">{{ t('pdf_reader.fit') }}</button>
+    </div>
+    <div class="pdf-toolbar-group pdf-actions">
+      {% if livro.pdf_sumario %}<button type="button" id="pdfOutlineToggle" class="pdf-tool pdf-label-tool" aria-expanded="false" aria-controls="pdfOutline">☷ {{ t('pdf_reader.outline') }}</button>{% endif %}
+      <button type="button" id="pdfSearchToggle" class="pdf-tool pdf-label-tool" aria-expanded="false" aria-controls="pdfSearchPanel">{{ t('pdf_reader.search') }}</button>
+      <button type="button" id="pdfTextToggle" class="pdf-tool pdf-label-tool" aria-expanded="false" aria-controls="pdfTextPanel">{{ t('pdf_reader.text') }}</button>
+    </div>
+  </div>
+
+  <div class="pdf-progress-row"><div class="pdf-progress-track" role="progressbar" aria-label="{{ t('pdf_reader.progress') }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="pdfProgress"><span id="pdfProgressFill"></span></div><span id="pdfProgressText"></span></div>
+
+  <div class="pdf-layout">
+    <aside class="pdf-side" id="pdfOutline" hidden aria-label="{{ t('pdf_reader.outline') }}">
+      <div class="pdf-side-top"><h2>{{ t('pdf_reader.outline') }}</h2><button type="button" class="pdf-close" data-pdf-close="pdfOutline" aria-label="{{ t('pdf_reader.close') }}">×</button></div>
+      <nav class="pdf-outline-list">
+      {% for item in livro.pdf_sumario %}
+        <button type="button" class="pdf-outline-item" data-page="{{ item.pagina }}" style="--level: {{ (item.nivel - 1) if item.nivel > 0 else 0 }}"><span class="pdf-outline-number">{{ item.pagina }}</span><span>{{ item.titulo }}</span></button>
+      {% endfor %}
+      </nav>
+    </aside>
+
+    <section class="pdf-stage" id="pdfStage" aria-label="{{ t('pdf_reader.page_content') }}">
+      <div class="pdf-loading" id="pdfLoading" role="status" aria-live="polite">{{ t('pdf_reader.loading') }}</div>
+      <img id="pdfPageImage" class="pdf-page-image" alt="{{ t('pdf_reader.page') }} {{ pagina }}" draggable="false" hidden>
+      <p class="pdf-page-error" id="pdfError" hidden></p>
+    </section>
+
+    <aside class="pdf-side pdf-search-side" id="pdfSearchPanel" hidden aria-label="{{ t('pdf_reader.search') }}">
+      <div class="pdf-side-top"><h2>{{ t('pdf_reader.search') }}</h2><button type="button" class="pdf-close" data-pdf-close="pdfSearchPanel" aria-label="{{ t('pdf_reader.close') }}">×</button></div>
+      <form id="pdfSearchForm" class="pdf-search-form"><label for="pdfSearchInput">{{ t('pdf_reader.search_hint') }}</label><div class="pdf-search-row"><input id="pdfSearchInput" type="search" minlength="2" maxlength="100" placeholder="{{ t('pdf_reader.search_placeholder') }}"><button type="submit">{{ t('pdf_reader.find') }}</button></div></form>
+      <div id="pdfSearchResults" class="pdf-search-results" aria-live="polite"></div>
+    </aside>
+
+    <aside class="pdf-side pdf-text-side" id="pdfTextPanel" hidden aria-label="{{ t('pdf_reader.text') }}">
+      <div class="pdf-side-top"><h2>{{ t('pdf_reader.text') }}</h2><button type="button" class="pdf-close" data-pdf-close="pdfTextPanel" aria-label="{{ t('pdf_reader.close') }}">×</button></div>
+      <p class="pdf-note">{{ t('pdf_reader.text_note') }}</p>
+      <button type="button" id="pdfCopyText" class="pdf-copy">{{ t('pdf_reader.copy') }}</button>
+      <pre id="pdfExtractedText" class="pdf-extracted-text" tabindex="0"></pre>
+    </aside>
+  </div>
+</main>
+<script>
+window.GUTENBERG_PDF_READER = {
+  page: {{ pagina|tojson }},
+  count: {{ livro.pdf_total_paginas|tojson }},
+  imageUrl: {{ url_for('imagem_pagina_pdf_biblioteca', slug=livro.slug, pagina=999999)|replace('999999.png', '__PAGE__.png')|tojson }},
+  progressUrl: {{ url_for('salvar_progresso_pdf_biblioteca', slug=livro.slug)|tojson }},
+  searchUrl: {{ url_for('pesquisar_pdf_biblioteca', slug=livro.slug)|tojson }},
+  textUrl: {{ url_for('texto_pagina_pdf_biblioteca', slug=livro.slug, pagina=999999)|replace('/999999/texto', '/__PAGE__/texto')|tojson }},
+  strings: {
+    loading: {{ t('pdf_reader.loading')|tojson }}, error: {{ t('pdf_reader.error')|tojson }},
+    none: {{ t('pdf_reader.none')|tojson }}, results: {{ t('pdf_reader.results')|tojson }},
+    noText: {{ t('pdf_reader.no_text')|tojson }}, copied: {{ t('pdf_reader.copied')|tojson }},
+    page: {{ t('pdf_reader.page')|tojson }}
+  }
+};
+</script>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/leitor_pdf.js') }}"></script>{% endblock %}

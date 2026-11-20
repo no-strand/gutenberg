@@ -2390,7 +2390,6 @@ function chooseBookResourceAutocomplete(item = autocompleteLivroState.items[auto
   link.className = 'editor-recurso-link';
   link.dataset.recursoTipo = item.tipo;
   link.dataset.recursoNome = item.label;
-  link.title = `${bookResourceTypeLabel(item.tipo)}: ${item.label}`;
   link.textContent = item.label;
   range.deleteContents();
   range.insertNode(link);
@@ -2456,9 +2455,11 @@ function ensureBookInfoHoverTooltip() {
 }
 
 function hideBookInfoHoverTooltip() {
-  const tip = ensureBookInfoHoverTooltip();
-  tip.classList.add('oculto');
-  tip.innerHTML = '';
+  window.GutenbergResourcePreview?.hide();
+  if (infoHoverTooltipLivro) {
+    infoHoverTooltipLivro.classList.add('oculto');
+    infoHoverTooltipLivro.replaceChildren();
+  }
 }
 
 function positionBookInfoHoverTooltip(clientX, clientY) {
@@ -2492,11 +2493,14 @@ function getBookResourceInfoFromLink(link) {
 
 function showBookInfoHoverTooltip(info, clientX, clientY) {
   if (!info) return hideBookInfoHoverTooltip();
-  const tip = ensureBookInfoHoverTooltip();
   const helpText = altLinkLivroModeEnabled ? i18n('script.alt_pressed_click_edit') : i18n('script.hold_alt_to_edit');
-  tip.innerHTML = `<strong>${escapeHtmlForBookAutocomplete(info.tipo)}</strong><span>${escapeHtmlForBookAutocomplete(info.nome || '')}</span><p>${escapeHtmlForBookAutocomplete(info.descricao || i18n('common.no_description'))}</p><em>${escapeHtmlForBookAutocomplete(helpText)}</em>`;
-  tip.classList.remove('oculto');
-  positionBookInfoHoverTooltip(clientX, clientY);
+  window.GutenbergResourcePreview?.showAtPoint({
+    nome: info.nome || '',
+    tipo: info.tipo || '',
+    descricao: info.descricao || '',
+    imagem: info.catalogoTipo === 'anotacoes' ? '' : (info.item?.imagem || ''),
+    hint: helpText,
+  }, clientX, clientY);
 }
 
 function runBookResourceHoverFrame() {
@@ -2624,7 +2628,6 @@ formCatalogoLivro?.addEventListener('submit', async (event) => {
       catalogoLivroLinkAtivo.textContent = nome;
       catalogoLivroLinkAtivo.dataset.recursoNome = nome;
       catalogoLivroLinkAtivo.dataset.recursoTipo = tipo;
-      catalogoLivroLinkAtivo.title = `${tipo === 'locais' ? i18n('common.location_singular') : (tipo === 'anotacoes' ? i18n('resources.note') : i18n('common.character_singular'))}: ${nome}`;
       markEditorDirty();
       scheduleAutosave();
       scheduleHistoryCommit('resource-link-edit');

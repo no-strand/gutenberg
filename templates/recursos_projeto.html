@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block titulo %}{{ t('resources.page_title', project=projeto.titulo) }}{% endblock %}
 {% block classe_pagina %}pagina-recursos-projeto-shell{% endblock %}
-{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/navegacao_folhas.css') }}">{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/navegacao_folhas.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/planejamento_rascunho.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/rascunho_visual.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/preview_recursos_hover.css') }}?v=20261120-4">{% endblock %}
 {% block conteudo %}
 <section class="recursos-topo topo-projeto">
   <div class="recursos-topo-info">
@@ -28,6 +28,8 @@
     <button type="button" class="recursos-tab" data-recursos-tab="personagens">{{ t('resources.characters') }}</button>
     <button type="button" class="recursos-tab" data-recursos-tab="lugares">{{ t('resources.places') }}</button>
     <button type="button" class="recursos-tab" data-recursos-tab="anotacoes">{{ t('resources.notes') }}</button>
+    <button type="button" class="recursos-tab" data-recursos-tab="cenas">{{ t('planning.scenes') }}</button>
+    <button type="button" class="recursos-tab" data-recursos-tab="pesquisa">{{ t('planning.research') }}</button>
   </nav>
 
   <section class="recursos-painel ativo" data-recursos-panel="informacoes">
@@ -153,7 +155,59 @@
       <div id="listaAnotacoesProjeto" class="recursos-cards-grid"></div>
     </div>
   </section>
+  <section class="recursos-painel" data-recursos-panel="cenas">
+    <div class="planejamento-workspace">
+      <div class="planejamento-head">
+        <div><h2>{{ t('planning.scenes') }}</h2></div>
+        <button type="button" id="btnNovaCena" class="botao-primario">+ {{ t('planning.new_scene') }}</button>
+      </div>
+      <div class="planejamento-stats" id="planejamentoEstatisticas" aria-live="polite"></div>
+      <div class="planejamento-filtros">
+        <label>{{ t('planning.search') }}<input type="search" id="planejamentoBuscaCenas" maxlength="120" placeholder="{{ t('planning.search_scenes') }}"></label>
+        <label>{{ t('planning.filter_status') }}<select id="planejamentoFiltroStatus"><option value="">{{ t('planning.all_statuses') }}</option><option value="planejada">{{ t('planning.status_planned') }}</option><option value="em_andamento">{{ t('planning.status_progress') }}</option><option value="revisao">{{ t('planning.status_review') }}</option><option value="concluida">{{ t('planning.status_done') }}</option></select></label>
+      </div>
+      <div id="planejamentoListaCenas" class="planejamento-lista" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="recursos-painel" data-recursos-panel="pesquisa">
+    <div class="planejamento-workspace">
+      <div class="planejamento-head">
+        <div><h2>{{ t('planning.research') }}</h2></div>
+        <button type="button" id="btnNovaFonte" class="botao-primario">+ {{ t('planning.new_source') }}</button>
+      </div>
+      <div class="planejamento-filtros"><label>{{ t('planning.search') }}<input type="search" id="planejamentoBuscaFontes" maxlength="120" placeholder="{{ t('planning.search_sources') }}"></label><label class="planejamento-filtro-check"><input type="checkbox" id="planejamentoSomenteNaoVerificadas"> {{ t('planning.only_unverified') }}</label></div>
+      <div id="planejamentoListaFontes" class="planejamento-lista planejamento-fontes" aria-live="polite"></div>
+    </div>
+  </section>
 </section>
+
+<div class="modal oculto" id="modalPlanejamento" aria-hidden="true">
+  <div class="modal-overlay" data-fechar-planejamento="true"></div>
+  <div class="modal-conteudo modal-planejamento" data-modal-card="true" role="dialog" aria-modal="true" aria-labelledby="planejamentoModalTitulo">
+    <div class="modal-topo"><h2 id="planejamentoModalTitulo">{{ t('planning.new_scene') }}</h2><button type="button" class="botao-fechar" data-fechar-planejamento="true" aria-label="{{ t('common.close') }}">×</button></div>
+    <form id="formPlanejamento" class="planejamento-form">
+      <input type="hidden" id="planejamentoItemTipo"><input type="hidden" id="planejamentoItemId">
+      <label>{{ t('planning.title') }}<input type="text" id="planejamentoTitulo" maxlength="160" required></label>
+      <div id="planejamentoCamposCena" class="planejamento-campos">
+        <label>{{ t('planning.status') }}<select id="planejamentoStatus"><option value="planejada">{{ t('planning.status_planned') }}</option><option value="em_andamento">{{ t('planning.status_progress') }}</option><option value="revisao">{{ t('planning.status_review') }}</option><option value="concluida">{{ t('planning.status_done') }}</option></select></label>
+        <label>{{ t('planning.summary') }}<textarea id="planejamentoResumo" rows="4" maxlength="6000" placeholder="{{ t('planning.summary_placeholder') }}"></textarea></label>
+        <div class="planejamento-form-grid"><label>{{ t('planning.goal') }}<textarea id="planejamentoObjetivo" rows="3" maxlength="2000"></textarea></label><label>{{ t('planning.conflict') }}<textarea id="planejamentoConflito" rows="3" maxlength="2000"></textarea></label></div>
+        <label>{{ t('planning.outcome') }}<textarea id="planejamentoDesfecho" rows="3" maxlength="2000"></textarea></label>
+        <h3>{{ t('planning.connections') }}</h3>
+        <div class="planejamento-vinculos-grid" id="planejamentoVinculos"></div>
+      </div>
+      <div id="planejamentoCamposFonte" class="planejamento-campos oculto">
+        <div class="planejamento-form-grid"><label>{{ t('planning.source_type') }}<select id="planejamentoTipoFonte"><option value="pagina_web">{{ t('planning.type_web') }}</option><option value="livro">{{ t('planning.type_book') }}</option><option value="artigo">{{ t('planning.type_article') }}</option><option value="entrevista">{{ t('planning.type_interview') }}</option><option value="arquivo">{{ t('planning.type_file') }}</option><option value="outro">{{ t('planning.type_other') }}</option></select></label><label>{{ t('planning.author') }}<input id="planejamentoAutor" maxlength="160"></label></div>
+        <label>{{ t('planning.url') }}<input type="url" id="planejamentoUrl" maxlength="2000" placeholder="https://"></label>
+        <label>{{ t('planning.citation') }}<textarea id="planejamentoCitacao" rows="3" maxlength="2000"></textarea></label>
+        <label>{{ t('planning.research_notes') }}<textarea id="planejamentoNotas" rows="5" maxlength="6000"></textarea></label>
+        <label class="planejamento-checkbox"><input type="checkbox" id="planejamentoVerificada"> {{ t('planning.verified') }}</label>
+      </div>
+      <div class="rodape-formulario planejamento-rodape"><span id="planejamentoFormStatus" class="status-form" role="status"></span><button type="button" class="botao-secundario" data-fechar-planejamento="true">{{ t('common.cancel') }}</button><button type="submit" class="botao-primario" id="planejamentoBtnSalvar">{{ t('common.save') }}</button></div>
+    </form>
+  </div>
+</div>
 
 <div class="modal oculto" id="modalCatalogoRecursos">
   <div class="modal-overlay" data-fechar-modal="true"></div>
@@ -224,7 +278,7 @@
 <script src="{{ url_for('static', filename='js/navegacao_folhas.js') }}" defer></script>
 <script>window.PROJETO_SLUG = {{ projeto.slug|tojson }}; window.PROJETO_RECURSOS_INITIAL = {{ recursos|tojson }};</script>
 <script src="{{ url_for('static', filename='js/editor_tipografia.js') }}"></script>
-<script src="{{ url_for('static', filename='js/recursos_projeto.js') }}"></script><script src="{{ url_for('static', filename='js/ia_recursos.js') }}"></script>
+<script src="{{ url_for('static', filename='js/preview_recursos_hover.js') }}?v=20261120-4"></script><script src="{{ url_for('static', filename='js/recursos_projeto.js') }}?v=20261120-4"></script><script src="{{ url_for('static', filename='js/planejamento_rascunho.js') }}"></script><script src="{{ url_for('static', filename='js/ia_recursos.js') }}"></script>
 {% endblock %}
 
 {% block skeleton %}

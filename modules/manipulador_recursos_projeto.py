@@ -2,12 +2,18 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from html import unescape
+import re
 from hashlib import sha1
 from pathlib import Path
+from io import BytesIO
+import base64
+import binascii
 from typing import Any
 from uuid import uuid4
 
 from .persistencia_json import ler_json
+from .planejamento_rascunho import normalizar_planejamento, alterar_planejamento, importar_planejamento
 from .persistencia_editor_db import BancoEditorLocal
 from .utilidades import agora_iso
 from .i18n import t
@@ -18,7 +24,12 @@ logger = obter_logger(__name__)
 ARQUIVO_RECURSOS_PROJETO = "recursos_projeto.json"
 _DB_CACHE: dict[Path, BancoEditorLocal] = {}
 MAX_HTML_INFO = 1_200_000
+# O limite antigo era aplicado com um simples slice(), cortando o Base64 no meio
+# do arquivo. Mantemos o tamanho-alvo para o banco, mas otimizamos a imagem antes
+# de armazená-la. O limite de entrada protege contra payloads abusivamente grandes.
 MAX_IMAGEM_DATA_URL = 900_000
+MAX_IMAGEM_DATA_URL_ENTRADA = 24_000_000
+MAX_PIXELS_IMAGEM_REFERENCIA = 50_000_000
 MAX_TITULO_PAGINA = 90
 MAX_PAGINAS_INFO_LATERAIS = 300
 MAX_NOME_CATALOGO = 80
@@ -43,6 +54,81 @@ def _html(valor: Any) -> str:
     return texto[:MAX_HTML_INFO]
 
 
+def _validar_e_abrir_imagem_data_url(texto: str):
+    """Decodifica uma imagem Base64 e força a leitura integral dos pixels.
+
+    Esta validação é usada para identificar referências antigas que foram
+    truncadas exatamente no limite de 900.000 caracteres.
+    """
+    cabecalho, separador, conteudo = texto.partition(",")
+    if not separador or ";base64" not in cabecalho.lower():
+        raise ValueError("Formato de imagem de referência não suportado para validação.")
+
+    try:
+        dados = base64.b64decode(conteudo, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("A imagem de referência contém dados Base64 inválidos.") from exc
+
+    from PIL import Image, ImageOps
+
+    try:
+        arquivo = BytesIO(dados)
+        imagem = Image.open(arquivo)
+        largura, altura = imagem.size
+        if largura <= 0 or altura <= 0 or largura * altura > MAX_PIXELS_IMAGEM_REFERENCIA:
+            raise ValueError("A imagem de referência tem dimensões excessivas.")
+        imagem.seek(0)
+        imagem = ImageOps.exif_transpose(imagem)
+        imagem.load()  # força a decodificação completa; não aceita uma imagem cortada
+        return imagem.copy()
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError("A imagem de referência está incompleta ou corrompida.") from exc
+
+
+def _otimizar_imagem_referencia(imagem) -> str:
+    """Regrava a imagem inteira em WebP, reduzindo tamanho sem cortar a proporção."""
+    from PIL import Image
+
+    tem_alpha = "A" in imagem.getbands() or "transparency" in imagem.info
+    modo = "RGBA" if tem_alpha else "RGB"
+    imagem = imagem.convert(modo)
+
+    # Cada tentativa reduz a resolução proporcionalmente; nunca há crop.
+    tamanhos_maximos = (3000, 2400, 2000, 1800, 1600, 1400, 1200, 1000, 850, 700)
+    qualidades = (84, 78, 72, 66)
+    dimensoes_tentadas: set[tuple[int, int]] = set()
+    for lado_maximo in tamanhos_maximos:
+        candidato = imagem.copy()
+        if max(candidato.size) > lado_maximo:
+            candidato.thumbnail((lado_maximo, lado_maximo), Image.Resampling.LANCZOS)
+        if candidato.size in dimensoes_tentadas:
+            continue
+        dimensoes_tentadas.add(candidato.size)
+
+        for qualidade in qualidades:
+            buffer = BytesIO()
+            opcoes = {"format": "WEBP", "quality": qualidade, "method": 5}
+            if tem_alpha:
+                opcoes["alpha_quality"] = 95
+                opcoes["exact"] = True
+            candidato.save(buffer, **opcoes)
+            conteudo = base64.b64encode(buffer.getvalue()).decode("ascii")
+            data_url = "data:image/webp;base64," + conteudo
+            if len(data_url) <= MAX_IMAGEM_DATA_URL:
+                logger.info(
+                    "Imagem de referência otimizada sem recorte | dimensoes=%sx%s | qualidade=%s | caracteres=%s",
+                    candidato.width, candidato.height, qualidade, len(data_url),
+                )
+                return data_url
+
+    raise ValueError(
+        "Não foi possível reduzir a imagem de referência para o tamanho permitido. "
+        "Reduza a resolução ou escolha outro arquivo e tente novamente."
+    )
+
+
 @registrar_etapa
 def _imagem(valor: Any) -> str:
     texto = str(valor or "").strip()
@@ -50,7 +136,47 @@ def _imagem(valor: Any) -> str:
         return ""
     if not texto.startswith("data:image/"):
         return ""
-    return texto[:MAX_IMAGEM_DATA_URL]
+
+    tamanho = len(texto)
+    if tamanho > MAX_IMAGEM_DATA_URL_ENTRADA:
+        raise ValueError(
+            "A imagem de referência é muito grande (limite de aproximadamente 18 MB). "
+            "Reduza o tamanho do arquivo e tente novamente."
+        )
+
+    # Imagens menores que o limite antigo não eram alteradas; mantemos esse
+    # comportamento para preservar formatos já aceitos, inclusive SVGs pequenos.
+    if tamanho < MAX_IMAGEM_DATA_URL:
+        return texto
+
+    try:
+        imagem = _validar_e_abrir_imagem_data_url(texto)
+    except ValueError as exc:
+        if tamanho == MAX_IMAGEM_DATA_URL:
+            # A versão anterior cortava todas as imagens grandes exatamente neste
+            # ponto. Não devolvemos esse arquivo incompleto para a interface.
+            logger.warning(
+                "Referência visual antiga ignorada porque parece ter sido truncada pelo limite anterior de %s caracteres: %s",
+                MAX_IMAGEM_DATA_URL, exc,
+            )
+            return ""
+        raise
+
+    # Se chegou ao limite exato e a imagem ainda é integral, não é necessário
+    # recomprimir. Acima dele, convertemos para WebP dentro do limite, sem crop.
+    if tamanho == MAX_IMAGEM_DATA_URL:
+        return texto
+    return _otimizar_imagem_referencia(imagem)
+
+
+def _imagem_necessita_reenvio(valor: Any, imagem_normalizada: str = "") -> bool:
+    """Marca referências que foram cortadas pelo limite antigo e perderam bytes."""
+    texto = str(valor or "").strip()
+    return bool(
+        texto.startswith("data:image/")
+        and len(texto) == MAX_IMAGEM_DATA_URL
+        and not imagem_normalizada
+    )
 
 
 @registrar_etapa
@@ -135,7 +261,7 @@ def estrutura_padrao_recursos() -> dict[str, Any]:
     paginas_anotacoes = [_aba_padrao("anotacoes")]
     fluxos = [{**_aba_padrao("fluxo"), "nodes": [], "edges": []}]
     return {
-        "versao": 3,
+        "versao": 4,
         "informacoes_abas": abas_info,
         "informacoes": _informacoes_planas(abas_info),
         "fluxos": fluxos,
@@ -147,6 +273,7 @@ def estrutura_padrao_recursos() -> dict[str, Any]:
         "lugares": [],
         "anotacoes": [],
         "ocultos": {"personagens": [], "lugares": [], "anotacoes": []},
+        "planejamento": normalizar_planejamento(None),
         "data_atualizacao": agora,
     }
 
@@ -368,12 +495,18 @@ def _normalizar_catalogo(
         if chave in vistos:
             continue
         vistos.add(chave)
+        imagem_original = item.get("imagem") or item.get("image")
+        imagem = _imagem(imagem_original) if permitir_imagem else ""
         normalizados.append({
             "id": _texto(item.get("id"), 80) or _novo_id("cat"),
             "pagina_id": pagina_id,
             "nome": nome,
             "descricao": _texto(item.get("descricao") or item.get("anotacao") or item.get("texto") or item.get("description") or item.get("text"), MAX_DESCRICAO_CATALOGO),
-            "imagem": _imagem(item.get("imagem") or item.get("image")) if permitir_imagem else "",
+            "imagem": imagem,
+            "imagem_necessita_reenvio": permitir_imagem and (
+                bool(item.get("imagem_necessita_reenvio"))
+                or _imagem_necessita_reenvio(imagem_original, imagem)
+            ),
             "origem": "projeto",
             "data_criacao": _texto(item.get("data_criacao"), 40) or agora_iso(),
             "data_atualizacao": _texto(item.get("data_atualizacao"), 40) or agora_iso(),
@@ -422,7 +555,7 @@ def normalizar_recursos(dados: Any) -> dict[str, Any]:
         dados.get("informacoes"),
     )
     normalizados = {
-        "versao": 3,
+        "versao": 4,
         "informacoes_abas": informacoes_abas,
         "informacoes": _informacoes_planas(informacoes_abas),
         "fluxos": fluxos,
@@ -434,6 +567,7 @@ def normalizar_recursos(dados: Any) -> dict[str, Any]:
         "lugares": _normalizar_catalogo(lugares, paginas_validas=id_lugares, pagina_padrao=paginas_lugares[0]["id"]),
         "anotacoes": _normalizar_catalogo(dados.get("anotacoes") or dados.get("notas") or dados.get("notes"), permitir_imagem=False, paginas_validas=id_anotacoes, pagina_padrao=paginas_anotacoes[0]["id"]),
         "ocultos": _normalizar_ocultos(dados.get("ocultos")),
+        "planejamento": normalizar_planejamento(dados.get("planejamento")),
         "data_atualizacao": _texto(dados.get("data_atualizacao"), 40) or agora_iso(),
     }
     return normalizados
@@ -485,6 +619,14 @@ def salvar_fluxo_projeto(pasta_projeto: Path, fluxo: Any) -> dict[str, Any]:
 
 
 @registrar_etapa
+def modificar_planejamento_projeto(pasta_projeto: Path, tipo: str, operacao: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Altera apenas cenas/fontes, preservando os demais recursos do Rascunho."""
+    dados = ler_recursos_projeto(pasta_projeto)
+    atualizados = alterar_planejamento(dados, tipo, operacao, payload)
+    return salvar_recursos_projeto(pasta_projeto, atualizados)
+
+
+@registrar_etapa
 def _chave_tipo_catalogo(tipo: str) -> str:
     if tipo in {"personagens", "personagem", "characters"}:
         return "personagens"
@@ -526,12 +668,18 @@ def salvar_item_catalogo_projeto(pasta_projeto: Path, tipo: str, item: dict[str,
         raise ValueError(t("resources.name_required", default="Informe um nome."))
     item_id = _texto(item.get("id"), 80)
     agora = agora_iso()
+    imagem_original = item.get("imagem")
+    imagem_normalizada = "" if chave == "anotacoes" else _imagem(imagem_original)
     novo = {
         "id": item_id or _novo_id("cat"),
         "pagina_id": pagina_id,
         "nome": nome,
         "descricao": _texto(item.get("descricao"), MAX_DESCRICAO_CATALOGO),
-        "imagem": "" if chave == "anotacoes" else _imagem(item.get("imagem")),
+        "imagem": imagem_normalizada,
+        "imagem_necessita_reenvio": False if chave == "anotacoes" else (
+            bool(item.get("imagem_necessita_reenvio"))
+            or _imagem_necessita_reenvio(imagem_original, imagem_normalizada)
+        ),
         "origem": "projeto",
         "data_criacao": agora,
         "data_atualizacao": agora,
@@ -639,46 +787,151 @@ def _titulo_aba_importada_unico(titulo: str, usados: set[str]) -> str:
     return usado
 
 
+def _html_info_tem_conteudo(valor: Any) -> bool:
+    html = str(valor or "")
+    if re.search(r"<(img|audio|video|iframe|object|embed|table|svg|canvas)\b", html, re.IGNORECASE):
+        return True
+    texto = re.sub(r"<[^>]*>", "", html)
+    texto = unescape(texto).replace("\u00a0", " ").strip()
+    return bool(texto)
+
+
+def _aba_info_padrao_vazia(aba: dict[str, Any], planejamento: dict[str, Any]) -> bool:
+    paginas = aba.get("paginas") or []
+    if aba.get("id") != "informacoes_principal" or len(paginas) != 1:
+        return False
+    pagina = paginas[0]
+    if str(aba.get("titulo") or "").casefold() != _titulo_padrao_aba("informacoes").casefold():
+        return False
+    if str(pagina.get("titulo") or "").casefold() != t("resources.default_page_title", default="Página inicial").casefold():
+        return False
+    if _html_info_tem_conteudo(pagina.get("html")):
+        return False
+    return not any(pagina.get("id") in cena.get("paginas_info", []) for cena in (planejamento or {}).get("cenas", []))
+
+
+def _fluxo_padrao_vazio(fluxo: dict[str, Any], planejamento: dict[str, Any]) -> bool:
+    if fluxo.get("id") != "fluxo_principal" or fluxo.get("nodes") or fluxo.get("edges"):
+        return False
+    ids_nos = {node.get("id") for item in (planejamento or {}).get("cenas", []) for node in item.get("nos_fluxo", [])}
+    return not ids_nos
+
+
+def _pagina_catalogo_padrao_vazia(chave: str, pagina: dict[str, Any], itens: list[dict[str, Any]]) -> bool:
+    return (
+        pagina.get("id") == f"{chave}_principal"
+        and str(pagina.get("titulo") or "").casefold() == _titulo_padrao_aba(chave).casefold()
+        and not any(item.get("pagina_id") == pagina.get("id") for item in itens)
+    )
+
+
+def _validar_capacidade_mesclagem(atuais: dict[str, Any], importados: dict[str, Any]) -> dict[str, bool]:
+    """Faz a pré-validação de capacidade antes de alterar qualquer dado do projeto."""
+    planejamento_atual = atuais.get("planejamento") or {}
+    planejamento_importado = importados.get("planejamento") or {}
+    reutilizar_info = bool(
+        atuais.get("informacoes_abas")
+        and _aba_info_padrao_vazia(atuais["informacoes_abas"][0], planejamento_atual)
+    )
+    reutilizar_fluxo = bool(
+        atuais.get("fluxos")
+        and _fluxo_padrao_vazio(atuais["fluxos"][0], planejamento_atual)
+    )
+    if len(atuais.get("informacoes_abas") or []) - int(reutilizar_info) + len(importados.get("informacoes_abas") or []) > MAX_ABAS_RECURSOS:
+        raise ValueError(
+            f"Não foi possível importar todos os recursos: o projeto já atingiu o limite de {MAX_ABAS_RECURSOS} abas de Informações. "
+            "Remova uma aba ou importe os recursos em outro projeto. Nenhum dado foi alterado."
+        )
+    if len(atuais.get("fluxos") or []) - int(reutilizar_fluxo) + len(importados.get("fluxos") or []) > MAX_ABAS_RECURSOS:
+        raise ValueError(
+            f"Não foi possível importar todos os recursos: o projeto já atingiu o limite de {MAX_ABAS_RECURSOS} fluxogramas. "
+            "Remova um fluxograma ou importe os recursos em outro projeto. Nenhum dado foi alterado."
+        )
+
+    reutilizar_catalogo: dict[str, bool] = {}
+    for chave in ("personagens", "lugares", "anotacoes"):
+        paginas = atuais.get(f"{chave}_paginas") or []
+        itens_atuais = atuais.get(chave) or []
+        reutilizar_catalogo[chave] = bool(
+            paginas and _pagina_catalogo_padrao_vazia(chave, paginas[0], itens_atuais)
+        )
+        if len(paginas) - int(reutilizar_catalogo[chave]) + len(importados.get(f"{chave}_paginas") or []) > MAX_ABAS_RECURSOS:
+            raise ValueError(
+                f"Não foi possível importar todos os recursos: o projeto já atingiu o limite de {MAX_ABAS_RECURSOS} abas de {chave}. "
+                "Remova uma aba ou importe os recursos em outro projeto. Nenhum dado foi alterado."
+            )
+        total_itens = len(itens_atuais) + len(importados.get(chave) or [])
+        if total_itens > 400:
+            raise ValueError(
+                f"Não foi possível importar todos os recursos: o catálogo de {chave} ultrapassaria o limite de 400 itens. "
+                "Remova itens ou importe os recursos em outro projeto. Nenhum dado foi alterado."
+            )
+
+    for chave, limite in (("cenas", 300), ("fontes", 300)):
+        if len(planejamento_atual.get(chave) or []) + len(planejamento_importado.get(chave) or []) > limite:
+            raise ValueError(
+                f"Não foi possível importar todos os recursos: o planejamento de {chave} ultrapassaria o limite de {limite} itens. "
+                "Remova itens ou importe os recursos em outro projeto. Nenhum dado foi alterado."
+            )
+
+    for indice, aba in enumerate(importados.get("informacoes_abas") or [], start=1):
+        if len(aba.get("paginas") or []) > MAX_PAGINAS_INFO_LATERAIS:
+            raise ValueError(f"A aba de Informações {indice} excede o limite de {MAX_PAGINAS_INFO_LATERAIS} páginas.")
+    return {"informacoes": reutilizar_info, "fluxo": reutilizar_fluxo, **reutilizar_catalogo}
+
+
 @registrar_etapa
 def mesclar_recursos_importados(pasta_projeto: Path, recursos_importados: dict[str, Any]) -> dict[str, Any]:
-    """Adiciona ao projeto atual os recursos vindos de um pacote .gutr sem apagar o que já existe."""
+    """Adiciona recursos .gutr sem apagar dados e sem descartar itens silenciosamente."""
     atuais = ler_recursos_projeto(pasta_projeto)
     importados = normalizar_recursos(recursos_importados)
     agora = agora_iso()
+    reuso = _validar_capacidade_mesclagem(atuais, importados)
 
+    planejamento_atual = atuais.get("planejamento") or {}
     abas_info = list(atuais.get("informacoes_abas") or [])
-    titulos_info = {str(aba.get("titulo") or "").casefold() for aba in abas_info}
-    for aba in importados.get("informacoes_abas", []):
-        if len(abas_info) >= MAX_ABAS_RECURSOS or not isinstance(aba, dict):
-            continue
+    reutilizar_info = reuso["informacoes"]
+    if reutilizar_info:
+        aba_vazia = abas_info.pop(0)
+        titulos_info = {str(aba.get("titulo") or "").casefold() for aba in abas_info}
+    else:
+        aba_vazia = None
+        titulos_info = {str(aba.get("titulo") or "").casefold() for aba in abas_info}
+    mapa_paginas_info: dict[str, str] = {}
+    for indice, aba in enumerate(importados.get("informacoes_abas", [])):
         paginas_importadas: list[dict[str, Any]] = []
-        for pagina in aba.get("paginas") or []:
-            if not isinstance(pagina, dict):
-                continue
+        for pagina_indice, pagina in enumerate(aba.get("paginas") or []):
+            novo_id_pagina = _novo_id("info")
+            if reutilizar_info and indice == 0 and pagina_indice == 0 and aba_vazia:
+                novo_id_pagina = str(aba_vazia["paginas"][0]["id"])
+            if pagina.get("id"):
+                mapa_paginas_info[str(pagina["id"])] = novo_id_pagina
             paginas_importadas.append({
-                "id": _novo_id("info"),
+                "id": novo_id_pagina,
                 "titulo": _texto(pagina.get("titulo"), MAX_TITULO_PAGINA) or t("resources.untitled", default="Sem título"),
                 "html": _html(pagina.get("html")),
                 "data_criacao": _texto(pagina.get("data_criacao"), 40) or agora,
-                "data_atualizacao": agora,
+                "data_atualizacao": _texto(pagina.get("data_atualizacao"), 40) or agora,
             })
+        id_aba = str(aba_vazia["id"]) if reutilizar_info and indice == 0 and aba_vazia else _novo_id("info_tab")
         abas_info.append({
-            "id": _novo_id("info_tab"),
+            "id": id_aba,
             "titulo": _titulo_aba_importada_unico(_texto(aba.get("titulo"), MAX_TITULO_ABA) or _titulo_padrao_aba("informacoes"), titulos_info),
             "paginas": _normalizar_paginas(paginas_importadas),
             "data_criacao": _texto(aba.get("data_criacao"), 40) or agora,
-            "data_atualizacao": agora,
+            "data_atualizacao": _texto(aba.get("data_atualizacao"), 40) or agora,
         })
     atuais["informacoes_abas"] = _normalizar_abas_informacoes(abas_info)
     atuais["informacoes"] = _informacoes_planas(atuais["informacoes_abas"])
 
     fluxos = list(atuais.get("fluxos") or [])
-    titulos_fluxo = {str(p.get("titulo") or "").casefold() for p in fluxos}
-    for fluxo in importados.get("fluxos", []):
-        if len(fluxos) >= MAX_ABAS_RECURSOS or not isinstance(fluxo, dict):
-            continue
+    reutilizar_fluxo = reuso["fluxo"]
+    fluxo_vazio = fluxos.pop(0) if reutilizar_fluxo else None
+    titulos_fluxo = {str(item.get("titulo") or "").casefold() for item in fluxos}
+    mapa_nos_fluxo: dict[str, str] = {}
+    for indice, fluxo in enumerate(importados.get("fluxos", [])):
         fluxo_norm = _normalizar_fluxo(fluxo)
-        tem_fluxo_atual = any((f.get("nodes") or []) for f in fluxos)
+        tem_fluxo_atual = any((item.get("nodes") or []) for item in fluxos)
         deslocamento = 80 if tem_fluxo_atual else 0
         id_map: dict[str, str] = {}
         nodes: list[dict[str, Any]] = []
@@ -686,6 +939,7 @@ def mesclar_recursos_importados(pasta_projeto: Path, recursos_importados: dict[s
             antigo_id = _texto(node.get("id"), 80) or _novo_id("node")
             novo_id = _novo_id("node")
             id_map[antigo_id] = novo_id
+            mapa_nos_fluxo[antigo_id] = novo_id
             nodes.append({
                 "id": novo_id,
                 "x": float(node.get("x", 120)) + deslocamento,
@@ -708,60 +962,83 @@ def mesclar_recursos_importados(pasta_projeto: Path, recursos_importados: dict[s
                 "fromSide": _texto(edge.get("fromSide"), 10) or "right",
                 "toSide": _texto(edge.get("toSide"), 10) or "left",
             })
+        primeiro_reutilizado = reutilizar_fluxo and indice == 0 and fluxo_vazio
         fluxos.append({
-            "id": _novo_id("fluxo"),
+            "id": str(fluxo_vazio["id"]) if primeiro_reutilizado else _novo_id("fluxo"),
             "titulo": _titulo_aba_importada_unico(_texto(fluxo.get("titulo"), MAX_TITULO_ABA) or _titulo_padrao_aba("fluxo"), titulos_fluxo),
             "nodes": nodes,
             "edges": edges,
             "data_criacao": _texto(fluxo.get("data_criacao"), 40) or agora,
-            "data_atualizacao": agora,
+            "data_atualizacao": _texto(fluxo.get("data_atualizacao"), 40) or agora,
         })
     atuais["fluxos"] = _normalizar_fluxos(fluxos)
     atuais["fluxo"] = _fluxo_principal(atuais["fluxos"])
 
+    mapas_catalogo: dict[str, dict[str, str]] = {}
     for chave in ("personagens", "lugares", "anotacoes"):
+        mapa_itens: dict[str, str] = {}
         paginas_atuais = list(atuais.get(f"{chave}_paginas") or [])
-        usados_titulos = {str(p.get("titulo") or "").casefold() for p in paginas_atuais}
+        reutilizar_pagina = reuso[chave]
+        pagina_vazia = paginas_atuais.pop(0) if reutilizar_pagina else None
+        usados_titulos = {str(pagina.get("titulo") or "").casefold() for pagina in paginas_atuais}
         mapa_paginas: dict[str, str] = {}
-        for pagina in importados.get(f"{chave}_paginas", []):
-            if not isinstance(pagina, dict):
-                continue
-            if len(paginas_atuais) >= MAX_ABAS_RECURSOS:
-                mapa_paginas[str(pagina.get("id") or "")] = paginas_atuais[0]["id"]
-                continue
-            novo_id = _novo_id(chave)
-            mapa_paginas[str(pagina.get("id") or "")] = novo_id
+        for indice, pagina in enumerate(importados.get(f"{chave}_paginas", [])):
+            id_novo = str(pagina_vazia["id"]) if reutilizar_pagina and indice == 0 and pagina_vazia else _novo_id(chave)
+            mapa_paginas[str(pagina.get("id") or "")] = id_novo
             paginas_atuais.append({
-                "id": novo_id,
+                "id": id_novo,
                 "titulo": _titulo_aba_importada_unico(_texto(pagina.get("titulo"), MAX_TITULO_ABA) or _titulo_padrao_aba(chave), usados_titulos),
                 "data_criacao": _texto(pagina.get("data_criacao"), 40) or agora,
-                "data_atualizacao": agora,
+                "data_atualizacao": _texto(pagina.get("data_atualizacao"), 40) or agora,
             })
         paginas_atuais = _normalizar_abas(paginas_atuais, chave)
         existentes = list(atuais.get(chave) or [])
-        nomes_usados = {(str(item.get("pagina_id") or paginas_atuais[0]["id"]), str(item.get("nome") or "").casefold()) for item in existentes if str(item.get("nome") or "").strip()}
+        nomes_usados = {
+            (str(item.get("pagina_id") or paginas_atuais[0]["id"]), str(item.get("nome") or "").casefold())
+            for item in existentes if str(item.get("nome") or "").strip()
+        }
         for item in importados.get(chave, []):
-            if not isinstance(item, dict):
-                continue
             nome = _texto(item.get("nome"), MAX_NOME_CATALOGO)
             if not nome:
                 continue
             pagina_importada = str(item.get("pagina_id") or "")
-            pagina_final = mapa_paginas.get(pagina_importada) or paginas_atuais[0]["id"]
+            pagina_final = mapa_paginas.get(pagina_importada)
+            if not pagina_final:
+                raise ValueError(
+                    f"O item '{nome}' do catálogo {chave} aponta para uma aba inexistente no arquivo .gutr. "
+                    "Nenhum dado foi alterado."
+                )
             nome_final = _nome_catalogo_importado_unico(nome, nomes_usados, pagina_final)
+            novo_id_item = _novo_id("cat")
+            if item.get("id"):
+                mapa_itens[str(item["id"])] = novo_id_item
             existentes.append({
-                "id": _novo_id("cat"),
+                "id": novo_id_item,
                 "pagina_id": pagina_final,
                 "nome": nome_final,
                 "descricao": _texto(item.get("descricao"), MAX_DESCRICAO_CATALOGO),
                 "imagem": "" if chave == "anotacoes" else _imagem(item.get("imagem")),
+                "imagem_necessita_reenvio": bool(item.get("imagem_necessita_reenvio")),
                 "origem": "projeto",
                 "data_criacao": _texto(item.get("data_criacao"), 40) or agora,
-                "data_atualizacao": agora,
+                "data_atualizacao": _texto(item.get("data_atualizacao"), 40) or agora,
             })
         atuais[f"{chave}_paginas"] = paginas_atuais
         atuais[chave] = _normalizar_catalogo_com_paginas(chave, existentes, paginas_atuais)
+        mapas_catalogo[chave] = mapa_itens
 
+    mapas_catalogo["paginas_info"] = mapa_paginas_info
+    mapas_catalogo["nos_fluxo"] = mapa_nos_fluxo
+    atuais["ocultos"] = _normalizar_ocultos(atuais.get("ocultos"))
+    ocultos_importados = _normalizar_ocultos(importados.get("ocultos"))
+    for chave in ("personagens", "lugares", "anotacoes"):
+        existentes = {nome.casefold() for nome in atuais["ocultos"][chave]}
+        for nome in ocultos_importados[chave]:
+            if nome.casefold() not in existentes:
+                atuais["ocultos"][chave].append(nome)
+                existentes.add(nome.casefold())
+
+    atuais["planejamento"] = importar_planejamento(atuais.get("planejamento"), importados.get("planejamento"), mapas_catalogo)
     atuais["data_atualizacao"] = agora
     return salvar_recursos_projeto(pasta_projeto, atuais)
 

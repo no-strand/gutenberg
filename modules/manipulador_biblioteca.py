@@ -80,6 +80,7 @@ from typing import Any
 from xml.etree import ElementTree as ET
 
 from .persistencia_json import ler_json, salvar_json
+from .leitor_pdf_nativo import inspecionar_pdf, miniatura_pdf
 from .conversor_pdf_epub import converter_pdf_para_epub3
 from .i18n import t
 from .utilidades import agora_iso, garantir_pasta_biblioteca, nome_seguro, obter_pasta_biblioteca, obter_progresso, salvar_progresso
@@ -740,6 +741,68 @@ def _pasta_livro(slug: str) -> Path:
 
 
 @registrar_etapa
+def adicionar_livro_pdf_nativo(caminho_origem: Path) -> dict[str, Any]:
+    """Importa PDF original, sem conversão, preservando a diagramação."""
+    garantir_pasta_biblioteca()
+    base = obter_pasta_biblioteca()
+    dados = inspecionar_pdf(caminho_origem)
+    slug = _slug_unico(base, caminho_origem.stem)
+    pasta = base / slug
+    pasta.mkdir(parents=True, exist_ok=False)
+    try:
+        destino = pasta / 'documento.pdf'
+        shutil.copy2(caminho_origem, destino)
+        capa = pasta / 'extraido' / 'capa.png'
+        capa.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            capa.write_bytes(miniatura_pdf(destino))
+            cover_path = 'capa.png'
+        except Exception:
+            # Falha na miniatura não impede leitura de um PDF íntegro.
+            cover_path = ''
+        livro = {
+            'slug': slug,
+            'tipo_documento': 'pdf',
+            'modo_importacao': 'nativo',
+            'arquivo_original': caminho_origem.name,
+            'arquivo_pdf': destino.name,
+            'titulo': dados['titulo'] or caminho_origem.stem,
+            'autor': dados['autor'],
+            'idioma': '',
+            'idioma_metadado': False,
+            'data_adicao': agora_iso(),
+            'cover_path': cover_path,
+            'pdf_total_paginas': dados['paginas'],
+            'pdf_sumario': dados['sumario'],
+            'capitulos': [],
+            'toc': [],
+            'ultimo_lido': None,
+            'posicoes_leitura': {},
+        }
+        salvar_json(pasta / 'livro.json', livro)
+        return livro
+    except Exception:
+        shutil.rmtree(pasta, ignore_errors=True)
+        raise
+
+
+@registrar_etapa
+def obter_caminho_pdf(slug: str) -> Path:
+    """Devolve somente o arquivo original de um item PDF nativo da biblioteca."""
+    pasta = _pasta_livro(slug)
+    dados = ler_json(pasta / 'livro.json', {})
+    if dados.get('tipo_documento') != 'pdf':
+        raise FileNotFoundError('Este livro não é um PDF nativo.')
+    nome = str(dados.get('arquivo_pdf') or '')
+    if not nome or Path(nome).name != nome or not nome.lower().endswith('.pdf'):
+        raise FileNotFoundError('Arquivo PDF não encontrado.')
+    arquivo = (pasta / nome).resolve()
+    if not arquivo.is_relative_to(pasta.resolve()) or not arquivo.is_file():
+        raise FileNotFoundError('Arquivo PDF não encontrado.')
+    return arquivo
+
+
+@registrar_etapa
 def adicionar_livro_pdf(caminho_origem: Path) -> dict[str, Any]:
     """
     Executa uma etapa específica do fluxo do módulo, encapsulando detalhes para manter o restante do código mais claro.
@@ -987,7 +1050,7 @@ def _percentual_global_livro(livro: dict[str, Any], registro: dict[str, Any]) ->
         para quem apenas precisa acionar este comportamento.
     """
     capitulos = livro.get('capitulos') or []
-    total = len(capitulos)
+    total = int(livro.get('pdf_total_paginas') or 0) if livro.get('tipo_documento') == 'pdf' else len(capitulos)
     if total <= 0:
         return float(registro.get('percentual') or 0.0)
     atual = int(registro.get('capitulo_atual') or registro.get('ultimo_lido') or 1)
@@ -1207,7 +1270,7 @@ def listar_livros() -> list[dict[str, Any]]:
         if not livro:
             continue
         livro['slug'] = pasta.name
-        livro['total_capitulos'] = len(livro.get('capitulos', []))
+        livro['total_capitulos'] = int(livro.get('pdf_total_paginas') or 0) if livro.get('tipo_documento') == 'pdf' else len(livro.get('capitulos', []))
         livro['tem_capa'] = bool(livro.get('cover_path')) and (pasta / 'extraido' / livro.get('cover_path', '')).exists()
         livros.append(_enriquecer_livro_com_progresso(livro))
     mapa_colecoes, _ = _resolver_mapa_colecoes(livros)
@@ -1244,7 +1307,7 @@ def obter_livro(slug: str) -> dict[str, Any]:
     if not livro:
         raise FileNotFoundError('Livro não encontrado.')
     livro['slug'] = slug
-    livro['total_capitulos'] = len(livro.get('capitulos', []))
+    livro['total_capitulos'] = int(livro.get('pdf_total_paginas') or 0) if livro.get('tipo_documento') == 'pdf' else len(livro.get('capitulos', []))
     livro['tem_capa'] = bool(livro.get('cover_path')) and (_pasta_livro(slug) / 'extraido' / livro.get('cover_path', '')).exists()
     livro.setdefault('ultimo_lido', None)
     livro.setdefault('posicoes_leitura', {})
@@ -1377,7 +1440,7 @@ def atualizar_progresso_livro(slug: str, numero_capitulo: int, percentual_capitu
         para quem apenas precisa acionar este comportamento.
     """
     livro = obter_livro(slug)
-    total = max(1, len(livro.get('capitulos') or []))
+    total = max(1, int(livro.get('pdf_total_paginas') or 0) if livro.get('tipo_documento') == 'pdf' else len(livro.get('capitulos') or []))
     numero_capitulo = max(1, min(total, int(numero_capitulo or 1)))
     percentual_capitulo = max(0.0, min(100.0, float(percentual_capitulo or 0.0)))
     registro = _obter_registro_livro(slug)

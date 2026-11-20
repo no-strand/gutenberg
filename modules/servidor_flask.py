@@ -49,6 +49,8 @@ from .manipulador_capitulos import criar_capitulo, excluir_capitulo, ler_capitul
 from .manipulador_biblioteca import (
     adicionar_livro_epub,
     adicionar_livro_pdf,
+    adicionar_livro_pdf_nativo,
+    obter_caminho_pdf,
     excluir_livro,
     listar_livros,
     listar_colecoes_livros,
@@ -87,10 +89,20 @@ from .manipulador_recursos_projeto import (
     excluir_item_catalogo_projeto,
     ler_recursos_projeto,
     mesclar_catalogo_com_roteiros,
+    modificar_planejamento_projeto,
     salvar_fluxo_projeto,
     salvar_informacoes_projeto,
     salvar_item_catalogo_projeto,
     salvar_paginas_catalogo_projeto,
+)
+from .validacao_publicacao import validar_publicacao, conferir_arquivo_exportado
+from .leitor_pdf_nativo import renderizar_pagina_pdf, texto_pagina_pdf, pesquisar_pdf
+from .revisao_editorial import (
+    ler as ler_revisao_editorial, criar_item as criar_item_revisao,
+    alterar_item as alterar_item_revisao, apagar_item as apagar_item_revisao,
+    criar_versao as criar_versao_editorial, obter_versao as obter_versao_editorial,
+    apagar_versao as apagar_versao_editorial, comparar as comparar_versao_editorial,
+    texto_html as texto_html_revisao_editorial,
 )
 from .i18n import carregar_locale, idioma_projeto_rotulo, normalizar_idioma_app, obter_idioma_app, t
 from .atualizador import verificar_atualizacao, iniciar_atualizacao, estado_atualizacao, cancelar_atualizacao, ultima_verificacao_atualizacao
@@ -1265,6 +1277,7 @@ def _recursos_projeto_combinados(slug: str) -> dict[str, object]:
         "personagens_projeto": combinados.get("personagens", []),
         "lugares_projeto": combinados.get("lugares", []),
         "anotacoes_projeto": combinados.get("anotacoes", []),
+        "planejamento": combinados.get("planejamento", {"cenas": [], "fontes": []}),
         "ocultos": combinados.get("ocultos", {"personagens": [], "lugares": [], "anotacoes": []}),
         "data_atualizacao": combinados.get("data_atualizacao"),
     }
@@ -2022,6 +2035,24 @@ def criar_app() -> Flask:
         except Exception as exc:
             return _resposta_erro_json(str(exc), 400)
 
+    @app.post("/api/projetos/<slug>/recursos/planejamento/<tipo>/<operacao>")
+    @registrar_etapa
+    def api_modificar_planejamento(slug: str, tipo: str, operacao: str):
+        dados = request.get_json(silent=True)
+        if not isinstance(dados, dict):
+            return _resposta_erro_json("Informe os dados em JSON.", 400)
+        try:
+            modificar_planejamento_projeto(obter_pasta_projeto(slug), tipo, operacao, dados)
+            atualizar_data_projeto(slug)
+            return jsonify(_recursos_projeto_combinados(slug))
+        except FileNotFoundError as exc:
+            return _resposta_erro_json(str(exc), 404)
+        except ValueError as exc:
+            return _resposta_erro_json(str(exc), 400)
+        except Exception:
+            logger.exception("Falha ao modificar planejamento do Rascunho")
+            return _resposta_erro_json("Não foi possível salvar o planejamento.", 500)
+
     @app.post("/api/projetos/<slug>/recursos/catalogo/<tipo>")
     @registrar_etapa
     def api_salvar_catalogo_recursos_projeto(slug: str, tipo: str):
@@ -2202,6 +2233,9 @@ def criar_app() -> Flask:
         arquivos = [arquivo for arquivo in request.files.getlist("epubs") if arquivo and arquivo.filename]
         if not arquivos:
             return jsonify({"ok": False, "erro": t('backend.no_book_file_uploaded')}), 400
+        modo_pdf = str(request.form.get('modo_pdf') or 'epub').strip().lower()
+        if modo_pdf not in {'epub', 'nativo'}:
+            return jsonify({'ok': False, 'erro': 'Modo de importação PDF inválido.'}), 400
         adicionados = []
         for arquivo in arquivos:
             nome_original = Path(str(arquivo.filename).replace("\\", "/")).name
@@ -2217,12 +2251,15 @@ def criar_app() -> Flask:
                 with TemporaryDirectory(prefix="gutenberg_biblioteca_") as pasta_tmp:
                     caminho_origem = Path(pasta_tmp) / nome_original
                     arquivo.save(str(caminho_origem))
-                    livro = adicionar_livro_pdf(caminho_origem) if sufixo == ".pdf" else adicionar_livro_epub(caminho_origem)
+                    if sufixo == '.pdf':
+                        livro = adicionar_livro_pdf_nativo(caminho_origem) if modo_pdf == 'nativo' else adicionar_livro_pdf(caminho_origem)
+                    else:
+                        livro = adicionar_livro_epub(caminho_origem)
             except Exception as exc:
                 logger.exception("Falha ao adicionar livro à biblioteca | arquivo=%s", nome_original)
                 return jsonify({"ok": False, "erro": str(exc) or t('backend.error_converting_pdf_to_epub')}), 400
 
-            adicionados.append({"slug": livro["slug"], "titulo": livro["titulo"]})
+            adicionados.append({"slug": livro["slug"], "titulo": livro["titulo"], "tipo_documento": livro.get('tipo_documento', 'epub')})
         if not adicionados:
             return jsonify({"ok": False, "erro": t('backend.no_valid_book_added')}), 400
         return jsonify({"ok": True, "adicionados": adicionados})
@@ -2273,12 +2310,104 @@ def criar_app() -> Flask:
             para quem apenas precisa acionar este comportamento.
         """
         livro = obter_livro(slug)
+        if livro.get('tipo_documento') == 'pdf':
+            pagina = max(1, min(int(livro.get('pdf_total_paginas') or 1), int(livro.get('ultimo_lido') or 1)))
+            return redirect(url_for('ler_pdf_biblioteca', slug=slug, pagina=pagina))
         if not livro.get("capitulos"):
             return redirect(url_for("pagina_biblioteca"))
         ultimo = livro.get("ultimo_lido")
         if ultimo:
             return redirect(url_for("ler_livro_biblioteca", slug=slug, numero=ultimo))
         return redirect(url_for("ler_livro_biblioteca", slug=slug, numero=1))
+
+    @app.get('/biblioteca/<slug>/pdf')
+    @registrar_etapa
+    def ler_pdf_biblioteca(slug: str):
+        """Leitor de PDF diagramado, sem conversão para EPUB."""
+        try:
+            livro = obter_livro(slug)
+            if livro.get('tipo_documento') != 'pdf':
+                abort(404)
+            total = int(livro.get('pdf_total_paginas') or 0)
+            if total < 1:
+                abort(404)
+            try:
+                pagina = int(request.args.get('pagina') or livro.get('ultimo_lido') or 1)
+            except (ValueError, TypeError):
+                pagina = 1
+            pagina = max(1, min(total, pagina))
+            registrar_ultimo_lido_livro(slug, pagina)
+            return render_template('leitor_pdf.html', livro=livro, pagina=pagina)
+        except FileNotFoundError:
+            abort(404)
+
+    @app.get('/biblioteca/<slug>/pdf/pagina/<int:pagina>.png')
+    @registrar_etapa
+    def imagem_pagina_pdf_biblioteca(slug: str, pagina: int):
+        try:
+            arquivo = obter_caminho_pdf(slug)
+            try:
+                escala = float(request.args.get('escala', '1.3'))
+                if not math.isfinite(escala):
+                    raise ValueError('Escala inválida')
+            except (ValueError, OverflowError):
+                return jsonify({'ok': False, 'erro': 'Escala inválida.'}), 400
+            png = renderizar_pagina_pdf(arquivo, pagina, escala)
+            resposta = send_file(BytesIO(png), mimetype='image/png')
+            resposta.headers['Cache-Control'] = 'private, max-age=300'
+            return resposta
+        except FileNotFoundError:
+            abort(404)
+        except ValueError as exc:
+            return jsonify({'ok': False, 'erro': str(exc)}), 400
+
+    @app.get('/biblioteca/<slug>/pdf/pagina/<int:pagina>/texto')
+    @registrar_etapa
+    def texto_pagina_pdf_biblioteca(slug: str, pagina: int):
+        try:
+            texto = texto_pagina_pdf(obter_caminho_pdf(slug), pagina)
+            return jsonify({'ok': True, 'texto': texto})
+        except FileNotFoundError:
+            abort(404)
+
+    @app.get('/biblioteca/<slug>/pdf/pesquisar')
+    @registrar_etapa
+    def pesquisar_pdf_biblioteca(slug: str):
+        try:
+            busca = str(request.args.get('q') or '').strip()[:100]
+            return jsonify({'ok': True, 'resultados': pesquisar_pdf(obter_caminho_pdf(slug), busca)})
+        except FileNotFoundError:
+            abort(404)
+
+    @app.get('/biblioteca/<slug>/pdf/original')
+    @registrar_etapa
+    def baixar_pdf_original_biblioteca(slug: str):
+        try:
+            caminho = obter_caminho_pdf(slug)
+            livro = obter_livro(slug)
+            return send_file(caminho, mimetype='application/pdf', as_attachment=True,
+                             download_name=Path(str(livro.get('arquivo_original') or 'documento.pdf')).name)
+        except FileNotFoundError:
+            abort(404)
+
+    @app.post('/api/biblioteca/<slug>/pdf/progresso')
+    @registrar_etapa
+    def salvar_progresso_pdf_biblioteca(slug: str):
+        try:
+            livro = obter_livro(slug)
+            if livro.get('tipo_documento') != 'pdf':
+                abort(404)
+            dados = request.get_json(silent=True) or {}
+            pagina = int(dados.get('pagina') or 1)
+            total = int(livro.get('pdf_total_paginas') or 1)
+            if pagina < 1 or pagina > total:
+                return jsonify({'ok': False, 'erro': 'Página fora do intervalo.'}), 400
+            livro = atualizar_progresso_livro(slug, pagina, 100)
+            return jsonify({'ok': True, 'progresso_percentual': livro.get('progresso_percentual', 0)})
+        except (ValueError, TypeError):
+            return jsonify({'ok': False, 'erro': 'Página inválida.'}), 400
+        except FileNotFoundError:
+            abort(404)
 
     @app.get("/biblioteca/<slug>/capa")
     @registrar_etapa
@@ -2939,6 +3068,69 @@ def criar_app() -> Flask:
             return jsonify({"ok": True, "mensagem": t("js.saved"), "data_atualizacao": capitulo.get("data_atualizacao")})
         except Exception as erro:
             return jsonify({"ok": False, "erro": str(erro)}), 500
+
+    # Revisão editorial: conteúdo externo ao HTML do livro/roteiro, sem impacto na exportação.
+    def _documento_revisao(slug: str, tipo: str, numero: int):
+        pasta = obter_pasta_projeto(slug)  # validador de pasta, impede percursos arbitrários
+        projeto = obter_projeto(slug)
+        if tipo not in ('livro', 'roteiro') or projeto.get('tipo') != tipo or numero < 1:
+            abort(404)
+        documento = (ler_roteiro(pasta, numero) if tipo == 'roteiro'
+                     else ler_capitulo(pasta, numero))
+        html = str((documento.get('paragrafos') or [''])[0] or '')
+        return pasta, documento, html
+
+    @app.get('/api/projetos/<slug>/editorial/<tipo>/<int:numero>')
+    def api_editorial_ler(slug: str, tipo: str, numero: int):
+        try:
+            pasta, _, _ = _documento_revisao(slug, tipo, numero)
+            return jsonify({'ok': True, **ler_revisao_editorial(pasta, tipo, numero)})
+        except (FileNotFoundError, ValueError):
+            abort(404)
+
+    @app.post('/api/projetos/<slug>/editorial/<tipo>/<int:numero>')
+    def api_editorial_operar(slug: str, tipo: str, numero: int):
+        try:
+            pasta, documento, html = _documento_revisao(slug, tipo, numero)
+            payload = request.get_json(silent=True) or {}
+            if not isinstance(payload, dict):
+                raise ValueError('Requisição inválida.')
+            acao = payload.get('acao')
+            if acao == 'criar':
+                resultado = criar_item_revisao(pasta, tipo, numero, payload)
+            elif acao == 'estado':
+                resultado = alterar_item_revisao(pasta, tipo, numero,
+                                                str(payload.get('id') or ''),
+                                                str(payload.get('estado') or ''))
+            elif acao == 'apagar':
+                apagar_item_revisao(pasta, tipo, numero, str(payload.get('id') or ''))
+                resultado = True
+            elif acao == 'versao':
+                resultado = criar_versao_editorial(pasta, tipo, numero, documento.get('titulo', ''),
+                                                  html, str(payload.get('rotulo') or ''))
+            elif acao == 'apagar_versao':
+                apagar_versao_editorial(pasta, tipo, numero, str(payload.get('id') or ''))
+                resultado = True
+            else:
+                raise ValueError('Ação editorial inválida.')
+            return jsonify({'ok': True, 'resultado': resultado})
+        except FileNotFoundError:
+            abort(404)
+        except ValueError as exc:
+            return jsonify({'ok': False, 'erro': str(exc)}), 400
+
+    @app.get('/api/projetos/<slug>/editorial/<tipo>/<int:numero>/versoes/<id_versao>')
+    def api_editorial_versao(slug: str, tipo: str, numero: int, id_versao: str):
+        try:
+            pasta, _, html = _documento_revisao(slug, tipo, numero)
+            versao = obter_versao_editorial(pasta, tipo, numero, id_versao)
+            if request.args.get('comparar') == '1':
+                return jsonify({'ok': True, 'comparacao': comparar_versao_editorial(versao['html'], html)})
+            return jsonify({'ok': True, 'versao': {**versao, 'texto': texto_html_revisao_editorial(versao['html'])}})
+        except FileNotFoundError:
+            abort(404)
+        except ValueError as exc:
+            return jsonify({'ok': False, 'erro': str(exc)}), 400
 
     @app.post("/projetos/<slug>/roteiros/criar")
     @registrar_etapa
@@ -3657,6 +3849,18 @@ def criar_app() -> Flask:
         except FileExistsError as erro:
             return _resposta_erro_json(str(erro), 400)
 
+    @app.get("/projetos/<slug>/exportar/validacao")
+    @registrar_etapa
+    def rota_validacao_publicacao(slug: str):
+        """Prévia de revisão editorial e integridade, sem modificar o projeto."""
+        resultado = validar_publicacao(
+            slug, formato=request.args.get('formato', 'epub'),
+            versao=request.args.get('versao', '2.0'),
+            roteiro=request.args.get('roteiro'),
+            tipo_documento=request.args.get('tipo_documento', 'roteiro'),
+        )
+        return jsonify(resultado)
+
     @app.get("/projetos/<slug>/exportar")
     @registrar_etapa
     def rota_exportar(slug: str):
@@ -3681,6 +3885,27 @@ def criar_app() -> Flask:
         projeto = obter_projeto(slug)
         formato = request.args.get("formato", "epub")
         versao = request.args.get("versao", "2.0")
+        # Conferência também no servidor: não é possível ignorar erros graves
+        # chamando a URL de exportação diretamente.
+        diagnostico = validar_publicacao(
+            slug, formato=formato, versao=versao,
+            roteiro=request.args.get('roteiro'),
+            tipo_documento=request.args.get('tipo_documento', 'roteiro'),
+        )
+        if not diagnostico['aprovado']:
+            return jsonify({
+                'ok': False, 'erro': t('publish.export_blocked'),
+                'validacao': diagnostico,
+            }), 422
+        # Fluxo da interface exige ciência dos avisos; chamadas antigas que
+        # não passam validar=1 preservam compatibilidade com integrações.
+        if (request.args.get('validar') == '1' and diagnostico['avisos']
+                and (request.args.get('confirmar_avisos') != '1' or
+                     request.args.get('assinatura_validacao') != diagnostico['assinatura'])):
+            return jsonify({
+                'ok': False, 'erro': t('publish.ack_required'),
+                'validacao': diagnostico,
+            }), 409
         if projeto.get("tipo") == "roteiro":
             numero_roteiro = request.args.get("roteiro")
             try:
@@ -3693,6 +3918,7 @@ def criar_app() -> Flask:
             if formato == "docx":
                 try:
                     arquivo = exportar_roteiro_docx(slug, numero_roteiro, tipo_documento)
+                    conferir_arquivo_exportado(arquivo, 'docx')
                 except ValueError as exc:
                     return jsonify({"ok": False, "erro": str(exc)}), 400
                 atualizar_metadados_projeto(slug, {})
@@ -3700,25 +3926,33 @@ def criar_app() -> Flask:
             if formato == "pdf":
                 try:
                     arquivo = exportar_roteiro_pdf(slug, numero_roteiro, tipo_documento)
+                    conferir_arquivo_exportado(arquivo, 'pdf')
                 except ValueError as exc:
                     return jsonify({"ok": False, "erro": str(exc)}), 400
                 atualizar_metadados_projeto(slug, {})
                 return _resposta_arquivo_exportado(arquivo)
             return jsonify({"ok": False, "erro": t('backend.scripts_export_docx_pdf_only')}), 400
-        if formato == "xhtml":
-            pasta = exportar_projeto_xhtml(slug)
-            return jsonify({"ok": True, "mensagem": t('backend.xhtml_exported_in', folder=pasta)})
-        if formato == "docx":
-            arquivo = exportar_projeto_docx(slug)
+        try:
+            if formato == "xhtml":
+                pasta = exportar_projeto_xhtml(slug)
+                conferir_arquivo_exportado(pasta, 'xhtml')
+                return jsonify({"ok": True, "mensagem": t('backend.xhtml_exported_in', folder=pasta)})
+            if formato == "docx":
+                arquivo = exportar_projeto_docx(slug)
+                conferir_arquivo_exportado(arquivo, 'docx')
+                atualizar_metadados_projeto(slug, {})
+                return _resposta_arquivo_exportado(arquivo)
+            if formato == "pdf":
+                arquivo = exportar_projeto_pdf(slug)
+                conferir_arquivo_exportado(arquivo, 'pdf')
+                atualizar_metadados_projeto(slug, {})
+                return _resposta_arquivo_exportado(arquivo)
+            arquivo = exportar_projeto_epub(slug, versao)
+            conferir_arquivo_exportado(arquivo, 'epub')
             atualizar_metadados_projeto(slug, {})
             return _resposta_arquivo_exportado(arquivo)
-        if formato == "pdf":
-            arquivo = exportar_projeto_pdf(slug)
-            atualizar_metadados_projeto(slug, {})
-            return _resposta_arquivo_exportado(arquivo)
-        arquivo = exportar_projeto_epub(slug, versao)
-        atualizar_metadados_projeto(slug, {})
-        return _resposta_arquivo_exportado(arquivo)
+        except ValueError as exc:
+            return jsonify({'ok': False, 'erro': str(exc)}), 400
 
     @app.get("/saude")
     @registrar_etapa

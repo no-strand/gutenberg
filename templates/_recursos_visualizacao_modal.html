@@ -17,6 +17,8 @@
       <button type="button" class="recursos-tab" data-recursos-view-tab="personagens">{{ t('resources.characters') }}</button>
       <button type="button" class="recursos-tab" data-recursos-view-tab="lugares">{{ t('resources.places') }}</button>
       <button type="button" class="recursos-tab" data-recursos-view-tab="anotacoes">{{ t('resources.notes') }}</button>
+      <button type="button" class="recursos-tab" data-recursos-view-tab="cenas">{{ t('planning.scenes') }}</button>
+      <button type="button" class="recursos-tab" data-recursos-view-tab="pesquisa">{{ t('planning.research') }}</button>
     </div>
     <div class="recursos-view-status" id="recursosViewStatus">{{ t('common.loading') }}</div>
     <section class="recursos-view-panel ativo" data-recursos-view-panel="informacoes">
@@ -58,6 +60,12 @@
         </div>
         <div class="recursos-cards-grid recursos-cards-grid-modal recursos-view-card-grid" id="recursosViewAnotacoes"></div>
       </div>
+    </section>
+    <section class="recursos-view-panel" data-recursos-view-panel="cenas">
+      <div id="recursosViewCenas" class="recursos-view-info recursos-view-card-grid" aria-label="{{ t('planning.scenes') }}"></div>
+    </section>
+    <section class="recursos-view-panel" data-recursos-view-panel="pesquisa">
+      <div id="recursosViewPesquisa" class="recursos-view-info recursos-view-card-grid" aria-label="{{ t('planning.research') }}"></div>
     </section>
   </div>
 </div>

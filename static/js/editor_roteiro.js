@@ -536,8 +536,11 @@ function ensureInfoHoverTooltip() {
 }
 /** Hideinfohovertooltip. Usada pelo fluxo principal da aplicação. */
 function hideInfoHoverTooltip() {
-  ensureInfoHoverTooltip().classList.add('oculto');
-  ensureInfoHoverTooltip().innerHTML = '';
+  window.GutenbergResourcePreview?.hide();
+  if (infoHoverTooltip) {
+    infoHoverTooltip.classList.add('oculto');
+    infoHoverTooltip.replaceChildren();
+  }
 }
 /** Positioninfohovertooltip. Usada pelo fluxo principal da aplicação. */
 function positionInfoHoverTooltip(clientX, clientY) {
@@ -617,11 +620,14 @@ function getHoverInfoForBlock(block) {
 /** Showinfohovertooltip. Usada pelo fluxo principal da aplicação. */
 function showInfoHoverTooltip(info, clientX, clientY) {
   if (!info) return hideInfoHoverTooltip();
-  const tip = ensureInfoHoverTooltip();
   const helpText = altLinkModeEnabled ? i18n('script.alt_pressed_click_edit') : i18n('script.hold_alt_to_edit');
-  tip.innerHTML = `<strong>${escapeHtml(info.tipo)}</strong><span>${escapeHtml(info.nome || '')}</span><p>${escapeHtml(info.descricao || i18n('common.no_description'))}</p><em>${escapeHtml(helpText)}</em>`;
-  tip.classList.remove('oculto');
-  positionInfoHoverTooltip(clientX, clientY);
+  window.GutenbergResourcePreview?.showAtPoint({
+    nome: info.nome || '',
+    tipo: info.tipo || '',
+    descricao: info.descricao || '',
+    imagem: info.catalogoTipo === 'anotacoes' ? '' : (info.item?.imagem || ''),
+    hint: helpText,
+  }, clientX, clientY);
 }
 /** Runeditorhoverframe. Usada pelo fluxo principal da aplicação. */
 function runEditorHoverFrame() {
@@ -2071,7 +2077,6 @@ function chooseScriptResourceAutocomplete(item) {
   link.className = 'editor-recurso-link';
   link.dataset.recursoTipo = 'anotacoes';
   link.dataset.recursoNome = autocompleteItemLabel(item);
-  link.title = `${scriptResourceTypeLabel('anotacoes')}: ${autocompleteItemLabel(item)}`;
   link.textContent = autocompleteItemLabel(item);
   range.deleteContents();
   range.insertNode(link);
@@ -2981,7 +2986,6 @@ formCatalogoEditor?.addEventListener('submit', async (ev) => {
       catalogoLinkAtivo.textContent = nome;
       catalogoLinkAtivo.dataset.recursoNome = nome;
       catalogoLinkAtivo.dataset.recursoTipo = tipo;
-      catalogoLinkAtivo.title = `${scriptResourceTypeLabel(tipo)}: ${nome}`;
       const linkedBlock = catalogoLinkAtivo.closest('.roteiro-bloco');
       if (linkedBlock) markBlockDirty(linkedBlock);
       scheduleAutosave();

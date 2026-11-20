@@ -1,0 +1,68 @@
+/* Exibição integral das referências visuais.
+   A integridade dos arquivos é garantida no backend; aqui a interface apenas
+   limita o tamanho visual, mantendo sempre a proporção e permitindo rolagem. */
+
+#modalDetalheCatalogoRecursos:not(.catalogo-sem-imagem) .detalhe-catalogo-corpo,
+#modalRecursosCatalogoDetalhe:not(.catalogo-sem-imagem) .recursos-catalogo-detail-body {
+  display: grid !important;
+  grid-template-rows: min-content !important;
+  align-items: start !important;
+  align-content: start !important;
+  flex: 0 1 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: min(74vh, 720px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+#modalDetalheCatalogoRecursos:not(.catalogo-sem-imagem) .detalhe-catalogo-imagem-wrap,
+#modalRecursosCatalogoDetalhe:not(.catalogo-sem-imagem) .recursos-catalogo-detail-image-wrap {
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-self: start !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#modalDetalheCatalogoRecursos:not(.catalogo-sem-imagem) .detalhe-catalogo-imagem-wrap img:not(.oculto),
+#modalRecursosCatalogoDetalhe:not(.catalogo-sem-imagem) .recursos-catalogo-detail-image-wrap img:not(.oculto) {
+  box-sizing: border-box !important;
+  display: block !important;
+  flex: 0 1 auto !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  max-height: min(68vh, 640px) !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+}
+
+/* Miniaturas e prévias também preservam o quadro inteiro. */
+.recurso-card-img,
+.catalogo-thumb img,
+.gutenberg-resource-preview-image,
+.imagem-preview-wrap img {
+  object-fit: contain !important;
+  object-position: center center !important;
+}
+
+@media (max-width: 720px) {
+  #modalDetalheCatalogoRecursos:not(.catalogo-sem-imagem) .detalhe-catalogo-corpo,
+  #modalRecursosCatalogoDetalhe:not(.catalogo-sem-imagem) .recursos-catalogo-detail-body {
+    grid-template-columns: minmax(0, 1fr) !important;
+    max-height: 72vh !important;
+  }
+
+  #modalDetalheCatalogoRecursos:not(.catalogo-sem-imagem) .detalhe-catalogo-imagem-wrap img:not(.oculto),
+  #modalRecursosCatalogoDetalhe:not(.catalogo-sem-imagem) .recursos-catalogo-detail-image-wrap img:not(.oculto) {
+    max-height: 56vh !important;
+  }
+}

@@ -196,15 +196,115 @@
     if (subtitulo) subtitulo.textContent = data?.projeto?.titulo ? tr('resources.project_prefix', {project: data.projeto.titulo}, `Projeto: ${data.projeto.titulo}`) : tr('resources.hero_desc', {}, 'Informações, fluxo, personagens, lugares e anotações.');
     renderInfo(data);
     renderFlow(data);
-    renderCatalog(data, 'personagens', $('#recursosViewPersonagens'), '👤');
-    renderCatalog(data, 'lugares', $('#recursosViewLugares'), '📍');
-    renderCatalog(data, 'anotacoes', $('#recursosViewAnotacoes'), '📝');
+    renderCatalog(data, 'personagens', $('#recursosViewPersonagens'));
+    renderCatalog(data, 'lugares', $('#recursosViewLugares'));
+    renderCatalog(data, 'anotacoes', $('#recursosViewAnotacoes'));
+    renderPlanning(data);
   }
+  function renderPlanning(data){
+    const planning = data?.planejamento || {};
+    const scenes = Array.isArray(planning.cenas) ? planning.cenas : [];
+    const sources = Array.isArray(planning.fontes) ? planning.fontes : [];
+    const sceneBox = $('#recursosViewCenas');
+    const sourceBox = $('#recursosViewPesquisa');
+    if (!sceneBox || !sourceBox) return;
+    sceneBox.replaceChildren(); sourceBox.replaceChildren();
+    const catalogs = {
+      personagens: data?.personagens || [],
+      lugares: data?.lugares || [],
+      anotacoes: data?.anotacoes || [],
+      referencias: sources
+    };
+    function paragraph(title, text){
+      const p = document.createElement('p');
+      const strong = document.createElement('strong');
+      strong.textContent = `${title}: `;
+      p.append(strong, document.createTextNode(String(text || '')));
+      return p;
+    }
+    const relationTypes = ['personagens', 'lugares', 'anotacoes', 'referencias'];
+    const relationLabels = {
+      personagens: tr('planning.characters', {}, 'Personagens'),
+      lugares: tr('planning.places', {}, 'Lugares'),
+      anotacoes: tr('planning.notes', {}, 'Anotações'),
+      referencias: tr('planning.research', {}, 'Pesquisa'),
+    };
+    scenes.forEach((scene, index) => {
+      const card = document.createElement('article');
+      card.className = 'recursos-view-info-card planejamento-read-card';
+      const title = document.createElement('h3');
+      title.textContent = `${index+1}. ${scene.titulo || tr('resources.untitled', {}, 'Sem título')}`;
+      card.appendChild(title);
+      card.append(paragraph(tr('planning.status', {}, 'Situação'), tr({
+        planejada:'planning.status_planned', em_andamento:'planning.status_progress',
+        revisao:'planning.status_review', concluida:'planning.status_done'
+      }[scene.status] || '', {}, scene.status || '')));
+      for (const [key, label] of [
+        ['resumo', tr('planning.summary', {}, 'Resumo')],
+        ['objetivo', tr('planning.goal', {}, 'Objetivo')],
+        ['conflito', tr('planning.conflict', {}, 'Conflito')],
+        ['desfecho', tr('planning.outcome', {}, 'Desfecho')]
+      ]) if (scene[key]) card.appendChild(paragraph(label, scene[key]));
+      for (const type of relationTypes) {
+        const available = new Map((catalogs[type] || []).map(entry => [String(entry.id), entry]));
+        const related = (scene[type] || []).map(id => available.get(String(id))).filter(Boolean);
+        if (!related.length) continue;
+        const line = document.createElement('p');
+        const strong = document.createElement('strong');
+        strong.textContent = `${relationLabels[type]}: `;
+        line.appendChild(strong);
+        related.forEach((entry, relatedIndex) => {
+          if (relatedIndex) line.appendChild(document.createTextNode(', '));
+          const link = document.createElement('button');
+          link.type = 'button';
+          link.className = 'recursos-scene-resource-link';
+          const name = entry.nome || entry.titulo || entry.label || tr('resources.untitled', {}, 'Sem título');
+          link.textContent = name;
+          link.setAttribute('aria-label', `${relationLabels[type]} · ${name}`);
+          window.GutenbergResourcePreview?.bind(link, {
+            nome: name,
+            tipo: relationLabels[type],
+            descricao: entry.descricao || entry.notas || entry.citacao || entry.resumo || entry.html || entry.texto || entry.text || '',
+            imagem: ['personagens', 'lugares'].includes(type) ? (entry.imagem || '') : '',
+          });
+          if (CATALOG_TYPES.includes(type)) link.addEventListener('click', () => openCatalogDetail(type, entry));
+          line.appendChild(link);
+        });
+        card.appendChild(line);
+      }
+      sceneBox.appendChild(card);
+    });
+    sources.forEach(source => {
+      const card = document.createElement('article');
+      card.className = 'recursos-view-info-card planejamento-read-card';
+      const title = document.createElement('h3');
+      title.textContent = source.titulo || tr('resources.untitled', {}, 'Sem título');
+      card.appendChild(title);
+      if (source.autor) card.appendChild(paragraph(tr('planning.author', {}, 'Autor'), source.autor));
+      if (source.citacao) card.appendChild(paragraph(tr('planning.citation', {}, 'Citação'), source.citacao));
+      if (source.notas) card.appendChild(paragraph(tr('planning.research_notes', {}, 'Notas'), source.notas));
+      if (source.url) {
+        try {
+          const url = new URL(source.url);
+          if (['http:', 'https:'].includes(url.protocol) && !url.username && !url.password) {
+            const link = document.createElement('a');
+            link.href = url.href; link.target = '_blank'; link.rel = 'noopener noreferrer';
+            link.textContent = tr('planning.open_source', {}, 'Abrir fonte');
+            card.appendChild(link);
+          }
+        } catch (_) { /* Fonte antiga sem URL HTTP(S) */ }
+      }
+      sourceBox.appendChild(card);
+    });
+    if (!scenes.length) sceneBox.innerHTML = `<p class="vazio-recursos">${escapeHtml(tr('planning.empty_scenes', {}, 'Nenhuma cena planejada.'))}</p>`;
+    if (!sources.length) sourceBox.innerHTML = `<p class="vazio-recursos">${escapeHtml(tr('planning.empty_sources', {}, 'Nenhuma fonte cadastrada.'))}</p>`;
+  }
+
   function makeButtonCard(title, className = 'recursos-view-title-card'){
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = className;
-    btn.title = title || tr('resources.untitled', {}, 'Sem título');
+    btn.setAttribute('aria-label', title || tr('resources.untitled', {}, 'Sem título'));
     const h3 = document.createElement('h3');
     h3.textContent = title || tr('resources.untitled', {}, 'Sem título');
     btn.appendChild(h3);
@@ -244,25 +344,31 @@
     const page = activePage('fluxo', pages);
     renderFlowView(page || {nodes: [], edges: []});
   }
-  function renderCatalog(data, tipo, box, emoji){
+  function renderCatalog(data, tipo, box){
     const pages = normalizeCatalogPages(data || {}, tipo);
-    renderViewPageTabs(tipo, pages, () => renderCatalog(cache || data, tipo, box, emoji));
+    renderViewPageTabs(tipo, pages, () => renderCatalog(cache || data, tipo, box));
     const page = activePage(tipo, pages);
     const items = normalizeCatalogItems(data?.[tipo] || [], pages).filter(item => !page || String(item.pagina_id || '') === String(page.id));
-    renderCatalogCards(items, box, tipo, emoji);
+    renderCatalogCards(items, box, tipo);
   }
-  function renderCatalogCards(items, box, tipo, emoji){
+  function renderCatalogCards(items, box, tipo){
     if (!box) return;
     box.innerHTML = '';
     if (!items.length) { box.innerHTML = `<div class="vazio-recursos">${escapeHtml(tr('resources.no_items_view', {}, 'Nenhum item cadastrado.'))}</div>`; return; }
     items.forEach(item => {
       const card = makeButtonCard(item.nome || tr('resources.no_item_name', {}, 'Sem nome'), 'recursos-view-title-card recursos-view-catalog-title-card');
       card.dataset.tipo = tipo;
-      card.addEventListener('click', () => openCatalogDetail(tipo, item, emoji));
+      window.GutenbergResourcePreview?.bind(card, {
+        nome: item.nome,
+        tipo: tipo === 'personagens' ? tr('resources.character', {}, 'Personagem') : (tipo === 'anotacoes' ? tr('resources.note', {}, 'Anotação') : tr('resources.place', {}, 'Lugar')),
+        descricao: item.descricao,
+        imagem: tipo === 'anotacoes' ? '' : item.imagem,
+      });
+      card.addEventListener('click', () => openCatalogDetail(tipo, item));
       box.appendChild(card);
     });
   }
-  function openCatalogDetail(tipo, item, emoji = ''){
+  function openCatalogDetail(tipo, item){
     if (!catalogDetailModal || !item) return;
     const tipoLabel = tipo === 'personagens' ? tr('resources.character', {}, 'Personagem') : (tipo === 'anotacoes' ? tr('resources.note', {}, 'Anotação') : tr('resources.place', {}, 'Lugar'));
     const origem = tipo === 'anotacoes' ? tr('resources.saved_in_project_feminine', {}, 'salva no projeto') : (item.origem === 'roteiro' ? tr('resources.detected_in_script', {}, 'detectado no roteiro') : tr('resources.saved_in_project', {}, 'salvo no projeto'));
@@ -287,7 +393,9 @@
       imgEl.src = showImage ? item.imagem : '';
       imgEl.classList.toggle('oculto', !showImage);
       semImgEl.classList.toggle('oculto', showImage || tipo === 'anotacoes');
-      semImgEl.textContent = showImage ? '' : `${tr('resources.no_reference_image', {}, 'Sem imagem de referência')} ${emoji || ''}`.trim();
+      semImgEl.textContent = showImage ? '' : (item.imagem_necessita_reenvio
+        ? tr('resources.reference_image_needs_reupload', {}, 'Esta imagem foi danificada pelo limite antigo. Anexe o arquivo original novamente.')
+        : tr('resources.no_reference_image', {}, 'Sem imagem de referência'));
     }
     openElement(catalogDetailModal);
   }

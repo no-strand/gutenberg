@@ -119,21 +119,41 @@ botoesColecao.forEach((botao) => {
 
 campoBusca?.addEventListener('input', aplicarFiltros);
 
-inputEpubs?.addEventListener('change', async () => {
-  const arquivos = [...(inputEpubs.files || [])];
-  if (!arquivos.length) return;
+const modalModoPdf = document.getElementById('modalModoPdf');
+const confirmarModoPdf = document.getElementById('confirmarModoPdf');
+let arquivosPendentesPdf = [];
+let importandoBiblioteca = false;
+
+function fecharEscolhaPdf() {
+  modalModoPdf?.classList.add('oculto');
+  modalModoPdf?.setAttribute('aria-hidden', 'true');
+  arquivosPendentesPdf = [];
+  if (inputEpubs) inputEpubs.value = '';
+  abrirSeletorEpub?.focus();
+}
+
+function abrirEscolhaPdf(arquivos) {
+  arquivosPendentesPdf = arquivos;
+  modalModoPdf?.classList.remove('oculto');
+  modalModoPdf?.setAttribute('aria-hidden', 'false');
+  modalModoPdf?.querySelector('input[value="nativo"]')?.focus();
+}
+
+async function importarArquivosBiblioteca(arquivos, modoPdf = 'epub') {
+  if (!arquivos.length || importandoBiblioteca) return;
+  importandoBiblioteca = true;
   const possuiPdf = arquivos.some((arquivo) => (arquivo.name || '').toLowerCase().endsWith('.pdf'));
   const mensagemProgresso = arquivos.length > 1 ? i18n('js.adding_books', {count: arquivos.length}) : i18n('js.adding_book');
   atualizarStatusBiblioteca(mensagemProgresso);
-  definirProcessamentoBiblioteca(true, possuiPdf ? i18n('js.import_pdf_wait') : (arquivos.length > 1 ? i18n('js.import_many_wait', {count: arquivos.length}) : i18n('js.import_one_wait')));
+  definirProcessamentoBiblioteca(true, possuiPdf && modoPdf === 'epub' ? i18n('js.import_pdf_wait') : (arquivos.length > 1 ? i18n('js.import_many_wait', {count: arquivos.length}) : i18n('js.import_one_wait')));
   const body = new FormData();
+  body.append('modo_pdf', modoPdf);
   arquivos.forEach((arquivo) => body.append('epubs', arquivo));
   try {
     const resposta = await fetch('/biblioteca/adicionar', { method: 'POST', body });
     const dados = await resposta.json();
-    if (!dados.ok) {
+    if (!resposta.ok || !dados.ok) {
       atualizarStatusBiblioteca(dados.erro || i18n('js.add_books_error'));
-      definirProcessamentoBiblioteca(false, dados.erro || i18n('js.add_books_error'));
       return;
     }
     const totalAdicionados = Array.isArray(dados.adicionados) ? dados.adicionados.length : 0;
@@ -142,9 +162,38 @@ inputEpubs?.addEventListener('change', async () => {
     window.location.reload();
   } catch (_) {
     atualizarStatusBiblioteca(i18n('js.upload_book_error'));
-    definirProcessamentoBiblioteca(false, i18n('js.upload_book_error'));
   } finally {
-    inputEpubs.value = '';
+    importandoBiblioteca = false;
+    definirProcessamentoBiblioteca(false);
+    if (inputEpubs) inputEpubs.value = '';
+  }
+}
+
+inputEpubs?.addEventListener('change', () => {
+  if (importandoBiblioteca) return;
+  const arquivos = [...(inputEpubs.files || [])];
+  if (!arquivos.length) return;
+  if (arquivos.some((arquivo) => (arquivo.name || '').toLowerCase().endsWith('.pdf'))) {
+    abrirEscolhaPdf(arquivos);
+    return;
+  }
+  importarArquivosBiblioteca(arquivos);
+});
+
+confirmarModoPdf?.addEventListener('click', () => {
+  const arquivos = [...arquivosPendentesPdf];
+  const modo = modalModoPdf?.querySelector('input[name="modoPdf"]:checked')?.value || 'nativo';
+  fecharEscolhaPdf();
+  importarArquivosBiblioteca(arquivos, modo);
+});
+
+document.querySelectorAll('[data-cancelar-pdf="true"]').forEach((elemento) => {
+  elemento.addEventListener('click', fecharEscolhaPdf);
+});
+document.addEventListener('keydown', (evento) => {
+  if (evento.key === 'Escape' && modalModoPdf && !modalModoPdf.classList.contains('oculto')) {
+    evento.preventDefault();
+    fecharEscolhaPdf();
   }
 });
 

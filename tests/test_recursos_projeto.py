@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+import base64
+import io
+import random
+
+from PIL import Image, ImageDraw
+
 from modules import manipulador_projetos, manipulador_recursos_projeto as recursos, servidor_flask, utilidades, i18n
 from tests.test_support import IsolatedProjectTestCase
 
@@ -58,6 +64,109 @@ class RecursosProjetoUnitTests(IsolatedProjectTestCase):
         self.assertEqual(dados["anotacoes"][0]["nome"], "Regra")
         self.assertEqual(dados["anotacoes"][0]["imagem"], "")
         self.assertEqual(dados["ocultos"]["personagens"], ["Ana"])
+
+    def test_imagem_referencia_grande_e_otimizada_sem_cortar_a_parte_inferior(self):
+        # Imagem de alta entropia para ultrapassar o limite antigo de 900 mil
+        # caracteres; faixas coloridas em ambas as extremidades detectam crop.
+        largura, altura = 1000, 1600
+        pixels = random.Random(42).randbytes(largura * altura * 3)
+        imagem = Image.frombytes("RGB", (largura, altura), pixels)
+        desenho = ImageDraw.Draw(imagem)
+        desenho.rectangle((0, 0, largura - 1, 159), fill=(245, 35, 45))
+        desenho.rectangle((0, 1450, largura - 1, altura - 1), fill=(25, 235, 70))
+
+        buffer = io.BytesIO()
+        imagem.save(buffer, format="PNG", compress_level=0)
+        original = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+        self.assertGreater(len(original), recursos.MAX_IMAGEM_DATA_URL)
+
+        normalizada = recursos._imagem(original)
+
+        self.assertTrue(normalizada.startswith("data:image/webp;base64,"))
+        self.assertLessEqual(len(normalizada), recursos.MAX_IMAGEM_DATA_URL)
+        dados_otimizados = base64.b64decode(normalizada.partition(",")[2])
+        with Image.open(io.BytesIO(dados_otimizados)) as exibida:
+            self.assertGreater(exibida.height, exibida.width)
+            self.assertAlmostEqual(exibida.width / exibida.height, largura / altura, delta=0.01)
+            topo = exibida.getpixel((exibida.width // 2, 5))
+            base = exibida.getpixel((exibida.width // 2, exibida.height - 5))
+            self.assertGreater(topo[0], topo[1] * 2)
+            self.assertGreater(base[1], base[0] * 2)
+
+    def test_imagem_referencia_legada_truncada_nao_e_exibida_como_se_estivesse_inteira(self):
+        # Reproduz a versão anterior: data URL real cortada exatamente no limite.
+        imagem = Image.frombytes("RGB", (500, 500), random.Random(3).randbytes(500 * 500 * 3))
+        buffer = io.BytesIO()
+        imagem.save(buffer, format="PNG", compress_level=0)
+        original = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+        self.assertGreater(len(original), recursos.MAX_IMAGEM_DATA_URL)
+        truncada = original[:recursos.MAX_IMAGEM_DATA_URL]
+
+        self.assertEqual(len(truncada), recursos.MAX_IMAGEM_DATA_URL)
+        self.assertEqual(recursos._imagem(truncada), "")
+        with self.assertRaises(ValueError):
+            recursos._imagem(truncada + "A")
+        dados = recursos.normalizar_recursos({
+            "personagens": [{"nome": "Imagem antiga", "imagem": truncada}],
+            "lugares": [{"nome": "Lugar antigo", "imagem": truncada}],
+        })
+        self.assertTrue(dados["personagens"][0]["imagem_necessita_reenvio"])
+        self.assertTrue(dados["lugares"][0]["imagem_necessita_reenvio"])
+
+    def test_imagem_referencia_persistida_permanece_inteira_apos_leitura(self):
+        largura, altura = 800, 1200
+        imagem = Image.new("RGB", (largura, altura), (30, 60, 90))
+        ImageDraw.Draw(imagem).rectangle((0, altura - 120, largura - 1, altura - 1), fill=(20, 230, 80))
+        buffer = io.BytesIO()
+        imagem.save(buffer, format="PNG", compress_level=0)
+        original = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+
+        pasta = self.projects / "referencias-visuais"
+        pasta.mkdir(parents=True, exist_ok=True)
+        recursos.salvar_item_catalogo_projeto(
+            pasta, "personagens", {"nome": "Personagem de teste", "imagem": original}
+        )
+        recursos.salvar_item_catalogo_projeto(
+            pasta, "lugares", {"nome": "Lugar de teste", "imagem": original}
+        )
+        dados = recursos.ler_recursos_projeto(pasta)
+
+        for tipo in ("personagens", "lugares"):
+            imagem_salva = dados[tipo][0]["imagem"]
+            self.assertLessEqual(len(imagem_salva), recursos.MAX_IMAGEM_DATA_URL)
+            pixels_salvos = base64.b64decode(imagem_salva.partition(",")[2])
+            with Image.open(io.BytesIO(pixels_salvos)) as exibida:
+                pixel_inferior = exibida.getpixel((exibida.width // 2, exibida.height - 5))
+                self.assertGreater(pixel_inferior[1], pixel_inferior[0] * 2)
+
+    def test_aviso_de_reenvio_legado_permanece_ate_uma_nova_imagem_ser_anexada(self):
+        pasta = self.projects / "referencia-legada"
+        pasta.mkdir(parents=True, exist_ok=True)
+        recursos.salvar_item_catalogo_projeto(
+            pasta, "personagens", {
+                "nome": "Referência antiga",
+                "imagem": "",
+                "imagem_necessita_reenvio": True,
+            }
+        )
+        dados = recursos.ler_recursos_projeto(pasta)
+        self.assertTrue(dados["personagens"][0]["imagem_necessita_reenvio"])
+
+        imagem = Image.new("RGB", (120, 180), (30, 60, 90))
+        buffer = io.BytesIO()
+        imagem.save(buffer, format="PNG")
+        nova_imagem = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+        recursos.salvar_item_catalogo_projeto(
+            pasta, "personagens", {
+                "id": dados["personagens"][0]["id"],
+                "nome": "Referência antiga",
+                "imagem": nova_imagem,
+                "imagem_necessita_reenvio": False,
+            }
+        )
+        atualizado = recursos.ler_recursos_projeto(pasta)["personagens"][0]
+        self.assertFalse(atualizado["imagem_necessita_reenvio"])
+        self.assertTrue(atualizado["imagem"].startswith("data:image/png;base64,"))
 
     def test_persistencia_salva_informacoes_fluxo_catalogo_e_exclusao(self):
         pasta = self.projects / "universo"

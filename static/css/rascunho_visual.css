@@ -1,0 +1,481 @@
+/* GUTENBERG · Rascunho — acabamento editorial 2026
+   Escopo intencional: apenas elementos da página de Recursos/Rascunho.
+   Nenhuma alteração em JS, dados, IDs, semântica, exportação ou paginação. */
+
+/* Tokens locais — acabamento calmo, legível e consistente com o tema escuro. */
+.pagina-recursos-projeto-shell {
+  --rv-surface:#172231;
+  --rv-surface-deep:#111b29;
+  --rv-surface-soft:#1e2c40;
+  --rv-stroke:rgba(169,193,228,.16);
+  --rv-stroke-strong:rgba(171,195,233,.26);
+  --rv-muted:#aabbd1;
+  --rv-ink:#f1f5ff;
+  --rv-accent:#9eacff;
+  --rv-teal:#70dcd0;
+  --rv-focus:rgba(158,172,255,.3);
+  --rv-shadow:0 20px 55px rgba(2,8,20,.20);
+  color:var(--rv-ink);
+}
+.pagina-recursos-projeto-shell :is(button,a,input,select,textarea):focus-visible {
+  outline:2px solid var(--rv-accent);
+  outline-offset:3px;
+}
+
+/* Cabeçalho discreto: marca editorial e utilitários mais organizados. */
+.pagina-recursos-projeto-shell .recursos-topo {
+  padding:clamp(16px,2.4vw,28px);
+  border:1px solid var(--rv-stroke);
+  border-radius:24px;
+  background:radial-gradient(circle at 98% 5%,rgba(125,143,255,.15),transparent 32%),
+             linear-gradient(122deg,rgba(27,42,64,.90),rgba(20,31,47,.92));
+  box-shadow:var(--rv-shadow);
+}
+.pagina-recursos-projeto-shell .recursos-topo-info {gap:10px;}
+.pagina-recursos-projeto-shell .topo-info-projeto {
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+}
+.pagina-recursos-projeto-shell .recursos-topo .badge {
+  background:rgba(112,220,208,.09);color:#99f0e3;
+  border:1px solid rgba(112,220,208,.25);border-radius:99px;
+  font-size:.74rem;letter-spacing:.025em;
+}
+.pagina-recursos-projeto-shell .recursos-hero-identificacao {
+  color:var(--rv-muted);font-size:.82rem;letter-spacing:.005em;
+}
+.pagina-recursos-projeto-shell .recursos-hero-titulo {
+  color:#f6f8ff;font-size:clamp(1.8rem,2.8vw,2.65rem);
+  letter-spacing:-.05em;line-height:1.1;
+}
+.pagina-recursos-projeto-shell .recursos-hero-subtitulo {
+  color:#b6c6db;font-size:.93rem;line-height:1.6;max-width:760px;
+}
+.pagina-recursos-projeto-shell #recursosStatus {
+  color:#cad8eb;background:rgba(12,21,35,.48);
+  border-color:var(--rv-stroke);box-shadow:none;
+}
+
+/* Superfície principal e seleção das sete áreas. */
+.pagina-recursos-projeto-shell .recursos-workspace {
+  margin-top:16px;padding:clamp(12px,1.7vw,22px);
+  background:linear-gradient(180deg,rgba(18,29,45,.97),rgba(14,23,36,.96));
+  border:1px solid var(--rv-stroke);
+  border-radius:26px;
+  box-shadow:0 20px 60px rgba(1,8,20,.22),inset 0 1px 0 rgba(233,241,255,.035);
+}
+.pagina-recursos-projeto-shell .recursos-tabs {
+  display:flex;align-items:center;gap:5px;max-width:100%;min-height:56px;
+  padding:6px;border:1px solid var(--rv-stroke);
+  border-radius:16px;background:rgba(5,13,26,.43);
+  scrollbar-width:none;
+}
+.pagina-recursos-projeto-shell .recursos-tab {
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  height:42px;min-height:42px;margin:0;padding:0 17px;
+  border:1px solid transparent;border-radius:11px;
+  background:transparent;color:#b4c3d6;
+  box-shadow:none;font-size:.89rem;font-weight:680;letter-spacing:.005em;
+  transform:none;transition:color .18s,background .18s,border-color .18s,box-shadow .18s;
+}
+.pagina-recursos-projeto-shell .recursos-tab:hover {
+  transform:none;background:rgba(140,166,210,.105);color:#edf3ff;
+}
+.pagina-recursos-projeto-shell .recursos-tab.ativo {
+  transform:none;background:linear-gradient(145deg,#303f67,#263952);
+  color:#fff;border-color:rgba(157,179,240,.3);
+  box-shadow:0 4px 13px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.08);
+}
+.pagina-recursos-projeto-shell .recursos-tab.ativo::after {
+  content:"";position:absolute;left:25%;right:25%;bottom:4px;height:2px;
+  background:var(--rv-accent);border-radius:2px;
+}
+.pagina-recursos-projeto-shell .recursos-painel {padding-top:20px;}
+.pagina-recursos-projeto-shell .resource-page-shell {gap:16px;}
+
+/* Subabas de páginas (Informações, Personagens, Lugares e Anotações). */
+.pagina-recursos-projeto-shell .resource-page-bar {
+  min-height:51px;align-items:center;gap:10px;padding:5px 7px;
+  border:1px solid var(--rv-stroke);border-radius:14px;
+  background:rgba(9,19,33,.48);
+}
+.pagina-recursos-projeto-shell .resource-page-tabs {align-items:center;gap:7px;}
+.pagina-recursos-projeto-shell .resource-page-tab {
+  height:37px;max-width:220px;margin:0;
+  padding:0 13px;border:1px solid transparent;border-radius:9px;
+  background:transparent;color:#aebfd7;box-shadow:none;
+  font-size:.84rem;font-weight:650;transform:none;
+}
+.pagina-recursos-projeto-shell .resource-page-tab:hover {transform:none;background:rgba(154,175,216,.10);}
+.pagina-recursos-projeto-shell .resource-page-tab.ativo {
+  background:rgba(135,153,244,.16);color:#f5f6ff;
+  border-color:rgba(159,177,244,.32);box-shadow:none;
+}
+.pagina-recursos-projeto-shell .resource-page-add {
+  flex:0 0 37px;width:37px;min-width:37px;height:37px;
+  border:1px solid rgba(158,172,255,.31);border-radius:10px;
+  background:rgba(158,172,255,.11);color:#e8ecff;
+}
+.pagina-recursos-projeto-shell .resource-page-remove {
+  background:rgba(235,106,122,.11);border-color:rgba(235,106,122,.24);
+}
+/* Há estilos preexistentes com !important na barra de Informações. */
+.pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .resource-page-bar {
+  background:rgba(9,19,33,.48)!important;padding:5px 7px!important;
+  border:1px solid var(--rv-stroke)!important;border-radius:14px;
+}
+
+/* Informações: índice lateral + área de escrita. Preserva o layout de folhas. */
+.pagina-recursos-projeto-shell .info-layout {grid-template-columns:minmax(235px,270px) minmax(0,1fr);gap:16px;}
+.pagina-recursos-projeto-shell .info-sidebar {
+  padding:18px 14px;border-radius:19px;
+  background:linear-gradient(180deg,rgba(29,43,63,.96),rgba(20,32,48,.94));
+  border:1px solid var(--rv-stroke);box-shadow:0 12px 28px rgba(2,8,20,.13);
+}
+.pagina-recursos-projeto-shell .info-sidebar-topo {
+  padding:0 4px 11px;border-bottom:1px solid var(--rv-stroke);
+}
+.pagina-recursos-projeto-shell .info-sidebar-topo h2 {
+  font-size:.78rem;font-weight:800;letter-spacing:.095em;text-transform:uppercase;
+  color:#aebfd5;
+}
+.pagina-recursos-projeto-shell .info-page-list {gap:7px;padding-right:2px;}
+.pagina-recursos-projeto-shell .info-page-item {
+  padding:13px 14px;border-radius:12px;
+  background:rgba(9,19,34,.32);border:1px solid rgba(179,198,224,.10);
+  transition:background .16s,border-color .16s,transform .16s;
+}
+.pagina-recursos-projeto-shell .info-page-item:hover {
+  transform:translateX(2px);background:rgba(128,159,217,.10);
+  border-color:rgba(154,181,235,.23);
+}
+.pagina-recursos-projeto-shell .info-page-item.ativo {
+  background:linear-gradient(90deg,rgba(147,166,255,.18),rgba(93,140,186,.08));
+  border-color:rgba(153,170,255,.39);box-shadow:inset 3px 0 0 var(--rv-accent);
+}
+.pagina-recursos-projeto-shell .info-page-item strong {color:#f0f4ff;}
+.pagina-recursos-projeto-shell .info-page-item span {color:#a1b6cb;}
+.pagina-recursos-projeto-shell .info-title-input {
+  background:rgba(20,33,50,.92);border-color:var(--rv-stroke-strong);
+  border-radius:12px;color:#f4f6ff;font-size:1.16rem;font-weight:750;
+}
+.pagina-recursos-projeto-shell .info-title-input:focus {border-color:var(--rv-accent);}
+.pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .info-paper-workspace {
+  border-radius:21px;
+  border-color:rgba(172,193,223,.34);
+  background:linear-gradient(180deg,#dce5ef,#d2dce7);
+  box-shadow:0 16px 52px rgba(2,10,22,.26),inset 0 2px 10px rgba(44,65,90,.11);
+}
+.pagina-recursos-projeto-shell .info-paper-sheet {background:#fff;}
+
+/* Fluxograma: palco técnico com nós em superfície elevada. */
+.pagina-recursos-projeto-shell .fluxo-toolbar,
+.pagina-recursos-projeto-shell .catalogo-topbar {
+  background:linear-gradient(115deg,rgba(28,43,64,.86),rgba(22,35,53,.88));
+  border:1px solid var(--rv-stroke);border-radius:17px;
+  padding:18px 21px;box-shadow:0 10px 25px rgba(2,9,20,.12);
+}
+.pagina-recursos-projeto-shell .fluxo-toolbar h2,
+.pagina-recursos-projeto-shell .catalogo-topbar h2 {font-size:1.18rem;font-weight:760;letter-spacing:-.025em;color:#f4f6ff;}
+.pagina-recursos-projeto-shell .fluxo-toolbar p {color:var(--rv-muted);font-size:.88rem;}
+.pagina-recursos-projeto-shell .fluxo-canvas-wrap {
+  border-radius:20px;border-color:rgba(163,184,216,.19);
+  background:radial-gradient(circle at center,rgba(170,193,237,.18) 1px,transparent 1px) 0 0/24px 24px,
+             linear-gradient(145deg,rgba(12,24,40,.96),rgba(9,19,33,.96));
+  box-shadow:inset 0 2px 20px rgba(2,9,21,.22);
+}
+.pagina-recursos-projeto-shell .fluxo-node {
+  border-radius:16px;border-color:rgba(150,174,241,.34);
+  background:linear-gradient(155deg,rgba(41,57,83,.98),rgba(22,36,54,.98));
+  box-shadow:0 15px 35px rgba(1,7,18,.4),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.pagina-recursos-projeto-shell .fluxo-node-title {
+  background:rgba(10,23,41,.50);border:1px solid rgba(173,193,226,.15);
+  color:#f7f9ff;border-radius:10px;
+}
+.pagina-recursos-projeto-shell .fluxo-node-text {
+  background:rgba(10,23,41,.35);border:1px solid rgba(173,193,226,.12);
+  border-radius:10px;color:#e3ebf7;
+}
+.pagina-recursos-projeto-shell .fluxo-edge {stroke:#91a8f4;}
+/* NÃO sobrescrever .flow-handle/.fluxo-resize-handle: drag e conexões mantidos. */
+
+/* Catálogos: pequenos cartões nominais, mantendo dimensões e clique existentes. */
+.pagina-recursos-projeto-shell .recursos-painel .recursos-cards-grid {gap:14px;}
+.pagina-recursos-projeto-shell .recursos-painel .recurso-card {
+  border:1px solid rgba(174,197,229,.17);border-radius:17px;
+  background:linear-gradient(152deg,rgba(37,54,77,.94),rgba(23,37,55,.98));
+  box-shadow:0 10px 25px rgba(2,9,20,.17),inset 0 1px 0 rgba(255,255,255,.045);
+  transition:transform .17s,border-color .17s,box-shadow .17s;
+}
+.pagina-recursos-projeto-shell .recursos-painel .recurso-card:hover,
+.pagina-recursos-projeto-shell .recursos-painel .recurso-card:focus-visible {
+  transform:translateY(-3px);border-color:rgba(159,181,255,.52);
+  box-shadow:0 16px 32px rgba(1,9,21,.28),0 0 0 3px rgba(142,165,248,.07);
+  background:linear-gradient(152deg,rgba(43,62,91,.98),rgba(27,44,65,.98));
+}
+.pagina-recursos-projeto-shell .recursos-painel .recurso-card-nome {
+  color:#f5f7ff;font-size:.98rem;line-height:1.42;letter-spacing:-.008em;
+}
+.pagina-recursos-projeto-shell .vazio-recursos {
+  padding:36px 26px;border:1px dashed rgba(161,183,222,.25);
+  border-radius:18px;background:rgba(17,30,48,.40);color:#b6c7dc;
+}
+
+/* Cenas e Pesquisa: organização legível; 3 colunas / 360px inalterados. */
+.pagina-recursos-projeto-shell .planejamento-workspace {gap:17px;padding:0 0 14px;}
+.pagina-recursos-projeto-shell .planejamento-head {
+  min-height:75px;box-sizing:border-box;padding:17px 22px;
+  background:linear-gradient(125deg,rgba(39,57,83,.90),rgba(25,40,60,.88));
+  border:1px solid var(--rv-stroke);border-radius:18px;
+  box-shadow:0 10px 26px rgba(2,8,20,.13);
+}
+.pagina-recursos-projeto-shell .planejamento-head h2 {
+  color:#f5f7ff;font-size:1.28rem;letter-spacing:-.025em;font-weight:760;
+}
+.pagina-recursos-projeto-shell .planejamento-stats {gap:8px;}
+.pagina-recursos-projeto-shell .planejamento-badge {
+  background:rgba(153,173,221,.105);
+  border-color:rgba(167,188,225,.16);
+  color:#cfdaec;font-size:.75rem;font-weight:730;padding:6px 10px;
+}
+.pagina-recursos-projeto-shell .planejamento-filtros {
+  align-items:flex-end;gap:13px;padding:14px 16px;
+  border:1px solid var(--rv-stroke);border-radius:16px;
+  background:rgba(7,17,31,.35);
+}
+.pagina-recursos-projeto-shell .planejamento-filtros>label {
+  color:#c1cee1;font-size:.81rem;font-weight:730;letter-spacing:.01em;
+}
+.pagina-recursos-projeto-shell .planejamento-filtros :is(input:not([type="checkbox"]),select),
+.pagina-recursos-projeto-shell .planejamento-form :is(input:not([type="checkbox"]),select,textarea) {
+  background:rgba(13,26,43,.88);color:#f2f6ff;
+  border-color:rgba(166,187,218,.20);border-radius:11px;
+  min-height:43px;box-shadow:inset 0 1px 2px rgba(0,0,0,.08);
+}
+.pagina-recursos-projeto-shell .planejamento-filtros :is(input,select):focus,
+.pagina-recursos-projeto-shell .planejamento-form :is(input,select,textarea):focus {
+  border-color:rgba(160,178,255,.82);box-shadow:0 0 0 3px rgba(153,175,255,.13);
+}
+.pagina-recursos-projeto-shell .planejamento-filtros .planejamento-filtro-check {
+  padding:0 6px;color:#cad7ea;
+}
+.pagina-recursos-projeto-shell .planejamento-lista {
+  grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;
+}
+.pagina-recursos-projeto-shell .planejamento-card {
+  height:360px;min-height:0;max-height:360px;
+  border:1px solid rgba(166,190,229,.17);border-radius:18px;
+  background:linear-gradient(165deg,rgba(32,47,67,.98),rgba(19,32,48,.98));
+  box-shadow:0 13px 30px rgba(2,8,20,.18),inset 0 1px 0 rgba(255,255,255,.036);
+  gap:11px;padding:17px;
+  transition:border-color .18s,box-shadow .18s,transform .18s;
+}
+.pagina-recursos-projeto-shell .planejamento-card:hover {
+  border-color:rgba(156,175,245,.35);
+  box-shadow:0 17px 34px rgba(2,8,20,.25),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.pagina-recursos-projeto-shell .planejamento-card-top h3,
+.pagina-recursos-projeto-shell .planejamento-card-heading h3 {
+  color:#f6f8ff;font-size:1rem;font-weight:760;letter-spacing:-.012em;
+}
+.pagina-recursos-projeto-shell .planejamento-scene-number {
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:32px;height:32px;padding:0;color:#c6d1ff;
+  border:1px solid rgba(166,183,255,.20);border-radius:10px;
+  background:rgba(137,155,244,.13);font-size:.77rem;font-weight:800;
+}
+.pagina-recursos-projeto-shell .planejamento-resumo {color:#c9d6e8;font-size:.9rem;line-height:1.56;}
+.pagina-recursos-projeto-shell .planejamento-card-body {scrollbar-color:rgba(163,181,218,.37) transparent;}
+.pagina-recursos-projeto-shell .planejamento-detalhes summary {color:#b1c1ff;}
+.pagina-recursos-projeto-shell .planejamento-relacao-grupo {
+  background:rgba(8,21,37,.38);border-color:rgba(160,185,222,.12);
+}
+.pagina-recursos-projeto-shell .planejamento-relacao-titulo {color:#abbdd5;}
+.pagina-recursos-projeto-shell .planejamento-acoes {
+  border-top-color:var(--rv-stroke);padding-top:11px;
+}
+.pagina-recursos-projeto-shell .planejamento-acoes button {border-radius:10px;}
+
+/* Diálogos e formulários do Rascunho: uniformização sem mudar campos. */
+.pagina-recursos-projeto-shell :is(.modal-planejamento,.modal-catalogo-recursos,.modal-detalhe-catalogo-recursos,.modal-ia-recursos) {
+  border:1px solid rgba(175,194,230,.20);border-radius:22px;
+  background:linear-gradient(160deg,#1b2a3e,#152336);
+  box-shadow:0 30px 80px rgba(0,6,19,.46),inset 0 1px 0 rgba(255,255,255,.05);
+}
+.pagina-recursos-projeto-shell :is(.modal-planejamento,.modal-catalogo-recursos,.modal-detalhe-catalogo-recursos,.modal-ia-recursos) .modal-topo {
+  padding-bottom:15px;margin-bottom:16px;border-bottom:1px solid var(--rv-stroke);
+}
+.pagina-recursos-projeto-shell :is(.modal-planejamento,.modal-catalogo-recursos,.modal-detalhe-catalogo-recursos,.modal-ia-recursos) .modal-topo h2 {
+  color:#f6f8ff;font-size:1.22rem;font-weight:780;letter-spacing:-.025em;
+}
+.pagina-recursos-projeto-shell .planejamento-form {gap:17px;}
+.pagina-recursos-projeto-shell .planejamento-campos {gap:15px;}
+.pagina-recursos-projeto-shell .planejamento-form label {color:#d8e2f1;font-weight:650;font-size:.91rem;}
+.pagina-recursos-projeto-shell .planejamento-form h3 {font-size:1rem;color:#e8efff;font-weight:760;}
+.pagina-recursos-projeto-shell .planejamento-form-hint {color:var(--rv-muted);}
+.pagina-recursos-projeto-shell .planejamento-vinculo-grupo {
+  background:rgba(9,21,37,.45);border-color:rgba(155,182,227,.19);
+  border-radius:14px;
+}
+.pagina-recursos-projeto-shell .planejamento-vinculo-grupo legend {color:#b7c6ff;}
+.pagina-recursos-projeto-shell .planejamento-option:hover {background:rgba(157,178,225,.065);border-radius:8px;}
+.pagina-recursos-projeto-shell .planejamento-rodape {
+  background:linear-gradient(180deg,rgba(22,35,54,.94),rgba(22,35,54,.99));
+  border-top:1px solid var(--rv-stroke);padding:16px 0 4px;
+}
+.pagina-recursos-projeto-shell .form-catalogo-recursos :is(input:not([type="file"]),textarea) {
+  border-radius:11px;background:#112139;border-color:rgba(171,193,227,.18);
+}
+.pagina-recursos-projeto-shell .detalhe-catalogo-imagem-wrap {
+  background:rgba(9,20,35,.54);border-color:var(--rv-stroke);
+  border-radius:17px;
+}
+.pagina-recursos-projeto-shell .detalhe-catalogo-descricao-box {
+  border-radius:14px;box-shadow:0 5px 20px rgba(1,9,23,.11);
+}
+.pagina-recursos-projeto-shell .detalhe-catalogo-acoes {border-top-color:var(--rv-stroke);}
+/* Proporção e object-fit da correção de imagens de referência mantidos. */
+
+/* Responsividade e respeito a preferências de movimento. */
+@media(max-width:1100px) {
+  .pagina-recursos-projeto-shell .planejamento-lista {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .pagina-recursos-projeto-shell .info-layout {grid-template-columns:1fr;}
+  .pagina-recursos-projeto-shell .info-page-list {max-height:220px;}
+}
+@media(max-width:720px) {
+  .pagina-recursos-projeto-shell .recursos-topo {padding:18px;border-radius:19px;}
+  .pagina-recursos-projeto-shell .recursos-workspace {padding:10px;border-radius:19px;}
+  .pagina-recursos-projeto-shell .recursos-tabs {min-height:49px;padding:5px;}
+  .pagina-recursos-projeto-shell .recursos-tab {height:38px;min-height:38px;padding:0 12px;font-size:.81rem;}
+  .pagina-recursos-projeto-shell .recursos-painel {padding-top:14px;}
+  .pagina-recursos-projeto-shell .resource-page-bar {padding:5px;}
+  .pagina-recursos-projeto-shell .resource-page-tab {max-width:165px;}
+  .pagina-recursos-projeto-shell .planejamento-lista {grid-template-columns:minmax(0,1fr);}
+  .pagina-recursos-projeto-shell .planejamento-card {height:355px;max-height:355px;}
+  .pagina-recursos-projeto-shell .planejamento-head {padding:15px 16px;}
+  .pagina-recursos-projeto-shell .planejamento-filtros {padding:12px;}
+  .pagina-recursos-projeto-shell .fluxo-toolbar,
+  .pagina-recursos-projeto-shell .catalogo-topbar {padding:15px;}
+  .pagina-recursos-projeto-shell .info-sidebar {padding:13px;}
+}
+@media(max-width:440px) {
+  .pagina-recursos-projeto-shell .topo-info-projeto {gap:7px;}
+  .pagina-recursos-projeto-shell .recursos-topo .botao-com-icone {padding:7px 10px;}
+  .pagina-recursos-projeto-shell .planejamento-head {gap:10px;}
+  .pagina-recursos-projeto-shell .planejamento-head .botao-primario {width:100%;}
+}
+@media(prefers-reduced-motion:reduce) {
+  .pagina-recursos-projeto-shell .recursos-tab,
+  .pagina-recursos-projeto-shell .resource-page-tab,
+  .pagina-recursos-projeto-shell .recurso-card,
+  .pagina-recursos-projeto-shell .planejamento-card {transition:none!important;}
+}
+
+
+/* Abas de páginas (5 áreas): recupera a silhueta original de abas,
+   mantendo a paleta e o acabamento da repaginação atual. Não altera navegação. */
+.pagina-recursos-projeto-shell .recursos-painel:is(
+  [data-recursos-panel="informacoes"],
+  [data-recursos-panel="fluxo"],
+  [data-recursos-panel="personagens"],
+  [data-recursos-panel="lugares"],
+  [data-recursos-panel="anotacoes"]
+) .resource-page-bar {
+  min-height:52px;
+  align-items:flex-end;
+  gap:9px;
+  padding:8px 10px 0;
+  border:1px solid rgba(155,181,221,.17);
+  border-bottom:1px solid rgba(161,181,224,.34);
+  border-radius:15px 15px 0 0;
+  background:linear-gradient(180deg,rgba(16,30,48,.72),rgba(11,22,36,.40));
+  box-shadow:inset 0 1px 0 rgba(233,242,255,.03);
+}
+.pagina-recursos-projeto-shell .recursos-painel .resource-page-tabs {
+  align-items:flex-end;
+  gap:6px;
+  min-height:43px;
+  padding:0;
+}
+.pagina-recursos-projeto-shell .recursos-painel .resource-page-tab {
+  position:relative;
+  display:inline-flex;
+  flex:0 0 auto;
+  align-items:center;
+  max-width:230px;
+  height:42px;
+  margin:0;
+  padding:0 15px;
+  border:1px solid rgba(163,189,229,.17);
+  border-bottom:0;
+  border-radius:13px 13px 0 0;
+  background:linear-gradient(180deg,rgba(79,100,140,.16),rgba(57,77,110,.12));
+  color:#acbdd5;
+  font-size:.87rem;
+  font-weight:700;
+  transform:translateY(1px);
+  box-shadow:inset 0 1px rgba(235,242,255,.03);
+  transition:color .18s,background .18s,border-color .18s,box-shadow .18s,transform .18s;
+}
+.pagina-recursos-projeto-shell .recursos-painel .resource-page-tab:hover:not(.ativo) {
+  background:linear-gradient(180deg,rgba(116,142,187,.22),rgba(70,95,139,.18));
+  border-color:rgba(162,187,231,.32);
+  color:#f2f6ff;
+  transform:translateY(0);
+}
+.pagina-recursos-projeto-shell .recursos-painel .resource-page-tab.ativo {
+  z-index:1;
+  color:#fafbff;
+  background:linear-gradient(180deg,#354866 0%,#293c59 100%);
+  border-color:rgba(170,192,246,.54);
+  border-bottom:0;
+  transform:translateY(1px);
+  box-shadow:0 -6px 19px rgba(109,131,207,.14),inset 0 1px 0 rgba(242,246,255,.13)!important;
+}
+.pagina-recursos-projeto-shell .recursos-painel .resource-page-tab.ativo::before {
+  content:"";
+  position:absolute;
+  top:-1px;left:12px;right:12px;
+  height:3px;
+  border-radius:0 0 4px 4px;
+  background:linear-gradient(90deg,var(--rv-accent),var(--rv-teal));
+  pointer-events:none;
+}
+.pagina-recursos-projeto-shell .recursos-painel .resource-page-tab:focus-visible {
+  outline:2px solid var(--rv-accent);
+  outline-offset:-3px;
+}
+.pagina-recursos-projeto-shell .recursos-painel .resource-page-add {
+  flex:0 0 43px;
+  width:43px;
+  height:43px;
+  min-width:43px;
+  margin-bottom:0;
+  border:1px solid rgba(158,172,255,.31);
+  border-bottom:0;
+  border-radius:13px 13px 0 0;
+  background:rgba(158,172,255,.12);
+  transform:translateY(1px);
+}
+.pagina-recursos-projeto-shell .recursos-painel .resource-page-add:hover:not(:disabled) {
+  background:rgba(158,172,255,.25);
+}
+/* Informações possuía uma exceção antiga que tornava a barra transparente.
+   Restaura apenas a aparência, preservando os campos inline de renomeação. */
+.pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .resource-page-bar {
+  border:1px solid rgba(155,181,221,.17)!important;
+  border-bottom:1px solid rgba(161,181,224,.34)!important;
+  border-radius:15px 15px 0 0;
+  padding:8px 10px 0!important;
+  background:linear-gradient(180deg,rgba(16,30,48,.72),rgba(11,22,36,.40))!important;
+  box-shadow:inset 0 1px 0 rgba(233,242,255,.03)!important;
+}
+.pagina-recursos-projeto-shell .recursos-painel[data-recursos-panel="informacoes"] .resource-page-tabs {
+  background:transparent!important;
+  box-shadow:none!important;
+}
+@media(max-width:720px) {
+  .pagina-recursos-projeto-shell .recursos-painel .resource-page-tab {height:40px;max-width:165px;padding:0 12px;font-size:.82rem;}
+  .pagina-recursos-projeto-shell .recursos-painel .resource-page-tabs {min-height:41px;}
+  .pagina-recursos-projeto-shell .recursos-painel .resource-page-add {flex-basis:41px;width:41px;min-width:41px;height:41px;}
+}

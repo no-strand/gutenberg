@@ -1,0 +1,15 @@
+<section class="validacao-publicacao" data-url-validacao="{{ url_for('rota_validacao_publicacao', slug=projeto.slug) }}" aria-labelledby="publicacaoTitulo">
+  <header class="publicacao-cabecalho">
+    <div>
+      <h3 id="publicacaoTitulo">{{ t('publish.title') }}</h3>
+      <p>{{ t('publish.subtitle') }}</p>
+    </div>
+    <button type="button" class="botao-secundario publicacao-atualizar" id="publicacaoAtualizar">{{ t('publish.verify') }}</button>
+  </header>
+  <p id="publicacaoResumo" class="publicacao-resumo" aria-live="polite">{{ t('publish.loading') }}</p>
+  <ul id="publicacaoLista" class="publicacao-lista" aria-label="{{ t('publish.title') }}"></ul>
+  <label id="publicacaoAvisosConfirmacao" class="publicacao-confirmacao" hidden>
+    <input type="checkbox" id="publicacaoAceitarAvisos">
+    <span>{{ t('publish.ack') }}</span>
+  </label>
+</section>

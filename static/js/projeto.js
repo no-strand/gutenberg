@@ -335,11 +335,15 @@ document.getElementById('inputGutImportacao')?.addEventListener('change', async 
   }
 });
 
+// Pré-publicação centralizada para livros e roteiros.
+window.validacaoPublicacao?.montar(formExportacao, modalExportacao);
+
 formExportacao?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const status = document.getElementById('statusExportacao');
-  status.textContent = i18n('js.exporting');
   const params = new URLSearchParams(new FormData(formExportacao));
+  if (!await window.validacaoPublicacao.antesDeExportar(params)) return;
+  status.textContent = i18n('js.exporting');
   const formato = params.get('formato');
   const isDesktopSave = Boolean(window.pywebview?.api?.saveExportedFile) && formato !== 'xhtml';
   const url = `${formExportacao.action}?${params.toString()}${isDesktopSave ? '&desktop_save=1' : ''}`;
@@ -352,6 +356,14 @@ formExportacao?.addEventListener('submit', async (e)=>{
         mensagem = erro.erro || erro.mensagem || mensagem;
       } catch (_) {}
       throw new Error(mensagem);
+    }
+
+    if (formato === 'xhtml') {
+      const dados = await resp.json();
+      if (!dados?.ok) throw new Error(dados?.erro || i18n('js.export_failed'));
+      fecharModal(modalExportacao);
+      status.textContent = dados.mensagem || i18n('js.export_success');
+      return;
     }
 
     if (isDesktopSave) {

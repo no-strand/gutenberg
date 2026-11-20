@@ -265,7 +265,13 @@ def _usar_copyright_por_padrao(tipo_roteiro: Any) -> bool:
 
 
 @registrar_etapa
-def criar_roteiro(pasta_projeto: Path, titulo: str, cabecalho: str = "", rodape: str = "", prefixo_cena: str = "0", numeracao_inicial: int = 1, logline: str = "", sinopse: str = "", genero: str = "", tipo_roteiro: str = TIPO_ROTEIRO_PADRAO, copyright: Any | None = None) -> dict[str, Any]:
+def criar_roteiro(
+    pasta_projeto: Path, titulo: str, cabecalho: str = "", rodape: str = "",
+    prefixo_cena: str = "0", numeracao_inicial: int = 1, logline: str = "",
+    sinopse: str = "", genero: str = "", tipo_roteiro: str = TIPO_ROTEIRO_PADRAO,
+    copyright: Any | None = None, *, data_criacao: str | None = None,
+    data_atualizacao: str | None = None,
+) -> dict[str, Any]:
     """
     Cria um novo registro, arquivo ou estrutura interna mantendo o padrão de armazenamento do projeto.
 
@@ -314,8 +320,8 @@ def criar_roteiro(pasta_projeto: Path, titulo: str, cabecalho: str = "", rodape:
         "locais": [],
         "catalogo_personagens": [],
         "catalogo_locais": [],
-        "data_criacao": agora,
-        "data_atualizacao": agora,
+        "data_criacao": data_criacao or agora,
+        "data_atualizacao": data_atualizacao or agora,
     }
     return _db(pasta_projeto).criar_roteiro(numero, dados)
 
@@ -407,7 +413,10 @@ def salvar_roteiro(pasta_projeto: Path, numero: int, titulo: str, html: str) -> 
 
 
 @registrar_etapa
-def atualizar_roteiro_info(pasta_projeto: Path, numero: int, atualizacoes: dict[str, Any]) -> dict[str, Any]:
+def atualizar_roteiro_info(
+    pasta_projeto: Path, numero: int, atualizacoes: dict[str, Any], *,
+    data_atualizacao: str | None = None,
+) -> dict[str, Any]:
     """
     Aplica alterações controladas sobre dados já existentes sem recriar estruturas desnecessariamente.
 
@@ -450,7 +459,7 @@ def atualizar_roteiro_info(pasta_projeto: Path, numero: int, atualizacoes: dict[
         elif isinstance(valor, str):
             valor = valor.strip()
         dados[chave] = valor
-    dados["data_atualizacao"] = agora_iso()
+    dados["data_atualizacao"] = data_atualizacao or agora_iso()
     salvo = _db(pasta_projeto).salvar_roteiro(numero, dados)
     if not salvo:
         raise FileNotFoundError(t("backend.script_not_found"))

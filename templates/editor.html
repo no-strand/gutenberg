@@ -2,13 +2,13 @@
 {% block titulo %}{{ t('common.edit_label') }} {{ capitulo.titulo }}{% endblock %}
 {% block body_class %}pagina-editor-app{% if not config_global.efeito_editor %} editor-sem-efeito{% endif %}{% endblock %}
 {% block body_attrs %}data-editor-page="true" data-editor-effects-enabled="{{ 'true' if config_global.efeito_editor else 'false' }}"{% endblock %}
-{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/navegacao_folhas.css') }}">{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/fontes-editor.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/recursos_projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/navegacao_folhas.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/revisao_editorial.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/preview_recursos_hover.css') }}?v=20261120-4">{% endblock %}
 {% block conteudo %}
 <section class="editor-topo">
   <div class="cabecalho-editor-grid">
     <a href="{{ url_for('pagina_roteiro', slug=projeto.slug) if projeto.tipo == 'roteiro' else url_for('pagina_projeto', slug=projeto.slug) }}" id="botaoVoltarEditor" class="botao-secundario botao-voltar-estilizado botao-com-icone"><span class="icone-svg">{{ icon_svg('back')|safe }}</span><span>{{ t('nav.back') }}</span></a>
     <input id="campoTituloCapitulo" class="titulo-editor" value="{{ capitulo.titulo }}" maxlength="120" />
-    <div class="status-salvamento"><span id="statusAutosave" class="status-chip">{{ t('common.ready') }}</span><button type="button" class="botao-secundario botao-com-icone" id="btnAbrirRecursosProjeto" title="{{ t('resources.project_resources_shortcut') }}" aria-label="{{ t('resources.project_resources_shortcut') }}"><span class="icone-svg">{{ icon_svg('info')|safe }}</span></button><a class="botao-leitura botao-com-icone" href="{{ url_for('ler_capitulo_view', slug=projeto.slug, numero=numero) }}"><img class="icone-img" src="{{ url_for('static', filename='img/ler.png') }}" alt=""><span>{{ t('reader.reading_mode') }}</span></a></div>
+    <div class="status-salvamento"><button type="button" id="btnAbrirRevisaoEditorial" class="editorial-review-open" title="{{ t('editorial.open') }}" aria-label="{{ t('editorial.open') }}">{{ t('editorial.open') }}</button><span id="statusAutosave" class="status-chip">{{ t('common.ready') }}</span><button type="button" class="botao-secundario botao-com-icone" id="btnAbrirRecursosProjeto" title="{{ t('resources.project_resources_shortcut') }}" aria-label="{{ t('resources.project_resources_shortcut') }}"><span class="icone-svg">{{ icon_svg('info')|safe }}</span></button><a class="botao-leitura botao-com-icone" href="{{ url_for('ler_capitulo_view', slug=projeto.slug, numero=numero) }}"><img class="icone-img" src="{{ url_for('static', filename='img/ler.png') }}" alt=""><span>{{ t('reader.reading_mode') }}</span></a></div>
   </div>
 </section>
 
@@ -183,6 +183,7 @@
 </div>
 {% include '_recursos_visualizacao_modal.html' %}
 {% include '_navegacao_folhas_modal.html' %}
+{% include '_revisao_editorial_panel.html' %}
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/navegacao_folhas.js') }}" defer></script>
@@ -192,10 +193,11 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/editor_sessao.css') }}">
 <script src="{{ url_for('static', filename='js/editor_sessao.js') }}"></script>
 <script src="{{ url_for('static', filename='js/editor_recuperacao.js') }}"></script>
-<script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/preview_recursos_hover.js') }}?v=20261120-4"></script><script src="{{ url_for('static', filename='js/editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/epub-pagination.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ia_editor.js') }}"></script>
-<script src="{{ url_for('static', filename='js/recursos_visualizacao.js') }}"></script>
+<script src="{{ url_for('static', filename='js/recursos_visualizacao.js') }}?v=20261120-4"></script>
+<script src="{{ url_for('static', filename='js/revisao_editorial.js') }}"></script>
 {% endblock %}
 
 {% block skeleton %}

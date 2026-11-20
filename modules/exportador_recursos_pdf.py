@@ -265,6 +265,61 @@ def _exportar_catalogo(story: list[Any], recursos: dict[str, Any], styles: dict[
 
 
 @registrar_etapa
+def _exportar_planejamento(story: list[Any], recursos: dict[str, Any], styles: dict[str, ParagraphStyle]) -> None:
+    """Inclui cenas e referências no PDF de recursos, com nomes de vínculos."""
+    planejamento = recursos.get("planejamento") or {}
+    cenas = planejamento.get("cenas") or []
+    fontes = planejamento.get("fontes") or []
+    catalogos = {
+        "personagens": {item["id"]: item.get("nome", "") for item in recursos.get("personagens") or []},
+        "lugares": {item["id"]: item.get("nome", "") for item in recursos.get("lugares") or []},
+        "anotacoes": {item["id"]: item.get("nome", "") for item in recursos.get("anotacoes") or []},
+        "referencias": {item["id"]: item.get("titulo", "") for item in fontes},
+        "paginas_info": {item["id"]: item.get("titulo", "") for item in recursos.get("informacoes") or []},
+        "nos_fluxo": {
+            node["id"]: f"{fluxo.get('titulo', '')} · {node.get('titulo', '')}"
+            for fluxo in recursos.get("fluxos") or [] for node in fluxo.get("nodes") or []
+        },
+    }
+    status_labels = {
+        "planejada": t("planning.status_planned", default="Planejada"),
+        "em_andamento": t("planning.status_progress", default="Em andamento"),
+        "revisao": t("planning.status_review", default="Em revisão"),
+        "concluida": t("planning.status_done", default="Concluída"),
+    }
+    _adicionar_titulo_secao(story, styles, t("planning.scenes", default="Cenas"))
+    if not cenas:
+        story.append(Paragraph(_esc(t("planning.empty_scenes", default="Nenhuma cena planejada.")), styles["vazio"]))
+    for indice, cena in enumerate(cenas, start=1):
+        story.append(Paragraph(_esc(f"{indice}. {cena.get('titulo') or '-'}"), styles["item"]))
+        story.append(Paragraph(_esc(f"{t('planning.status', default='Situação')}: {status_labels.get(cena.get('status'), '-')}") , styles["pequeno"]))
+        for campo, chave in [
+            ("resumo", "planning.summary"), ("objetivo", "planning.goal"),
+            ("conflito", "planning.conflict"), ("desfecho", "planning.outcome"),
+        ]:
+            if cena.get(campo):
+                story.append(Paragraph(_esc(f"{t(chave)}: {cena[campo]}"), styles["normal"]))
+        for campo, chave in [("personagens", "planning.characters"), ("lugares", "planning.places"),
+                             ("anotacoes", "planning.notes"), ("referencias", "planning.research"),
+                             ("paginas_info", "planning.info_pages"), ("nos_fluxo", "planning.flow_nodes")]:
+            nomes = [catalogos[campo].get(identificador) for identificador in cena.get(campo) or []]
+            nomes = [nome for nome in nomes if nome]
+            if nomes:
+                story.append(Paragraph(_esc(f"{t(chave)}: {', '.join(nomes)}"), styles["pequeno"]))
+    _adicionar_titulo_secao(story, styles, t("planning.research", default="Pesquisa"))
+    if not fontes:
+        story.append(Paragraph(_esc(t("planning.empty_sources", default="Nenhuma fonte cadastrada.")), styles["vazio"]))
+    for fonte in fontes:
+        story.append(Paragraph(_esc(fonte.get("titulo") or "-"), styles["item"]))
+        for campo, chave in [("autor", "planning.author"), ("url", "planning.url"),
+                             ("citacao", "planning.citation"), ("notas", "planning.research_notes")]:
+            if fonte.get(campo):
+                story.append(Paragraph(_esc(f"{t(chave)}: {fonte[campo]}"), styles["normal"]))
+        verificada = t("planning.verified" if fonte.get("verificada") else "planning.unverified")
+        story.append(Paragraph(_esc(verificada), styles["pequeno"]))
+
+
+@registrar_etapa
 def exportar_recursos_pdf(slug: str) -> Path:
     """Exporta recursos do projeto em um PDF organizado por tipo."""
     projeto = obter_projeto(slug)
@@ -299,6 +354,8 @@ def exportar_recursos_pdf(slug: str) -> Path:
     _exportar_catalogo(story, recursos, styles, "personagens", t("resources.characters", default="Personagens"))
     _exportar_catalogo(story, recursos, styles, "lugares", t("resources.places", default="Lugares"))
     _exportar_catalogo(story, recursos, styles, "anotacoes", t("resources.notes", default="Anotações"))
+    story.append(PageBreak())
+    _exportar_planejamento(story, recursos, styles)
 
     doc.build(story)
     return caminho

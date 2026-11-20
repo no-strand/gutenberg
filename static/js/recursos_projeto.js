@@ -30,6 +30,7 @@
   let flowPanState = null;
   let flowSpacePanActive = false;
   let imageCatalogoAtual = '';
+  let imageCatalogoNecessitaReenvioAtual = false;
   let detalheCatalogoAtual = null;
   let lastInfoRange = null;
   // Persistência serial por recurso: um POST obsoleto não pode terminar
@@ -385,7 +386,8 @@
       anotacoes: normalizeCatalogItems(data.anotacoes, 'anotacoes', anotacoes_paginas),
       personagens_projeto: Array.isArray(data.personagens_projeto) ? data.personagens_projeto : [],
       lugares_projeto: Array.isArray(data.lugares_projeto) ? data.lugares_projeto : [],
-      anotacoes_projeto: Array.isArray(data.anotacoes_projeto) ? data.anotacoes_projeto : []
+      anotacoes_projeto: Array.isArray(data.anotacoes_projeto) ? data.anotacoes_projeto : [],
+      planejamento: data.planejamento && typeof data.planejamento === 'object' ? data.planejamento : {cenas: [], fontes: []}
     };
   }
   function absorbServer(data){
@@ -432,6 +434,47 @@
     if (tab === 'fluxo') requestAnimationFrame(renderFlowLines);
   }
 
+  // Contrato de integração da expansão: compartilhar a fila de gravações do Rascunho.
+  window.GutenbergRecursosPost = postJSON;
+  window.GutenbergRecursosEstado = () => state;
+  window.GutenbergRecursosAbrirAba = switchTab;
+  window.GutenbergRecursosAtualizar = absorbServer;
+  window.GutenbergRecursosAbrirPaginaInfo = (id) => {
+    const aba = (state.informacoes_abas || []).find(tab => (tab.paginas || []).some(page => page.id === id));
+    if (!aba) return;
+    saveCurrentInfoToState();
+    if (activeInfoTabId) activeInfoPageIds[activeInfoTabId] = activeInfoId;
+    activeInfoTabId = aba.id;
+    activeInfoId = id;
+    activeInfoPageIds[aba.id] = id;
+    switchTab('informacoes');
+    renderInfoList();
+    loadActiveInfo();
+  };
+  window.GutenbergRecursosAbrirNoFluxo = (id) => {
+    const aba = (state.fluxos || []).find(tab => (tab.nodes || []).some(node => node.id === id));
+    if (!aba) return;
+    activeFlowId = aba.id;
+    switchTab('fluxo');
+    renderResourcePageTabs('fluxo');
+    renderFlow();
+    requestAnimationFrame(() => {
+      const nodeEl = [...document.querySelectorAll('#fluxoNodes .fluxo-node')].find(el => el.dataset.nodeId === id);
+      if (!nodeEl) return;
+      nodeEl.scrollIntoView({block:'center', inline:'center', behavior:'smooth'});
+      nodeEl.classList.add('planejamento-no-destaque');
+      window.setTimeout(() => nodeEl.classList.remove('planejamento-no-destaque'), 2200);
+    });
+  };
+  window.GutenbergRecursosAbrirCatalogo = (tipo, id) => {
+    if (!CATALOG_TYPES.includes(tipo)) return;
+    const item = (state[tipo] || []).find(entry => entry.id === id);
+    if (!item) return;
+    activeCatalogPageIds[tipo] = item.pagina_id;
+    switchTab(tipo);
+    renderCatalogs();
+    openCatalogDetail(tipo, item);
+  };
   $$('[data-recursos-tab]').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.recursosTab)));
   $$('[data-recursos-tab-target]').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.recursosTabTarget)));
 
@@ -1763,11 +1806,11 @@
   }
 
   function renderCatalogs(){
-    renderCatalogList('personagens', currentCatalogItems('personagens'), $('#listaPersonagensProjeto'), '👤');
-    renderCatalogList('lugares', currentCatalogItems('lugares'), $('#listaLugaresProjeto'), '📍');
-    renderCatalogList('anotacoes', currentCatalogItems('anotacoes'), $('#listaAnotacoesProjeto'), '📝');
+    renderCatalogList('personagens', currentCatalogItems('personagens'), $('#listaPersonagensProjeto'));
+    renderCatalogList('lugares', currentCatalogItems('lugares'), $('#listaLugaresProjeto'));
+    renderCatalogList('anotacoes', currentCatalogItems('anotacoes'), $('#listaAnotacoesProjeto'));
   }
-  function renderCatalogList(tipo, items, container, emoji){
+  function renderCatalogList(tipo, items, container){
     if (!container) return;
     container.innerHTML = '';
     if (!items.length) { container.innerHTML = `<div class="vazio-recursos">${escapeHtml(tr('resources.no_items', {}, 'Nenhum item cadastrado ainda.'))}</div>`; return; }
@@ -1776,13 +1819,19 @@
       card.className = 'recurso-card';
       card.tabIndex = 0;
       card.setAttribute('role', 'button');
-      card.title = item.nome || tr('resources.no_item_name', {}, 'Sem nome');
+      card.setAttribute('aria-label', item.nome || tr('resources.no_item_name', {}, 'Sem nome'));
       card.innerHTML = `<h3 class="recurso-card-nome">${escapeHtml(item.nome || tr('resources.no_item_name', {}, 'Sem nome'))}</h3>`;
-      card.addEventListener('click', () => openCatalogDetail(tipo, item, emoji));
+      window.GutenbergResourcePreview?.bind(card, {
+        nome: item.nome,
+        tipo: catalogTypeLabel(tipo),
+        descricao: item.descricao,
+        imagem: tipo === 'anotacoes' ? '' : item.imagem,
+      });
+      card.addEventListener('click', () => openCatalogDetail(tipo, item));
       card.addEventListener('keydown', (ev) => {
         if (ev.key === 'Enter' || ev.key === ' ') {
           ev.preventDefault();
-          openCatalogDetail(tipo, item, emoji);
+          openCatalogDetail(tipo, item);
         }
       });
       container.appendChild(card);
@@ -1824,6 +1873,7 @@
     $('#catalogoRecursosNome').value = item?.nome || '';
     $('#catalogoRecursosDescricao').value = item?.descricao || '';
     imageCatalogoAtual = tipo === 'anotacoes' ? '' : (item?.imagem || '');
+    imageCatalogoNecessitaReenvioAtual = tipo !== 'anotacoes' && !!item?.imagem_necessita_reenvio;
     const img = $('#catalogoRecursosImagemPreview');
     if (img) { img.src = imageCatalogoAtual || ''; img.classList.toggle('oculto', !imageCatalogoAtual); }
     $('#tituloModalCatalogoRecursos').textContent = item ? tr('resources.edit_item', {type: catalogTypeLabel(tipo)}, `Editar ${catalogTypeLabel(tipo)}`) : catalogNewLabel(tipo);
@@ -1836,18 +1886,20 @@
     ev.target.value = '';
     if (!file) return;
     imageCatalogoAtual = await fileToDataUrl(file);
+    imageCatalogoNecessitaReenvioAtual = false;
     const img = $('#catalogoRecursosImagemPreview');
     if (img) { img.src = imageCatalogoAtual; img.classList.remove('oculto'); }
   });
   $('#btnRemoverImagemCatalogo')?.addEventListener('click', () => {
     imageCatalogoAtual = '';
+    imageCatalogoNecessitaReenvioAtual = false;
     const img = $('#catalogoRecursosImagemPreview');
     if (img) { img.src = ''; img.classList.add('oculto'); }
   });
   $('#formCatalogoRecursos')?.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const tipo = $('#catalogoRecursosTipo').value;
-    const payload = {id: $('#catalogoRecursosId').value, pagina_id: activeCatalogPageIds[tipo], nome: $('#catalogoRecursosNome').value.trim(), descricao: $('#catalogoRecursosDescricao').value.trim(), imagem: tipo === 'anotacoes' ? '' : imageCatalogoAtual};
+    const payload = {id: $('#catalogoRecursosId').value, pagina_id: activeCatalogPageIds[tipo], nome: $('#catalogoRecursosNome').value.trim(), descricao: $('#catalogoRecursosDescricao').value.trim(), imagem: tipo === 'anotacoes' ? '' : imageCatalogoAtual, imagem_necessita_reenvio: tipo !== 'anotacoes' && imageCatalogoNecessitaReenvioAtual};
     if (!payload.nome) { $('#statusCatalogoRecursos').textContent = tipo === 'anotacoes' ? tr('resources.title_required', {}, 'Informe um título.') : tr('resources.name_required', {}, 'Informe um nome.'); return; }
     $('#statusCatalogoRecursos').textContent = tr('resources.saving', {}, 'Salvando...');
     try {
@@ -1857,9 +1909,9 @@
       setStatus(tr('resources.catalog_saved', {}, 'Catálogo salvo'));
     } catch (err) { $('#statusCatalogoRecursos').textContent = err.message; }
   });
-  function openCatalogDetail(tipo, item = null, emoji = ''){
+  function openCatalogDetail(tipo, item = null){
     if (!item) return;
-    detalheCatalogoAtual = {tipo, item, emoji};
+    detalheCatalogoAtual = {tipo, item};
     const tipoLabel = tipo === 'personagens' ? tr('resources.character', {}, 'Personagem') : (tipo === 'anotacoes' ? tr('resources.note', {}, 'Anotação') : tr('resources.place', {}, 'Lugar'));
     const origem = tipo === 'anotacoes' ? tr('resources.saved_in_project_feminine', {}, 'salva no projeto') : (item.origem === 'roteiro' ? tr('resources.detected_in_script', {}, 'detectado no roteiro') : tr('resources.saved_in_project', {}, 'salvo no projeto'));
     const nome = item.nome || tr('resources.no_item_name', {}, 'Sem nome');
@@ -1884,7 +1936,9 @@
       imgEl.src = showImage ? item.imagem : '';
       imgEl.classList.toggle('oculto', !showImage);
       semImgEl.classList.toggle('oculto', showImage || tipo === 'anotacoes');
-      semImgEl.textContent = showImage ? '' : `${tr('resources.no_reference_image', {}, 'Sem imagem de referência')} ${emoji ? emoji : ''}`.trim();
+      semImgEl.textContent = showImage ? '' : (item.imagem_necessita_reenvio
+        ? tr('resources.reference_image_needs_reupload', {}, 'Esta imagem foi danificada pelo limite antigo. Anexe o arquivo original novamente.')
+        : tr('resources.no_reference_image', {}, 'Sem imagem de referência'));
     }
     openModal($('#modalDetalheCatalogoRecursos'));
   }

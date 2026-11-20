@@ -24,6 +24,20 @@
 
 <input type="file" id="inputEpubs" accept=".epub,.pdf,application/epub+zip,application/pdf" multiple class="oculto">
 
+<div class="modal-leitor oculto" id="modalModoPdf" aria-hidden="true">
+  <div class="modal-leitor-overlay" data-cancelar-pdf="true"></div>
+  <div class="modal-leitor-conteudo modal-modo-pdf" role="dialog" aria-modal="true" aria-labelledby="tituloModoPdf">
+    <div class="modal-leitor-topo"><h2 id="tituloModoPdf">{{ t('library.pdf_import_title') }}</h2><button type="button" class="botao-fechar-sumario" data-cancelar-pdf="true" aria-label="{{ t('library.pdf_import_cancel') }}">×</button></div>
+    <fieldset class="opcoes-modo-pdf" id="opcoesModoPdf">
+      <legend>{{ t('library.pdf_import_select') }}</legend>
+      <label class="opcao-modo-pdf"><input type="radio" name="modoPdf" value="nativo" checked><span><strong>{{ t('library.pdf_import_native') }}</strong><small>{{ t('library.pdf_import_native_desc') }}</small></span></label>
+      <label class="opcao-modo-pdf"><input type="radio" name="modoPdf" value="epub"><span><strong>{{ t('library.pdf_import_convert') }}</strong><small>{{ t('library.pdf_import_convert_desc') }}</small></span></label>
+    </fieldset>
+    <div class="acoes-modo-pdf"><button type="button" class="botao-secundario" data-cancelar-pdf="true">{{ t('library.pdf_import_cancel') }}</button><button type="button" class="botao-primario" id="confirmarModoPdf">{{ t('library.pdf_import_confirm') }}</button></div>
+  </div>
+</div>
+
+
 <div class="overlay-processamento-biblioteca oculto" id="overlayProcessandoBiblioteca" aria-hidden="true">
   <div class="overlay-processamento-fundo"></div>
   <div class="overlay-processamento-card" role="status" aria-live="polite" aria-busy="true">
@@ -69,6 +83,7 @@
         {% else %}
         <div class="thumb-placeholder">{{ t('library.no_cover') }}</div>
         {% endif %}
+        {% if livro.tipo_documento == 'pdf' %}<span class="chip-tipo-pdf">PDF</span>{% endif %}
         <div class="overlay-progresso">
           <span class="chip-progresso">{{ '%.0f'|format(livro.progresso_percentual or 0) }}%</span>
         </div>

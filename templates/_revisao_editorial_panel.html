@@ -1,0 +1,36 @@
+<aside id="painelRevisaoEditorial" class="editorial-review-panel oculto" aria-label="{{ t('editorial.title') }}" aria-hidden="true">
+  <header class="editorial-review-head">
+    <div><h2>{{ t('editorial.title') }}</h2><p>{{ t('editorial.status_initial') }}</p></div>
+    <button type="button" class="editorial-review-close" id="btnFecharRevisaoEditorial" aria-label="{{ t('editorial.close') }}">×</button>
+  </header>
+  <div class="editorial-review-tabs" role="tablist" aria-label="{{ t('editorial.title') }}">
+    <button type="button" id="revAbaNotas" class="ativo" aria-selected="true" role="tab">{{ t('editorial.comments') }}</button>
+    <button type="button" id="revAbaVersoes" aria-selected="false" role="tab">{{ t('editorial.versions') }}</button>
+  </div>
+  <section id="revPainelNotas" class="editorial-review-body" role="tabpanel">
+    <section class="editorial-review-create">
+      <label class="editorial-review-label">{{ t('editorial.selection') }}</label>
+      <div id="revTrechoSelecionado" class="editorial-review-quote" aria-live="polite">{{ t('editorial.no_selection') }}</div>
+      <label class="editorial-review-label" for="revNota">{{ t('editorial.note') }}</label>
+      <textarea id="revNota" rows="2" maxlength="4000" placeholder="{{ t('editorial.note_placeholder') }}"></textarea>
+      <label class="editorial-review-label" for="revSubstituicao">{{ t('editorial.replacement') }}</label>
+      <textarea id="revSubstituicao" rows="2" maxlength="2000" placeholder="{{ t('editorial.replacement_placeholder') }}"></textarea>
+      <div class="editorial-review-actions">
+        <button type="button" id="btnRevComentar" class="editorial-review-primary">{{ t('editorial.add_comment') }}</button>
+        <button type="button" id="btnRevSugerir">{{ t('editorial.add_suggestion') }}</button>
+      </div>
+    </section>
+    <div id="revListaNotas" class="editorial-review-list" aria-live="polite"></div>
+  </section>
+  <section id="revPainelVersoes" class="editorial-review-body oculto" role="tabpanel" hidden>
+    <div class="editorial-review-create">
+      <p class="editorial-review-help">{{ t('editorial.version_explanation') }}</p>
+      <label class="editorial-review-label" for="revNomeVersao">{{ t('editorial.version_label') }}</label>
+      <input id="revNomeVersao" maxlength="120" placeholder="{{ t('editorial.version_placeholder') }}">
+      <button type="button" id="btnRevCriarVersao" class="editorial-review-primary">{{ t('editorial.save_version') }}</button>
+    </div>
+    <div id="revListaVersoes" class="editorial-review-list"></div>
+    <div id="revComparacao" class="editorial-review-diff oculto" aria-live="polite"></div>
+  </section>
+  <div id="revMensagem" class="editorial-review-status" role="status" aria-live="polite"></div>
+</aside>

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block titulo %}{{ projeto.titulo }}{% endblock %}
-{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/projeto.css') }}">{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/projeto.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/validacao_publicacao.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/preview_recursos_hover.css') }}?v=20261120-4">{% endblock %}
 {% block conteudo %}
 <section class="topo-projeto roteiro-topo">
   <div class="coluna-dados-projeto coluna-dados-projeto-full">
@@ -124,7 +124,7 @@
 
 <div class="modal oculto" id="modalExportacao">
   <div class="modal-overlay" data-fechar-modal="true"></div>
-  <div class="modal-conteudo pequeno" data-modal-card="true">
+  <div class="modal-conteudo pequeno publicacao-modal" data-modal-card="true">
     <div class="modal-topo"><h2>{{ t('script.export_script') }}</h2><button class="botao-fechar" type="button" data-fechar-modal="true">×</button></div>
     <form id="formExportacao" action="{{ url_for('rota_exportar', slug=projeto.slug) }}">
       <label>{{ t('script.export_select') }}
@@ -143,6 +143,7 @@
           <option value="completo">{{ t('script.document_type_complete') }}</option>
         </select>
       </label>
+      {% include "_validacao_publicacao_panel.html" %}
       <div class="rodape-formulario"><span id="statusExportacao" class="status-form"></span><button class="botao-primario botao-com-icone" type="submit" {% if not projeto.roteiros %}disabled{% endif %}><img class="icone-img" src="{{ url_for('static', filename='img/exportar.png') }}" alt=""><span>{{ t('common.export') }}</span></button></div>
     </form>
   </div>
@@ -224,7 +225,8 @@
 {% endblock %}
 {% block scripts %}
 <script>window.PROJETO_SLUG = {{ projeto.slug|tojson }};</script>
-<script src="{{ url_for('static', filename='js/roteiro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/validacao_publicacao.js') }}"></script>
+<script src="{{ url_for('static', filename='js/preview_recursos_hover.js') }}?v=20261120-4"></script><script src="{{ url_for('static', filename='js/roteiro.js') }}"></script>
 {% endblock %}
 
 {% block skeleton %}

@@ -162,8 +162,8 @@ function renderCatalogCardMarkup(tipo, item, { compact = false } = {}){
       <span class="catalogo-card-badge">${emoji} ${escapeHtml(badge)}</span>
     </div>
     <div class="catalogo-card-corpo">
-      <h4 title="${escapeHtml(nome)}">${escapeHtml(nome)}</h4>
-      <p class="catalogo-card-descricao${descricao ? '' : ' vazio'}"${descricaoCompleta ? ` title="${escapeHtml(descricaoCompleta)}"` : ''}>${escapeHtml(descricao || window.t('common.no_description'))}</p>
+      <h4>${escapeHtml(nome)}</h4>
+      <p class="catalogo-card-descricao${descricao ? '' : ' vazio'}">${escapeHtml(descricao || window.t('common.no_description'))}</p>
     </div>`;
 }
 document.getElementById('abrirModalRoteiro')?.addEventListener('click', ()=> abrirModal(modalRoteiro));
@@ -441,11 +441,15 @@ document.getElementById('inputGutImportacao')?.addEventListener('change', async 
   }
 });
 
+// Pré-publicação centralizada para livros e roteiros.
+window.validacaoPublicacao?.montar(formExportacao, modalExportacao);
+
 formExportacao?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const status = document.getElementById('statusExportacao');
-  status.textContent = i18n('js.exporting');
   const params = new URLSearchParams(new FormData(formExportacao));
+  if (!await window.validacaoPublicacao.antesDeExportar(params)) return;
+  status.textContent = i18n('js.exporting');
   const formato = params.get('formato');
   const isDesktopSave = Boolean(window.pywebview?.api?.saveExportedFile) && formato !== 'xhtml';
   const url = `${formExportacao.action}?${params.toString()}${isDesktopSave ? '&desktop_save=1' : ''}`;
@@ -580,6 +584,7 @@ function renderVinculosRoteiro(){
     const article = document.createElement('article');
     article.className = 'catalogo-item catalogo-card catalogo-card-visualizacao';
     article.innerHTML = renderCatalogCardMarkup(tipo, detalhes, { compact: true });
+    window.GutenbergResourcePreview?.bind(article, {nome: detalhes.nome || nomeOriginal, tipo: getCatalogAccent(tipo), descricao: detalhes.descricao, imagem: detalhes.imagem || ''});
     vinculosListaRoteiro.appendChild(article);
   });
 }
@@ -650,6 +655,7 @@ function renderCatalogoProjeto(){
         <button type="button" class="botao-perigo botao-apenas-icone" title="${i18n('js.delete_title')}">✕</button>
       </div>`;
     const [btnEdit, btnDelete] = article.querySelectorAll('button');
+    window.GutenbergResourcePreview?.bind(article, {nome: item.nome, tipo: getCatalogAccent(tipo), descricao: item.descricao, imagem: item.imagem || ''});
     btnEdit?.addEventListener('click', ()=> abrirEditorCatalogoProjeto(tipo, item));
     btnDelete?.addEventListener('click', ()=> excluirItemCatalogoProjeto(tipo, item.nome));
     catalogoListaProjeto.appendChild(article);

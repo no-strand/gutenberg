@@ -1,0 +1,161 @@
+/* Prévia compacta de referência dos recursos, compartilhada por cartões e vínculos. */
+.gutenberg-resource-preview {
+  position: fixed;
+  z-index: 12000;
+  display: none;
+  box-sizing: border-box;
+  width: min(320px, calc(100vw - 24px));
+  /* Mesma altura compacta das prévias de Páginas de Informações.
+     Conteúdo maior é rolável, nunca escondido ou cortado. */
+  max-height: min(234px, calc(100vh - 24px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 12px;
+  border: 1px solid rgba(160, 184, 224, .25);
+  border-radius: 15px;
+  color: #eaf1ff;
+  background: linear-gradient(155deg, rgba(21, 34, 53, .985), rgba(11, 20, 34, .99));
+  box-shadow: 0 20px 54px rgba(0, 0, 0, .48), inset 0 1px 0 rgba(255, 255, 255, .055);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .12s ease, transform .12s ease;
+}
+.gutenberg-resource-preview.is-visible {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+.gutenberg-resource-preview.is-interactive {
+  pointer-events: auto;
+}
+.gutenberg-resource-preview-header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  margin-bottom: 9px;
+}
+.gutenberg-resource-preview-name {
+  color: #f5f8ff;
+  font-size: .92rem;
+  line-height: 1.25;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+.gutenberg-resource-preview-type {
+  color: #a9b9d2;
+  font-size: .72rem;
+  line-height: 1.2;
+}
+.gutenberg-resource-preview-image-wrap {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 70px;
+  max-height: 170px;
+  margin: 0 0 9px;
+  overflow: hidden;
+  border: 1px solid rgba(160, 184, 224, .15);
+  border-radius: 10px;
+  background: rgba(4, 10, 20, .62);
+}
+.gutenberg-resource-preview-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 168px;
+  object-fit: contain !important;
+  object-position: center;
+}
+.gutenberg-resource-preview-description {
+  /* A rolagem pertence à janela externa para evitar barras aninhadas. */
+  max-height: none;
+  margin: 0;
+  overflow: visible;
+  color: #d6e0ef;
+  font-size: .82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  scrollbar-width: thin;
+}
+.gutenberg-resource-preview-description.is-empty {color: #9eacc1;}
+.gutenberg-resource-preview-hint {
+  display: block;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(160, 184, 224, .14);
+  color: #9fb2d0;
+  font-size: .7rem;
+  line-height: 1.35;
+}
+.planejamento-resource-link,
+.recursos-scene-resource-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 6px;
+  color: #b9caff;
+  background: rgba(130, 157, 220, .10);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(185, 202, 255, .42);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.planejamento-resource-link:hover,
+.planejamento-resource-link:focus-visible,
+.recursos-scene-resource-link:hover,
+.recursos-scene-resource-link:focus-visible {
+  color: #e3ebff;
+  background: rgba(130, 157, 220, .19);
+  outline: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gutenberg-resource-preview {transition: none;}
+}
+
+/* Imagens de referência sempre inteiras, sem recorte ou zoom que esconda partes. */
+.recurso-card-img,
+.imagem-preview-wrap img,
+.detalhe-catalogo-imagem-wrap img,
+.recursos-catalogo-detail-image-wrap img,
+.catalogo-thumb img {
+  object-fit: contain !important;
+  object-position: center !important;
+}
+.recurso-card-img:hover,
+.recursos-cards-grid-modal .recurso-card-img:hover {
+  transform: none !important;
+}
+.catalogo-thumb img {background: rgba(5, 12, 24, .5);}
+
+/* As molduras dos detalhes acompanham a proporção real da referência.
+   Isso evita reservar uma coluna alta vazia em fotos horizontais e mantém
+   fotos verticais limitadas à área disponível, sempre sem cortar a imagem. */
+#modalDetalheCatalogoRecursos .detalhe-catalogo-corpo,
+#modalRecursosCatalogoDetalhe .recursos-catalogo-detail-body {
+  grid-template-rows: auto;
+  align-items: start;
+}
+#modalDetalheCatalogoRecursos .detalhe-catalogo-imagem-wrap,
+#modalRecursosCatalogoDetalhe .recursos-catalogo-detail-image-wrap {
+  align-self: start;
+  height: auto;
+  min-height: 0;
+  max-height: min(46vh, 430px);
+}
+#modalDetalheCatalogoRecursos .detalhe-catalogo-imagem-wrap img,
+#modalRecursosCatalogoDetalhe .recursos-catalogo-detail-image-wrap img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(46vh, 430px);
+  object-fit: contain !important;
+  object-position: center;
+}

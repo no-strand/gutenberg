@@ -173,7 +173,10 @@ def ler_capitulo(pasta_projeto: Path, numero: int) -> dict[str, Any]:
 
 
 @registrar_etapa
-def salvar_capitulo(pasta_projeto: Path, numero: int, titulo: str, html: str) -> dict[str, Any]:
+def salvar_capitulo(
+    pasta_projeto: Path, numero: int, titulo: str, html: str, *,
+    data_criacao: str | None = None, data_atualizacao: str | None = None,
+) -> dict[str, Any]:
     """
     Persiste as alterações recebidas, garantindo que o conteúdo fique disponível nas próximas execuções.
 
@@ -203,8 +206,8 @@ def salvar_capitulo(pasta_projeto: Path, numero: int, titulo: str, html: str) ->
         numero=numero,
         titulo=titulo,
         html=html,
-        data_criacao=dados_atuais.get("data_criacao") or agora_iso(),
-        data_atualizacao=agora_iso(),
+        data_criacao=data_criacao or dados_atuais.get("data_criacao") or agora_iso(),
+        data_atualizacao=data_atualizacao or agora_iso(),
     )
     if not dados:
         raise FileNotFoundError(t("backend.chapter_not_found"))
